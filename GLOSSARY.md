@@ -14,10 +14,6 @@ Changing a model's internal activations during inference to influence its behavi
 
 A benchmark for open-ended instruction following that uses an LLM as a judge of response quality.
 
-## Artifact
-
-A saved steering intervention: direction tensors, SAE feature selections, or learned ReFT-r1 parameters, with the settings needed to load it. Stored under `checkpoints/`.
-
 ## BBQ
 
 A benchmark for measuring stereotype reliance in multiple-choice question answering.
@@ -57,6 +53,10 @@ Short for In-Context Vector, a method that extracts a reusable activation vector
 ## Inference
 
 Running a model on an input to produce an output.
+
+## Intervention
+
+The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. Saved interventions and their loading settings are stored under `checkpoints/`.
 
 ## LLM
 
