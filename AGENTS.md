@@ -9,9 +9,17 @@
 ## Workflow and verification
 
 - Follow the [contribution workflow](README.md#contributing) when submitting changes.
-- Keep edits within the request. Inspect actual files before assuming scripts, commands, or results exist.
-- Use subagents when they clearly save time or improve results. Give them clearly defined tasks that can be done independently, share relevant repository instructions, and avoid overlapping edits. The parent agent must review and combine their work, then check the final result. Prefer GPT-6.1 Sol or Opus 5.5 when available.
-- Check affected work and results before drawing conclusions. Report checks and limitations; mark results that have not been checked. If bugs invalidate results, fix the bugs and rerun affected experiments when possible; otherwise provide rerun instructions. Keep affected conclusions pending until replacement results have been checked.
+- **Plan coherent changes.** The parent agent evaluates the request and divides the work into small changes, each with one purpose and possibly spanning multiple files. Identify dependencies before starting.
+  - Keep edits within the request. Inspect actual files before assuming scripts, commands, or results exist.
+- **Delegate when useful.** Use subagents when they clearly save time or improve results. Give them clearly defined tasks that can be done independently, share relevant repository instructions, and avoid overlapping edits. Prefer GPT-6.1 Sol or Opus 5.5 when available.
+- **Implement and verify.** The parent agent reviews and combines delegated work, then runs appropriate checks for each change.
+- **Obtain independent review.** Before completing each change, obtain a review from a new **independent reviewer subagent** that neither implemented it nor inherited the implementation conversation. Review before dependent work if errors could invalidate it.
+  - Provide the request, explicit approvals, diff, relevant repository instructions and source documents, and verification evidence.
+  - Reviewers must check **internal consistency**: the change aligns with the request, works as intended, and appropriate verification supports it. They must also check **external consistency**: the change aligns with repository rules and project requirements, including this file, README.md, and the proposal.
+  - Reviewers must remain read-only. Report concrete defects, missing necessary checks, or rule violations, with an affected location and explanation. Recommend the smallest necessary correction. Reporting no findings is valid.
+  - For large changes, divide review into distinct areas and check their interactions before completion.
+- **Resolve findings and finish.** The parent agent must assess findings, fix confirmed issues, run affected checks, and obtain targeted review of substantive fixes before drawing conclusions. The same reviewer may recheck fixes within that change. Check the combined result, report checks and limitations, and mark unchecked results.
+  - If bugs invalidate results, fix the bugs and rerun affected experiments when possible; otherwise provide rerun instructions. Keep affected conclusions pending until replacement results have been checked.
 
 ## Documentation and terminology
 
