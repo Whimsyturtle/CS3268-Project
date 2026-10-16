@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+
+/data/**
+!/data/README.md
+/checkpoints/**
+!/checkpoints/README.md
+/results/**
+!/results/**/
+!/results/**/.gitkeep
+!/results/README.md
