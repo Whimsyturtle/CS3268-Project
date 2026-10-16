@@ -22,7 +22,8 @@ ICV/
 └── docs/           # Course and cluster documents
 ```
 
-The `api.pyi` files define interfaces; runtime implementations are not present yet.
+Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
+[evaluation/api.pyi](evaluation/api.pyi); runtime implementations are not present yet.
 
 See [steering](steering/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), [data](data/README.md),

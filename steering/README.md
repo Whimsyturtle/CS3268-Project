@@ -1,8 +1,8 @@
 # Steering
 
-[api.pyi](api.pyi) defines the shared inference contract. The four method folders
-re-export its signatures; each future `api.py` must supply its own implementation.
-These stubs do not execute steering.
+[api.pyi](api.pyi) defines the inference contract for all four methods.
+Implementations belong in `caa/`, `icv/`, `sae/`, and `reft_r1/` and must follow
+these signatures. The shared stub does not execute steering.
 
 - `load_intervention(checkpoint_dir, model=model)` loads a saved intervention and
   checks its base-model revision and intervention locations against the model.

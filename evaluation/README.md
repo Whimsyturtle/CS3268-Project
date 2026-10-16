@@ -1,8 +1,9 @@
 # Evaluation
 
 [api.pyi](api.pyi) defines shared records, the benchmark interface, and the runner.
-Each benchmark folder re-exports `load_examples`, `format_prompt`, and `score`.
-Implementations will live in matching `api.py` files; none are present yet.
+Benchmark implementations belong in `bbq/`, `holistic_bias/`, `mmlu_pro/`, and
+`alpaca_eval/` and must provide `load_examples`, `format_prompt`, and `score`
+with the shared signatures. No runtime implementations are present yet.
 
 | Function | Responsibility |
 | --- | --- |
