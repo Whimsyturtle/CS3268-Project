@@ -54,6 +54,10 @@ Short for In-Context Vector, a method that extracts a reusable activation vector
 
 Running a model on an input to produce an output.
 
+## Intervention
+
+The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. See the [directory structure](README.md#directory-structure) for storage locations.
+
 ## LLM
 
 Short for Large Language Model, a model trained on large amounts of text to process and generate language.

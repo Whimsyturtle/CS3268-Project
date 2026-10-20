@@ -8,6 +8,41 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 - [Glossary](GLOSSARY.md): preferred terms and simple definitions.
 - [AGENTS.md](AGENTS.md): instructions for agents.
 
+## Directory structure
+
+```text
+CS3268-Group-6/
+├── shared_examples/
+│   ├── construction.jsonl
+│   └── development.jsonl
+├── steering/       # Steering implementations
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── steering_vectors/ # Saved interventions
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── evaluation/     # Benchmark implementations
+│   ├── bbq/
+│   ├── holistic_bias/
+│   ├── mmlu_pro/
+│   └── alpaca_eval/
+├── configs/        # Experiment configurations
+├── results/        # <benchmark>/<method>/<run_id>/
+├── tests/          # Focused implementation tests
+└── docs/           # Course and cluster documents
+```
+
+Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
+[evaluation/api.pyi](evaluation/api.pyi).
+
+See [shared examples](shared_examples/README.md), [steering](steering/README.md),
+[saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
+[configurations](configs/README.md), and [results](results/README.md) for details.
+
 ## Contributing
 
 - Use a separate branch for each task and submit changes to `main` through a pull request (PR). Do not push directly to `main`.
