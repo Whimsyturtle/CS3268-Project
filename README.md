@@ -8,6 +8,16 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 - [Glossary](GLOSSARY.md): preferred terms and simple definitions.
 - [AGENTS.md](AGENTS.md): instructions for agents.
 
+## Evaluation
+
+[evaluation.py](evaluation.py) holds the code shared by all steering methods. It uses [uv](https://docs.astral.sh/uv/); run `uv sync` once to install dependencies. Gemma 3 is gated on Hugging Face, so accept its license and run `uv run hf auth login` first.
+
+- `bbq_build_set()` returns the BBQ build set. Construct steering vectors only from these rows.
+- `run_benchmarks(model, tokenizer, output_dir, method_name)` scores BBQ and MMLU-Pro with [lm-eval](https://github.com/EleutherAI/lm-evaluation-harness) and saves HolisticBias and AlpacaEval 2.0 responses. Attach your method's hooks to the model before calling it. Scoring of the saved responses is not implemented yet.
+- Results change slightly with batch size and GPU type, so load the model with `load_model()`, keep the default `batch_size`, and run every method on the same GPU type.
+- `uv run python evaluation.py --output-dir results/baseline` evaluates the unsteered baseline. Add `--limit 2` for a quick test run.
+- `uv run pytest` runs the tests.
+
 ## Contributing
 
 - Use a separate branch for each task and submit changes to `main` through a pull request (PR). Do not push directly to `main`.

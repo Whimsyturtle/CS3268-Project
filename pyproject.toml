@@ -1,0 +1,18 @@
+[project]
+name = "cs3268-project"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=5.1.0",
+    "lm-eval[hf]==0.4.13",
+    "torch>=2.14.1",
+    "transformers>=5.20.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
