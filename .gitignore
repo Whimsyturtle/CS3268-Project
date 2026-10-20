@@ -1,4 +1,13 @@
-.venv/
 __pycache__/
+*.py[cod]
+
+/steering_vectors/**
+!/steering_vectors/*/
+!/steering_vectors/*/config.json
+!/steering_vectors/README.md
+/results/**
+!/results/**/
+!/results/**/.gitkeep
+!/results/README.md
+.venv/
 .pytest_cache/
-results/

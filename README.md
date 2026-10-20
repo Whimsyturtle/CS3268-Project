@@ -8,15 +8,46 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 - [Glossary](GLOSSARY.md): preferred terms and simple definitions.
 - [AGENTS.md](AGENTS.md): instructions for agents.
 
-## Evaluation
+## Directory structure
 
-[evaluation.py](evaluation.py) holds the code shared by all steering methods. It uses [uv](https://docs.astral.sh/uv/); run `uv sync` once to install dependencies. Gemma 3 is gated on Hugging Face, so accept its license and run `uv run hf auth login` first.
+```text
+CS3268-Group-6/
+├── shared_examples/
+│   ├── construction.jsonl
+│   └── development.jsonl
+├── steering/       # Steering implementations
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── steering_vectors/ # Saved interventions
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── evaluation/     # Benchmark implementations
+│   ├── bbq/
+│   ├── holistic_bias/
+│   ├── mmlu_pro/
+│   └── alpaca_eval/
+├── configs/        # Experiment configurations
+├── results/        # <benchmark>/<method>/<run_id>/
+├── tests/          # Focused implementation tests
+└── docs/           # Course and cluster documents
+```
 
-- `bbq_build_set()` returns the BBQ build set. Construct steering vectors only from these rows.
-- `run_benchmarks(model, tokenizer, output_dir, method_name)` scores BBQ and MMLU-Pro with [lm-eval](https://github.com/EleutherAI/lm-evaluation-harness) and saves HolisticBias and AlpacaEval 2.0 responses. Attach your method's hooks to the model before calling it. Scoring of the saved responses is not implemented yet.
-- Results change slightly with batch size and GPU type, so load the model with `load_model()`, keep the default `batch_size`, and run every method on the same GPU type.
-- `uv run python evaluation.py --output-dir results/baseline` evaluates the unsteered baseline. Add `--limit 2` for a quick test run.
-- `uv run pytest` runs the tests.
+Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
+[evaluation/api.pyi](evaluation/api.pyi).
+
+See [shared examples](shared_examples/README.md), [steering](steering/README.md),
+[saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
+[configurations](configs/README.md), and [results](results/README.md) for details.
+
+## Setup
+
+Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated on
+Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
+`uv run pytest`.
 
 ## Contributing
 

@@ -18,10 +18,6 @@ A benchmark for open-ended instruction following that uses an LLM as a judge of 
 
 A benchmark for measuring stereotype reliance in multiple-choice question answering.
 
-## BBQ build set
-
-The BBQ rows reserved for constructing steering vectors: all rows from 20% of the question templates in each bias category. The other 80% are held-out evaluation prompts. See [evaluation.py](evaluation.py).
-
 ## CAA
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
@@ -58,9 +54,9 @@ Short for In-Context Vector, a method that extracts a reusable activation vector
 
 Running a model on an input to produce an output.
 
-## lm-eval
+## Intervention
 
-Short for the [LM Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness), a library that runs standard benchmarks on language models. We use it for BBQ and MMLU-Pro.
+The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. See the [directory structure](README.md#directory-structure) for storage locations.
 
 ## LLM
 
