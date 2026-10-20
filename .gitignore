@@ -1,8 +1,9 @@
 __pycache__/
 *.py[cod]
 
-/steering/*/saved/**
-!/steering/*/saved/.gitkeep
+/steering_vectors/**
+!/steering_vectors/*/
+!/steering_vectors/*/config.json
 /results/**
 !/results/**/
 !/results/**/.gitkeep

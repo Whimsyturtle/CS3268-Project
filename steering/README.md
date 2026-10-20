@@ -17,16 +17,10 @@ Construction remains method-specific: averaging for CAA, PCA for ICV, feature
 selection for SAE, and training for ReFT-r1. Follow the
 [proposal](../CS3268_Project_Proposal_Group_6.md) for the experiment design.
 
-Keep source code, construction examples, and custom split definitions directly
-under each method folder. Use the same reviewed source examples and splits
-across methods; configurations can reference one file in a method folder rather
-than maintain separate copies. Construction data must satisfy the proposal's
-data separation requirement.
-
-Put generated interventions in `steering/<method>/saved/`, along with construction
-settings, source example IDs, exact model revision, and intervention locations.
-SAE also records its compatible pretrained SAE checkpoint and selected features.
-These folders are empty and ignored by Git except for `.gitkeep` placeholders.
+Keep source code under each method folder. Use the shared examples and save
+interventions under `steering_vectors/<method>/`, including ReFT-r1's learned
+parameters. See the [directory structure](../README.md#directory-structure)
+for split usage, saved-vector configs, and pretrained SAE storage.
 
 The unsteered baseline uses `contextlib.nullcontext()` in the shared evaluation
 path. Strength is method-specific; equal numbers do not imply equal effects.

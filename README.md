@@ -12,18 +12,20 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 
 ```text
 CS3268-Group-6/
-├── steering/       # Method code, construction examples, and saved interventions
-│   ├── api.pyi
+├── shared_examples/
+│   ├── construction.jsonl
+│   └── development.jsonl
+├── steering/       # Steering implementations
 │   ├── caa/
-│   │   └── saved/
 │   ├── icv/
-│   │   └── saved/
 │   ├── sae/
-│   │   └── saved/
 │   └── reft_r1/
-│       └── saved/
-├── evaluation/     # Benchmark implementations and shared API
-│   ├── api.pyi
+├── steering_vectors/ # Saved interventions; each folder has config.json
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── evaluation/     # Benchmark implementations
 │   ├── bbq/
 │   ├── holistic_bias/
 │   ├── mmlu_pro/
@@ -39,7 +41,19 @@ Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
 
 See [steering](steering/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), and [results](results/README.md) for details.
-Generated interventions in each method's `saved/` folder and evaluation results are ignored by Git.
+
+`shared_examples/` holds paired records with `id`, `prompt`, `biased_response`,
+and `unbiased_response`. Construction examples build interventions; separate
+development examples tune settings. Keep related variants in the same split
+and final benchmark data separate. Both files are initially empty.
+
+Each `steering_vectors/<method>/config.json` records how its saved intervention
+was produced: model revision, layers, example IDs, seed, and method settings
+(including SAE checkpoint/features or ReFT-r1 training settings where applicable).
+These files are currently empty JSON objects, not runnable configurations.
+Saved interventions include any additional parameters required for inference.
+Generated outputs are ignored by Git; these configs are tracked. Pretrained SAEs
+use the external model cache, not a repository folder.
 
 ## Contributing
 
