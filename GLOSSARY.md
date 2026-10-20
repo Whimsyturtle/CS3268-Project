@@ -56,7 +56,7 @@ Running a model on an input to produce an output.
 
 ## Intervention
 
-The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. Saved interventions and their loading settings are stored under `checkpoints/`.
+The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. Saved interventions and their loading settings are stored under `steering/<method>/saved/`.
 
 ## LLM
 

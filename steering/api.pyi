@@ -4,7 +4,7 @@ from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
-def load_intervention(checkpoint_dir: Path, *, model: Any) -> Any:
+def load_intervention(intervention_dir: Path, *, model: Any) -> Any:
     """Load a method-native intervention and validate model compatibility."""
     ...
 

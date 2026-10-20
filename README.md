@@ -12,12 +12,16 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 
 ```text
 CS3268-Group-6/
-├── steering/       # Steering implementations and shared API
+├── steering/       # Method code, construction examples, and saved interventions
 │   ├── api.pyi
 │   ├── caa/
+│   │   └── saved/
 │   ├── icv/
+│   │   └── saved/
 │   ├── sae/
+│   │   └── saved/
 │   └── reft_r1/
+│       └── saved/
 ├── evaluation/     # Benchmark implementations and shared API
 │   ├── api.pyi
 │   ├── bbq/
@@ -25,8 +29,6 @@ CS3268-Group-6/
 │   ├── mmlu_pro/
 │   └── alpaca_eval/
 ├── configs/        # Experiment configurations
-├── data/           # Construction examples and custom split definitions
-├── checkpoints/    # Saved interventions
 ├── results/        # <benchmark>/<method>/<run_id>/
 ├── tests/          # Focused implementation tests
 └── docs/           # Course and cluster documents
@@ -36,9 +38,8 @@ Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
 [evaluation/api.pyi](evaluation/api.pyi); runtime implementations are not present yet.
 
 See [steering](steering/README.md), [evaluation](evaluation/README.md),
-[configurations](configs/README.md), [data](data/README.md),
-[checkpoints](checkpoints/README.md), and [results](results/README.md) for details.
-Downloaded data, checkpoints, and generated results are ignored by Git.
+[configurations](configs/README.md), and [results](results/README.md) for details.
+Generated interventions in each method's `saved/` folder and evaluation results are ignored by Git.
 
 ## Contributing
 
