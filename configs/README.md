@@ -7,5 +7,3 @@ Store reviewed experiment configurations here. Each must record:
 - Prompt formatting, decoding settings, and seed.
 - Saved intervention directory, strength, and other method settings.
 - Scorer/judge settings and whether the run uses development or test data.
-
-No executable configuration or default model identifier is supplied yet.

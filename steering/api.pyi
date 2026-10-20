@@ -1,4 +1,4 @@
-"""Canonical steering inference contract; see README.md for semantics."""
+"""Canonical steering inference contract. See README.md for semantics."""
 
 from contextlib import AbstractContextManager
 from pathlib import Path

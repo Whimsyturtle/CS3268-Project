@@ -1,4 +1,4 @@
-"""Shared evaluation records and contracts; implementations are not yet present."""
+"""Shared evaluation records and contracts."""
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -26,7 +26,7 @@ def load_examples(config: Mapping[str, Any]) -> list[Example]:
     ...
 
 def format_prompt(example: Example, config: Mapping[str, Any]) -> str:
-    """Format model input; exclude reference answers and scoring-only metadata."""
+    """Format model input without reference answers or scoring-only metadata."""
     ...
 
 def score(
@@ -34,7 +34,7 @@ def score(
     predictions: Sequence[Prediction],
     config: Mapping[str, Any],
 ) -> list[Metric]:
-    """Score after checking exact, unique example-ID coverage; never generate."""
+    """Score after checking exact, unique example-ID coverage. Never generate."""
     ...
 
 def generate(
@@ -55,5 +55,5 @@ def run(
     benchmark: BenchmarkName,
     run_id: str,
 ) -> Path:
-    """Save config, predictions, and metrics in a new run directory; return it."""
+    """Save config, predictions, and metrics in a new run directory and return it."""
     ...

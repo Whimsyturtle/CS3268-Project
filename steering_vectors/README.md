@@ -6,7 +6,6 @@ needed for inference.
 Each folder's `config.json` records how its intervention was produced: model
 revision, layers, source example IDs, seed, and method settings (including SAE
 checkpoint/features or ReFT-r1 training settings where applicable).
-Populate it when generating the intervention; the current `{}` files are
-placeholders, not runnable configs.
+Populate it when generating the intervention.
 
-Configs and this README are tracked by Git; generated intervention files are ignored.
+Configs and this README are tracked by Git. Generated intervention files are ignored.

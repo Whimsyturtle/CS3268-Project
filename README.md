@@ -37,15 +37,11 @@ CS3268-Group-6/
 ```
 
 Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
-[evaluation/api.pyi](evaluation/api.pyi); runtime implementations are not present yet.
+[evaluation/api.pyi](evaluation/api.pyi).
 
-See [steering](steering/README.md), [saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
+See [shared examples](shared_examples/README.md), [steering](steering/README.md),
+[saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), and [results](results/README.md) for details.
-
-`shared_examples/` holds paired records with `id`, `prompt`, `biased_response`,
-and `unbiased_response`. Construction examples build interventions; separate
-development examples tune settings. Keep related variants in the same split
-and final benchmark data separate. Both files are initially empty.
 
 ## Contributing
 

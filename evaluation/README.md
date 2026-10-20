@@ -3,7 +3,7 @@
 [api.pyi](api.pyi) defines shared records, the benchmark interface, and the runner.
 Benchmark implementations belong in `bbq/`, `holistic_bias/`, `mmlu_pro/`, and
 `alpaca_eval/` and must provide `load_examples`, `format_prompt`, and `score`
-with the shared signatures. No runtime implementations are present yet.
+with the shared signatures.
 
 | Function | Responsibility |
 | --- | --- |
@@ -11,7 +11,7 @@ with the shared signatures. No runtime implementations are present yet.
 | `format_prompt(example, config)` | Produce model input without reference answers or scoring-only metadata. |
 | `generate(model, tokenizer, prompts, decoding=..., seed=...)` | Return one raw continuation per prompt, in order, excluding input text. |
 | `score(examples, predictions, config)` | Join by example ID and return benchmark metric rows. |
-| `run(config_path, method=..., benchmark=..., run_id=...)` | Run inference and scoring; return the saved run directory. |
+| `run(config_path, method=..., benchmark=..., run_id=...)` | Run inference and scoring and return the saved run directory. |
 
 The runner owns model loading, tokenization, formatting settings, decoding, and
 seeding. Each steering implementation applies its intervention through the
@@ -25,7 +25,7 @@ recomputed without rerunning generation.
 Use the [proposal](../CS3268_Project_Proposal_Group_6.md) as the source for required
 metrics. Metric formulas, the MCQ answer protocol, and external scorer/judge
 settings still need to be specified before implementing scorers. The current
-`generate` contract returns text; choice-likelihood MCQ scoring would require
+`generate` contract returns text. Choice-likelihood MCQ scoring would require
 an explicit extension to the shared inference contract.
 
 Use identical held-out prompts and decoding settings across methods for each
