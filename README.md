@@ -11,9 +11,19 @@ Comparing CAA, ICV, SAE, and ReFT-r1 activation-steering methods on Gemma-3-1b t
 ## Directory structure
 
 ```text
-ICV/
-├── steering/       # Shared API and caa/, icv/, sae/, reft_r1/
-├── evaluation/     # Shared API and four benchmark folders
+CS3268-Group-6/
+├── steering/       # Steering implementations and shared API
+│   ├── api.pyi
+│   ├── caa/
+│   ├── icv/
+│   ├── sae/
+│   └── reft_r1/
+├── evaluation/     # Benchmark implementations and shared API
+│   ├── api.pyi
+│   ├── bbq/
+│   ├── holistic_bias/
+│   ├── mmlu_pro/
+│   └── alpaca_eval/
 ├── configs/        # Experiment configurations
 ├── data/           # Construction examples and custom split definitions
 ├── checkpoints/    # Saved interventions
