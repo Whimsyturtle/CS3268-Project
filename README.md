@@ -20,7 +20,7 @@ CS3268-Group-6/
 │   ├── icv/
 │   ├── sae/
 │   └── reft_r1/
-├── steering_vectors/ # Saved interventions; each folder has config.json
+├── steering_vectors/ # Saved interventions
 │   ├── caa/
 │   ├── icv/
 │   ├── sae/
@@ -39,21 +39,13 @@ CS3268-Group-6/
 Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
 [evaluation/api.pyi](evaluation/api.pyi); runtime implementations are not present yet.
 
-See [steering](steering/README.md), [evaluation](evaluation/README.md),
+See [steering](steering/README.md), [saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), and [results](results/README.md) for details.
 
 `shared_examples/` holds paired records with `id`, `prompt`, `biased_response`,
 and `unbiased_response`. Construction examples build interventions; separate
 development examples tune settings. Keep related variants in the same split
 and final benchmark data separate. Both files are initially empty.
-
-Each `steering_vectors/<method>/config.json` records how its saved intervention
-was produced: model revision, layers, example IDs, seed, and method settings
-(including SAE checkpoint/features or ReFT-r1 training settings where applicable).
-These files are currently empty JSON objects, not runnable configurations.
-Saved interventions include any additional parameters required for inference.
-Generated outputs are ignored by Git; these configs are tracked. Pretrained SAEs
-use the external model cache, not a repository folder.
 
 ## Contributing
 

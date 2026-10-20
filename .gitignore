@@ -4,6 +4,7 @@ __pycache__/
 /steering_vectors/**
 !/steering_vectors/*/
 !/steering_vectors/*/config.json
+!/steering_vectors/README.md
 /results/**
 !/results/**/
 !/results/**/.gitkeep
