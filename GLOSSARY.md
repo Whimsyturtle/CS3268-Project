@@ -58,9 +58,17 @@ Running a model on an input to produce an output.
 
 The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. See the [directory structure](README.md#directory-structure) for storage locations.
 
+## Issue
+
+A GitHub record for a task's outcome, dependencies, progress, and completion checks. See the [contribution workflow](README.md#contributing).
+
 ## LLM
 
 Short for Large Language Model, a model trained on large amounts of text to process and generate language.
+
+## Milestone
+
+A GitHub grouping of issues for a delivery stage.
 
 ## MMLU-Pro
 

@@ -9,6 +9,8 @@
 ## Workflow and verification
 
 - Follow the [contribution workflow](README.md#contributing) when submitting changes.
+- Before major work, read the relevant issue, its dependencies, and linked PRs. Check the actual files and verification evidence before treating work as complete; an issue does not authorize changes to the proposal.
+- Keep related issues current under the contribution workflow, including blockers, verification, and any required reruns. If GitHub is unavailable, report the pending update rather than claiming it was made.
 - **Plan coherent changes.** The parent agent evaluates the request and divides the work into small changes, each with one purpose and possibly spanning multiple files. Identify dependencies before starting.
   - Keep edits within the request. Inspect actual files before assuming scripts, commands, or results exist.
 - **Delegate when useful.** Use subagents when they clearly save time or improve results. Give them clearly defined tasks that can be done independently, share relevant repository instructions, and avoid overlapping edits. Prefer GPT-6.1 Sol or Opus 5.5 when available.
