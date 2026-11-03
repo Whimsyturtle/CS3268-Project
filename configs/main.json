@@ -5,6 +5,11 @@
     "dtype": "bfloat16"
   },
   "seed": 0,
+  "decoding": {
+    "batch_size": 16,
+    "do_sample": false,
+    "use_cache": true
+  },
   "methods": {
     "caa": {
       "intervention_dir": "steering_vectors/caa",
@@ -30,43 +35,27 @@
       "metadata_url": "https://raw.githubusercontent.com/nyu-mll/BBQ/bea11bd97d79217245b5871acd247b9d6eb24598/analysis_scripts/additional_metadata.csv",
       "split": "test",
       "limit": null,
-      "decoding": {
-        "batch_size": 16,
-        "do_sample": false,
-        "max_new_tokens": 8
-      }
+      "max_new_tokens": 8
     },
     "mmlu_pro": {
       "dataset": "TIGER-Lab/MMLU-Pro",
       "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
       "split": "test",
       "limit": null,
-      "decoding": {
-        "batch_size": 16,
-        "do_sample": false,
-        "max_new_tokens": 8
-      }
+      "max_new_tokens": 8
     },
     "holistic_bias": {
       "dataset": "fairnlp/holistic-bias",
       "revision": "c168bbff3d4014c1ed8abe976d259b5c599f775e",
       "split": "test",
       "limit": null,
-      "decoding": {
-        "batch_size": 16,
-        "do_sample": false,
-        "max_new_tokens": 512
-      }
+      "max_new_tokens": 512
     },
     "alpaca_eval": {
       "dataset": "tatsu-lab/alpaca_eval",
       "revision": "2edc6fad8be6b14ea7230aabfd08188da6b8b814",
       "limit": null,
-      "decoding": {
-        "batch_size": 16,
-        "do_sample": false,
-        "max_new_tokens": 2048
-      }
+      "max_new_tokens": 2048
     }
   }
 }

@@ -38,6 +38,10 @@ A family of language models; see the [proposal](CS3268_Project_Proposal_Group_6.
 
 A model's ability to perform tasks beyond the targeted steering behavior, such as reasoning and instruction following.
 
+## Greedy decoding
+
+Generating text by always choosing the most likely next token, so outputs do not depend on random sampling.
+
 ## Held-out evaluation prompts
 
 Prompts reserved for evaluating model behavior, separate from the data used to construct steering vectors.
