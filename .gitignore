@@ -9,3 +9,5 @@ __pycache__/
 !/results/**/
 !/results/**/.gitkeep
 !/results/README.md
+.venv/
+.pytest_cache/

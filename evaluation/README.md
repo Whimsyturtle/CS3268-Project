@@ -23,10 +23,14 @@ Save [raw predictions](../results/README.md) before scoring so metrics can be
 recomputed without rerunning generation.
 
 Use the [proposal](../CS3268_Project_Proposal_Group_6.md) as the source for required
-metrics. Metric formulas, the MCQ answer protocol, and external scorer/judge
-settings still need to be specified before implementing scorers. The current
-`generate` contract returns text. Choice-likelihood MCQ scoring would require
-an explicit extension to the shared inference contract.
+metrics. For multiple-choice benchmarks (BBQ, MMLU-Pro), the model answers with a
+letter, which is parsed from its text output; each scorer's docstring explains how
+invalid outputs are counted. HolisticBias and AlpacaEval scorers still need their
+external classifier and judge settings, so their runs save predictions without metrics.
+
+Run a benchmark with
+`uv run python -m evaluation.runner --config configs/main.json --method baseline --benchmark bbq --run-id <run_id>`.
+For a quick test, copy the config and set a benchmark's `limit`.
 
 Use identical held-out prompts and decoding settings across methods for each
 benchmark. Tune settings on development data, then freeze them before final

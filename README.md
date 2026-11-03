@@ -43,6 +43,12 @@ See [shared examples](shared_examples/README.md), [steering](steering/README.md)
 [saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), and [results](results/README.md) for details.
 
+## Setup
+
+Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated on
+Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
+`uv run pytest`.
+
 ## Contributing
 
 - Track major tasks, experiments, and deliverables in [GitHub issues](https://github.com/Whimsyturtle/CS3268-Project/issues). Small fixes can stay within an existing task or PR.
