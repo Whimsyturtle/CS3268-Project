@@ -7,7 +7,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from transformers import PreTrainedModel, PreTrainedTokenizerBase, get_scheduler
 
-from evaluation.runner import ROOT, generate, load_model
+from evaluation.runner import ROOT, generate, load_model, source_commit
 from steering.reft_r1 import SavedVector, apply
 
 MAX_NEW_TOKENS = 128
@@ -17,6 +17,8 @@ LAYER = 10
 TOP_K = 8
 L1_WEIGHT = 0.005
 LEARNING_RATE = 0.01
+WEIGHT_DECAY = 0.0
+GRADIENT_CLIP = 1.0
 EPOCHS = 3
 BATCH_SIZE = 6
 
@@ -104,9 +106,14 @@ class InterventionSettings(TypedDict):
     top_k: int
     l1_weight: float
     learning_rate: float
+    weight_decay: float
+    gradient_clip: float
+    scheduler: str
     epochs: int
     batch_size: int
     max_act: float
+    training_target: str  # The response field trained on. AxBench also uses negatives.
+    source_commit: str  # The code that trained this vector.
     source_example_ids: list[str]
 
 
@@ -368,7 +375,7 @@ def train_vector(
     vector = torch.full(
         (model.config.hidden_size,), 0.01, device=model.device, requires_grad=True
     )
-    optimizer = torch.optim.AdamW([vector], lr=LEARNING_RATE, weight_decay=0.0)
+    optimizer = torch.optim.AdamW([vector], lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     total_steps = EPOCHS * math.ceil(len(examples) / BATCH_SIZE)
     scheduler = get_scheduler(
         "linear", optimizer, num_warmup_steps=0, num_training_steps=total_steps
@@ -384,7 +391,7 @@ def train_vector(
             l1_weight = step / total_steps * L1_WEIGHT
             (result.language_loss + l1_weight * result.l1_penalty).backward()
 
-            torch.nn.utils.clip_grad_norm_([vector], 1.0)
+            torch.nn.utils.clip_grad_norm_([vector], GRADIENT_CLIP)
             with torch.no_grad():
                 vector /= vector.norm()
                 vector.grad -= (
@@ -439,7 +446,9 @@ def measure_max_act(
             attention_mask=batch["attention_mask"],
             output_hidden_states=True,
             use_cache=False,
-        ).hidden_states[layer + 1]  # Index 0 is the embeddings.
+        ).hidden_states[
+            layer + 1
+        ]  # Index 0 is the embeddings. The last entry is normed.
         max_act = max(max_act, score_tokens(hidden, vector, token_mask).max().item())
     return max_act
 
@@ -467,9 +476,14 @@ def save_intervention(
         top_k=TOP_K,
         l1_weight=L1_WEIGHT,
         learning_rate=LEARNING_RATE,
+        weight_decay=WEIGHT_DECAY,
+        gradient_clip=GRADIENT_CLIP,
+        scheduler="linear",
         epochs=EPOCHS,
         batch_size=BATCH_SIZE,
         max_act=max_act,
+        training_target="unbiased_response",
+        source_commit=source_commit()["commit"],
         source_example_ids=[example["id"] for example in examples],
     )
     (INTERVENTION_DIR / "config.json").write_text(json.dumps(settings, indent=2) + "\n")

@@ -11,3 +11,4 @@ __pycache__/
 !/results/README.md
 .venv/
 .pytest_cache/
+.claude/worktrees/

@@ -19,6 +19,7 @@ def load_model(config):
     model = AutoModelForCausalLM.from_pretrained(
         config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
     )
+    model.config.revision = config["revision"]  # So steering can check the revision it was trained on.
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     return model.to(device).eval(), tokenizer
 
