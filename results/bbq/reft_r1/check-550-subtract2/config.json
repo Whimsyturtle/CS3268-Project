@@ -2,7 +2,7 @@
   "config_path": "/var/folders/hp/1v5sj9lx11x79t3_4q3hkfgw0000gn/T/tmpc0h7_7cu.json",
   "method": "reft_r1",
   "benchmark": "bbq",
-  "run_id": "probe-550-neg2",
+  "run_id": "check-550-subtract2",
   "source": {
     "commit": "2537fb35df43fc69a291a064d2d5d967afa8cd8e",
     "status": "?? steering_vectors/reft_r1_random_control/",

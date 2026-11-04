@@ -1,8 +1,8 @@
 {
-  "config_path": "/var/folders/hp/1v5sj9lx11x79t3_4q3hkfgw0000gn/T/tmp7bi29iqj.json",
+  "config_path": "/var/folders/hp/1v5sj9lx11x79t3_4q3hkfgw0000gn/T/tmptff1q027.json",
   "method": "reft_r1",
   "benchmark": "bbq",
-  "run_id": "probe-550-random1",
+  "run_id": "check-550-subtract1",
   "source": {
     "commit": "2537fb35df43fc69a291a064d2d5d967afa8cd8e",
     "status": "?? steering_vectors/reft_r1_random_control/",
@@ -14,8 +14,8 @@
     "dtype": "bfloat16"
   },
   "method_config": {
-    "intervention_dir": "steering_vectors/reft_r1_random_control",
-    "strength": 1.0
+    "intervention_dir": "steering_vectors/reft_r1",
+    "strength": -1.0
   },
   "intervention_config": {
     "model": {
@@ -292,8 +292,7 @@
       "mbtp-f212c12-06130",
       "mbtp-f212c12-06145",
       "mbtp-f212c12-06171"
-    ],
-    "control": "Random direction, not trained. Not a main result."
+    ]
   },
   "benchmark_config": {
     "dataset": "oskarvanderwal/bbq",
