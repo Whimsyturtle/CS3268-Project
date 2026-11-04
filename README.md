@@ -49,6 +49,36 @@ Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated o
 Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
 `uv run pytest`.
 
+## Tune steering strength
+
+The common tuner uses the full development split and one `pooled_all` artifact
+per method. For ICV, run:
+
+```bash
+uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> --method icv
+```
+
+On the compute cluster, keep the Slurm script in `$HOME/tune_icv.sh` while the
+repository remains at `$HOME/ICV`:
+
+```bash
+#!/bin/sh
+#SBATCH --job-name=tune-icv
+#SBATCH --gpus=a100-40:1
+
+set -eu
+cd "$HOME/ICV"
+exec "$HOME/ICV/.venv/bin/python" tuning.py \
+  --config configs/tuning.json \
+  --run-id icv-pooled-all-01 \
+  --method icv
+```
+
+Submit it from `$HOME` with `sbatch "$HOME/tune_icv.sh"`. Results are written
+under `$HOME/ICV/results/tuning/<run-id>/`. The Qwen3-4B judge runs on the
+allocated A100; local tests do not load it. AlpacaEval's judge remains a separate
+undecided evaluation setting.
+
 ## Contributing
 
 - Track major tasks, experiments, and deliverables in [GitHub issues](https://github.com/Whimsyturtle/CS3268-Project/issues). Small fixes can stay within an existing task or PR.

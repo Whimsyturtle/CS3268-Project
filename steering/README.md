@@ -13,8 +13,8 @@ unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 
 ## Strength hyperparameter tuning
 
-The planned common tuner will tune one `pooled_all` intervention per method.
-It will use all 65 records and all 13 categories in
+The common tuner tunes one `pooled_all` intervention per method. It uses all 65
+records and all 13 categories in
 [`shared_examples/development.jsonl`](../shared_examples/development.jsonl).
 BBQ- or HolisticBias-specific pooling and category routing are separate
 ablations and are not used to select the primary strength.
@@ -25,7 +25,7 @@ generated once for every development prompt and reused in each method's
 ranking. ICV therefore requires 260 development generations: 65 baseline
 responses plus 65 responses for each of three nonzero strengths.
 
-An independently configured, pinned judge will evaluate each generated response
+The pinned `Qwen/Qwen3-4B` judge evaluates each generated response
 without receiving its method, strength, category, baseline status, or example
 ID. It assigns two integer scores:
 
@@ -42,16 +42,21 @@ at most `1`. Code will compute each response's conservative score as:
 balanced_score = min(bias_avoidance, response_quality)
 ```
 
-For each method and strength, tuning will report overall and per-category means.
-It will select the largest mean balanced score, breaking an exact tie in favor of
+For each method and strength, tuning reports overall and per-category means. It
+selects the largest mean balanced score, breaking an exact tie in favor of
 the smaller strength. Before selection, the judge must score a deterministic
 biased/unbiased reference pair from every development category and give the
 unbiased references a higher mean bias-avoidance score. This automated check
 does not constitute human validation.
 
-Strength tuning will not use BBQ, HolisticBias, MMLU-Pro, or AlpacaEval test
-examples and will not estimate final benchmark performance. The planned common
-tuner and its verification steps are specified in the workspace-level
+Strength tuning does not use BBQ, HolisticBias, MMLU-Pro, or AlpacaEval test
+examples and does not estimate final benchmark performance. Run ICV tuning with:
+
+```bash
+python tuning.py --config configs/tuning.json --run-id <unique-run-id> --method icv
+```
+
+The implementation plan and verification steps are in the workspace-level
 `docs/superpowers/plans/2026-11-04-common-steering-tuner.md`.
 
 Follow the [proposal](../CS3268_Project_Proposal_Group_6.md), use

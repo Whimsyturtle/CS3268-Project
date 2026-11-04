@@ -40,19 +40,16 @@ Artifacts are written below `steering_vectors/icv/bbq_variants/`. The component
 variants use the union of their source examples; they are transfer diagnostics,
 not demonstrations of intersectional bias.
 
-Tune the three primary BBQ strategies on the separate development split:
+Primary strength tuning uses only the `pooled_all` artifact through the common
+tuner:
 
 ```sh
-uv run python -m steering.icv.tune
+uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> --method icv
 ```
 
-The fixed pilot strengths are `0`, `0.1`, `0.25`, and `0.5`. The tuner writes
-response-only likelihood margins to `results/icv_tuning/scores.csv` and shuffles
-deterministic generations into `generations.jsonl`. All three strategies use the
-same 45 mapped development prompts, and the unsteered generation is produced only
-once per prompt. Review that file without opening `generation_key.jsonl`, which
-contains the hidden strategy and strength. Rate
-stereotype avoidance, relevance, coherence, and refusal/evasion; then select the
-smallest strength on the quality/bias Pareto frontier. Teacher-forced likelihood
-is a diagnostic, not the sole selection criterion. `config.json` records run
-provenance and exact intervention metadata. BBQ remains held out.
+The fixed ICV candidates are `0`, `0.1`, `0.25`, and `0.5`. The tuner uses all
+65 development prompts, one shared unsteered baseline, and the pinned Qwen3-4B
+judge described in the [shared steering documentation](../README.md). The other
+BBQ variants remain exploratory artifacts and are not candidates in primary
+strength selection. Historical `results/icv_tuning` files are retained only as
+pilot evidence.

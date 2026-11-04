@@ -1,0 +1,29 @@
+{
+  "examples": "shared_examples/development.jsonl",
+  "seed": 0,
+  "model": {
+    "name": "google/gemma-3-1b-it",
+    "revision": "dcc83ea841ab6100d6b47a070329e1ba4cf78752",
+    "dtype": "bfloat16"
+  },
+  "generation": {
+    "batch_size": 4,
+    "do_sample": false,
+    "max_new_tokens": 256
+  },
+  "judge": {
+    "name": "Qwen/Qwen3-4B",
+    "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "dtype": "bfloat16",
+    "batch_size": 5,
+    "do_sample": false,
+    "max_new_tokens": 2048,
+    "enable_thinking": false
+  },
+  "methods": {
+    "icv": {
+      "intervention_dir": "steering_vectors/icv/bbq_variants/pooled_all",
+      "strengths": [0, 0.1, 0.25, 0.5]
+    }
+  }
+}
