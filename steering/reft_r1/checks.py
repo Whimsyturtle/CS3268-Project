@@ -22,6 +22,7 @@ from steering.reft_r1.main import Example, config, make_batch
 CHECKS_DIR = runner.ROOT / "results" / "reft_r1_checks"
 RANDOM_DIR = "steering_vectors/reft_r1_random_control"
 PER_GROUP = 25  # Examples per BBQ category and context condition.
+SUBSET_DESCRIPTION = "25 per category and context condition, from balanced_subset."
 DEV_STRENGTHS = [-1.0, -0.5, 0.0, 0.5, 1.0]
 
 
@@ -81,8 +82,13 @@ def save_random_control() -> None:
     directory = runner.ROOT / RANDOM_DIR
     directory.mkdir(exist_ok=True)
     torch.save(control, directory / "vector.pt")
-    settings = json.loads((trained_dir / "config.json").read_text())
-    settings["control"] = "Random direction, not trained. Not a main result."
+    settings = {
+        "model": config["model"],
+        "layer": trained["layer"],
+        "max_act": trained["max_act"],
+        "seed": config["seed"],
+        "control": "Random direction, not trained. Not a main result.",
+    }
     (directory / "config.json").write_text(json.dumps(settings, indent=2) + "\n")
 
 
@@ -95,6 +101,7 @@ def run_check(check: Check) -> None:
     if (runner.ROOT / "results" / "bbq" / check.method / check.run_id).exists():
         return
     run_config = json.loads((runner.ROOT / "configs" / "main.json").read_text())
+    run_config["benchmarks"]["bbq"]["subset"] = SUBSET_DESCRIPTION
     if check.strength is not None:
         run_config["methods"]["reft_r1"]["strength"] = check.strength
     if check.intervention_dir is not None:
@@ -245,6 +252,8 @@ def write_summary(
         "These checks are not main results. They use 550 BBQ test questions (25 per",
         "category and context condition), so do not tune anything on them.",
         "Strength is a multiple of `max_act`. Reproduce with `steering/reft_r1/checks.py`.",
+        "The runs' saved configs show `limit: null`. Earlier runs do not record the subset,",
+        "so it is defined by their `predictions.jsonl` and `balanced_subset`.",
         "",
         (
             "| Run | Invalid | Acc. ambig. | Acc. disambig. | Bias ambig. "

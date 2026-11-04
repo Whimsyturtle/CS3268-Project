@@ -3,6 +3,8 @@
 These checks are not main results. They use 550 BBQ test questions (25 per
 category and context condition), so do not tune anything on them.
 Strength is a multiple of `max_act`. Reproduce with `steering/reft_r1/checks.py`.
+The runs' saved configs show `limit: null`. Earlier runs do not record the subset,
+so it is defined by their `predictions.jsonl` and `balanced_subset`.
 
 | Run | Invalid | Acc. ambig. | Acc. disambig. | Bias ambig. | Bias disambig. | Unknown ambig. | Unknown disambig. | A / B / C |
 |---|---|---|---|---|---|---|---|---|
