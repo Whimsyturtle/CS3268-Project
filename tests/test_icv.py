@@ -6,7 +6,15 @@ import pytest
 import torch
 from tokenizers import Tokenizer, models, pre_tokenizers
 
-from steering.icv import METHOD, _principal_direction, _shift, apply, construct, load_intervention
+from steering.icv import (
+    METHOD,
+    _principal_direction,
+    _shift,
+    apply,
+    construct,
+    construct_from_differences,
+    load_intervention,
+)
 
 
 def test_principal_direction_adds_mean_using_upstream_svd_sign():
@@ -19,6 +27,16 @@ def test_pca_is_joint_across_segments():
     differences = torch.tensor([[1., 0., 2., 0.], [2., 0., 4., 0.], [4., 0., 8., 0.]])
     expected = differences.mean(0) + torch.tensor([1., 0., 2., 0.]) / 5**0.5
     torch.testing.assert_close(_principal_direction(differences), expected)
+
+
+def test_construct_from_extracted_differences_drops_embedding_segment():
+    differences = torch.tensor([
+        [[1., 0.], [2., 0.], [3., 0.]],
+        [[2., 0.], [4., 0.], [6., 0.]],
+        [[4., 0.], [8., 0.], [12., 0.]],
+    ])
+    expected = _principal_direction(differences.flatten(1)).reshape(3, 2)[1:]
+    torch.testing.assert_close(construct_from_differences(differences), expected)
 
 
 def test_shift_uses_cosine_weight_and_normalized_addition():
@@ -46,8 +64,8 @@ def test_load_checks_layer_locations(tmp_path):
         head_dim=8,
     )
     config._name_or_path = "test/model"
-    config._commit_hash = "test-revision"
     model = Gemma3ForCausalLM(config)
+    model._cs3268_source_revision = "test-revision"
     torch.save(torch.zeros(2, 32), tmp_path / "vector.pt")
     metadata = {"model": "test/model", "revision": "test-revision", "layers": [1, 0], "method": METHOD}
     (tmp_path / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
@@ -56,6 +74,10 @@ def test_load_checks_layer_locations(tmp_path):
     metadata["layers"] = [0, 1]
     (tmp_path / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     torch.testing.assert_close(load_intervention(tmp_path, model=model), torch.zeros(2, 32))
+    del model._cs3268_source_revision
+    with pytest.raises(ValueError, match="model or revision"):
+        load_intervention(tmp_path, model=model)
+    model._cs3268_source_revision = "test-revision"
     del metadata["method"]
     (tmp_path / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(ValueError, match="rebuild"):

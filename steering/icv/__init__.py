@@ -41,8 +41,8 @@ def _principal_direction(differences):
     return sign * vh[0] + mean
 
 
-def construct(model, tokenizer, pairs):
-    """Return an (layers, hidden_size) ICV from (biased, unbiased) responses."""
+def extract_differences(model, tokenizer, pairs):
+    """Extract paired differences as (pairs, embeddings-plus-layers, hidden)."""
     pairs = list(pairs)
     if len(pairs) < 2:
         raise ValueError("ICV needs at least two demonstration pairs")
@@ -76,8 +76,21 @@ def construct(model, tokenizer, pairs):
         for handle in handles:
             handle.remove()
 
+    return differences.reshape(len(pairs), len(layers) + 1, -1)
+
+
+def construct_from_differences(differences):
+    """Construct an ICV from a subset of previously extracted differences."""
+    if differences.ndim != 3 or differences.shape[1] < 2:
+        raise ValueError("ICV differences must include embeddings and decoder layers")
     # Upstream fits jointly including embeddings, then drops their segment.
-    return _principal_direction(differences).reshape(len(layers) + 1, -1)[1:]
+    direction = _principal_direction(differences.flatten(1))
+    return direction.reshape(differences.shape[1:])[1:]
+
+
+def construct(model, tokenizer, pairs):
+    """Return an (layers, hidden_size) ICV from (biased, unbiased) responses."""
+    return construct_from_differences(extract_differences(model, tokenizer, pairs))
 
 
 def load_intervention(intervention_dir: Path, *, model):
@@ -87,7 +100,7 @@ def load_intervention(intervention_dir: Path, *, model):
         raise ValueError("ICV construction method changed; rebuild the vector")
     layers = _layers(model)
     if (metadata["model"] != model.config._name_or_path
-            or metadata["revision"] != model.config._commit_hash):
+            or metadata["revision"] != getattr(model, "_cs3268_source_revision", None)):
         raise ValueError("ICV model or revision does not match the loaded model")
     if metadata["layers"] != list(range(len(layers))):
         raise ValueError("ICV layer locations do not match the loaded model")
