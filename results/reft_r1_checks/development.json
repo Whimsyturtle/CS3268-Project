@@ -1,0 +1,32 @@
+[
+  {
+    "strength": -1.0,
+    "unbiased": -9.248265376457802,
+    "biased": -8.815483680138222,
+    "prefers_unbiased": 23
+  },
+  {
+    "strength": -0.5,
+    "unbiased": -8.152159646841197,
+    "biased": -7.921497565049392,
+    "prefers_unbiased": 27
+  },
+  {
+    "strength": 0.0,
+    "unbiased": -6.034072663233831,
+    "biased": -5.936236520913931,
+    "prefers_unbiased": 29
+  },
+  {
+    "strength": 0.5,
+    "unbiased": -2.8411343024327205,
+    "biased": -3.0672603093660795,
+    "prefers_unbiased": 46
+  },
+  {
+    "strength": 1.0,
+    "unbiased": -2.7576931733351486,
+    "biased": -3.096932888031006,
+    "prefers_unbiased": 55
+  }
+]
