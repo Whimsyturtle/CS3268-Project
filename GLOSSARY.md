@@ -70,6 +70,10 @@ A GitHub record for a task's outcome, dependencies, progress, and completion che
 
 Short for Large Language Model, a model trained on large amounts of text to process and generate language.
 
+## Max activation
+
+The largest score ReFT-r1's vector gives any token in the construction examples, saved as `max_act`. ReFT-r1 strength is a multiple of it.
+
 ## Milestone
 
 A GitHub grouping of issues for a delivery stage.
