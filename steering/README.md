@@ -15,3 +15,5 @@ Follow the [proposal](../CS3268_Project_Proposal_Group_6.md), use
 [shared examples](../shared_examples/README.md), and save outputs under
 [steering_vectors/](../steering_vectors/README.md). Load pretrained SAEs from
 the external model cache.
+
+See [SAE steering](sae/README.md) for pretrained feature selection and application checks.
