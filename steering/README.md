@@ -11,6 +11,9 @@
 Strength is method-specific. Equal values do not imply equal effects. The
 unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 
+Train ReFT-r1 with `uv run python -m steering.reft_r1.main`, which takes about
+6 minutes on a laptop. Its strength is a multiple of `max_act`.
+
 Follow the [proposal](../CS3268_Project_Proposal_Group_6.md), use
 [shared examples](../shared_examples/README.md), and save outputs under
 [steering_vectors/](../steering_vectors/README.md). Load pretrained SAEs from
