@@ -5,6 +5,7 @@ import pytest
 import torch
 from transformers import Gemma3ForCausalLM, Gemma3TextConfig
 
+from evaluation import runner
 from steering import reft_r1
 from steering.reft_r1 import main
 
@@ -115,15 +116,33 @@ def test_load_intervention_rejects_a_vector_that_does_not_fit(model, tmp_path, c
 
 
 @pytest.mark.parametrize(
-    "field, value", [("name_or_path", "other/model"), ("revision", "other")]
+    "field, value",
+    [("name_or_path", "other/model"), ("revision", "other"), ("dtype", torch.float32)],
 )
 def test_load_intervention_rejects_a_different_loaded_model(
     model, tmp_path, field, value
 ):
     save(tmp_path, intervention())
-    setattr(model.config, field, value)
+    if field == "dtype":
+        model.to(value)
+    else:
+        setattr(model.config, field, value)
     with pytest.raises(ValueError):
         reft_r1.load_intervention(tmp_path, model=model)
+
+
+def test_load_model_records_the_revision(model, monkeypatch):
+    monkeypatch.setattr(
+        runner.AutoTokenizer, "from_pretrained", lambda *args, **kwargs: None
+    )
+    monkeypatch.setattr(
+        runner.AutoModelForCausalLM, "from_pretrained", lambda *args, **kwargs: model
+    )
+    model.config.revision = None
+
+    loaded, _ = runner.load_model(PINNED_MODEL)
+
+    assert loaded.config.revision == PINNED_MODEL["revision"]
 
 
 def test_saved_intervention_loads_back_unchanged(model, tmp_path, monkeypatch):

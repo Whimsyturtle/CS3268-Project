@@ -4,7 +4,8 @@
 `reft_r1/`.
 
 - `load_intervention(intervention_dir, model=model)` loads a saved intervention and
-  checks its base-model revision and intervention locations against the model.
+  checks its base-model revision (`model.config.revision`, set by `load_model`) and
+  intervention locations against the model.
 - `apply(model, intervention, strength=alpha)` returns a context manager that
   applies steering and restores model state on every exit, including exceptions.
 

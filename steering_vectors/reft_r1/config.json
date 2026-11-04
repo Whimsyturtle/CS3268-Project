@@ -16,7 +16,6 @@
   "batch_size": 6,
   "max_act": 251.1331787109375,
   "training_target": "unbiased_response",
-  "source_commit": "4260b576df785c9850a2aea266748127897cba46",
   "source_example_ids": [
     "mbtp-f212c12-00002",
     "mbtp-f212c12-00019",
@@ -278,5 +277,10 @@
     "mbtp-f212c12-06130",
     "mbtp-f212c12-06145",
     "mbtp-f212c12-06171"
-  ]
+  ],
+  "source": {
+    "commit": "4260b576df785c9850a2aea266748127897cba46",
+    "status": "",
+    "uncommitted_diff": ""
+  }
 }

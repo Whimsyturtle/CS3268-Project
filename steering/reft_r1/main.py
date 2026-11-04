@@ -113,7 +113,7 @@ class InterventionSettings(TypedDict):
     batch_size: int
     max_act: float
     training_target: str  # The response field trained on. AxBench also uses negatives.
-    source_commit: str  # The code that trained this vector.
+    source: dict[str, str]  # Commit, status and uncommitted diff of the training code.
     source_example_ids: list[str]
 
 
@@ -483,7 +483,7 @@ def save_intervention(
         batch_size=BATCH_SIZE,
         max_act=max_act,
         training_target="unbiased_response",
-        source_commit=source_commit()["commit"],
+        source=source_commit(),
         source_example_ids=[example["id"] for example in examples],
     )
     (INTERVENTION_DIR / "config.json").write_text(json.dumps(settings, indent=2) + "\n")
