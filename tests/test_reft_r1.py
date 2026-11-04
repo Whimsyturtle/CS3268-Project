@@ -41,7 +41,8 @@ def model():
         head_dim=8,
         name_or_path=PINNED_MODEL["name"],
     )
-    return Gemma3ForCausalLM(config).eval()
+    config.revision = PINNED_MODEL["revision"]
+    return Gemma3ForCausalLM(config).to(torch.bfloat16).eval()
 
 
 def intervention():
@@ -51,12 +52,18 @@ def intervention():
 
 
 def logits(model):
-    return model(input_ids=torch.tensor([[1, 2, 3, 4]])).logits
+    return model(input_ids=torch.tensor([[1, 2, 3, 4]])).logits.float()
 
 
-def save(directory, saved, model_config=PINNED_MODEL):
+def save(directory, saved, model_config=PINNED_MODEL, **settings):
     torch.save(saved, directory / "vector.pt")
-    (directory / "config.json").write_text(json.dumps({"model": model_config}))
+    settings = {
+        "model": model_config,
+        "layer": saved["layer"],
+        "max_act": saved["max_act"],
+        **settings,
+    }
+    (directory / "config.json").write_text(json.dumps(settings))
 
 
 def test_strength_zero_matches_unsteered_and_strength_changes_output(model):
@@ -92,23 +99,47 @@ def test_load_intervention_returns_saved_vector(model, tmp_path):
         {"model_config": {**PINNED_MODEL, "revision": "other"}},
         {"saved": {**intervention(), "vector": torch.zeros(HIDDEN_SIZE + 1)}},
         {"saved": {**intervention(), "layer": 2}},
+        {"max_act": 6.0},
     ],
 )
 def test_load_intervention_rejects_a_vector_that_does_not_fit(model, tmp_path, change):
+    settings = {"max_act": change["max_act"]} if "max_act" in change else {}
     save(
         tmp_path,
         change.get("saved", intervention()),
         change.get("model_config", PINNED_MODEL),
+        **settings,
     )
     with pytest.raises(ValueError):
         reft_r1.load_intervention(tmp_path, model=model)
 
 
-def test_load_intervention_rejects_a_different_model(model, tmp_path):
+@pytest.mark.parametrize(
+    "field, value", [("name_or_path", "other/model"), ("revision", "other")]
+)
+def test_load_intervention_rejects_a_different_loaded_model(
+    model, tmp_path, field, value
+):
     save(tmp_path, intervention())
-    model.config.name_or_path = "other/model"
+    setattr(model.config, field, value)
     with pytest.raises(ValueError):
         reft_r1.load_intervention(tmp_path, model=model)
+
+
+def test_saved_intervention_loads_back_unchanged(model, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "INTERVENTION_DIR", tmp_path)
+    monkeypatch.setattr(main, "source_commit", lambda: {"commit": "abc"})
+    saved = intervention()
+    main.save_intervention(
+        saved["vector"], saved["max_act"], [EXAMPLE], layer=saved["layer"]
+    )
+
+    loaded = reft_r1.load_intervention(tmp_path, model=model)
+
+    assert torch.equal(loaded["vector"], saved["vector"])
+    settings = json.loads((tmp_path / "config.json").read_text())
+    assert settings["source_example_ids"] == ["1"]
+    assert settings["training_target"] == "unbiased_response"
 
 
 def test_tokenize_example_grades_only_the_response():
@@ -150,7 +181,66 @@ def test_padding_is_not_graded_and_bos_and_padding_are_not_scored():
     assert (scores[token_mask == 1] == HIDDEN_SIZE).all()
 
 
+def test_training_loss_matches_a_direct_calculation_with_a_nonzero_vector(model):
+    model = model.float()
+    short = {**EXAMPLE, "unbiased_response": "No."}
+    batch = main.make_batch(FakeTokenizer(), [EXAMPLE, short], torch.device("cpu"))
+    vector = torch.linspace(-1.0, 1.0, HIDDEN_SIZE, requires_grad=True)
+
+    result = main.training_loss(model, batch, vector, layer=0)
+    result.language_loss.backward()
+
+    # Recalculate one sequence at a time, so padding cannot affect the reference.
+    amounts, others, steered_losses, n_graded = [], [], [], 0
+    for row in range(2):
+        length = int(batch["attention_mask"][row].sum())
+        input_ids = batch["input_ids"][row : row + 1, :length]
+        labels = batch["labels"][row : row + 1, :length]
+        hidden = model.model(input_ids=input_ids, output_hidden_states=True)
+        scores = torch.relu(hidden.hidden_states[1][0, 1:] @ vector)  # Without BOS.
+        top = scores.topk(main.TOP_K).values
+        amounts.append(top.mean())
+        others.append((scores.sum() - top.sum()) / (length - 1))
+
+        def steer(_module, _inputs, output):
+            steered = output.clone()
+            steered[:, 1:] += amounts[-1] * vector
+            return steered
+
+        hook = model.model.layers[0].register_forward_hook(steer)
+        graded = int((labels != -100).sum())
+        steered_losses.append(model(input_ids=input_ids, labels=labels).loss * graded)
+        n_graded += graded
+        hook.remove()
+
+    assert torch.allclose(result.amount, torch.stack(amounts).mean(), atol=1e-4)
+    assert torch.allclose(result.l1_penalty, torch.stack(others).mean(), atol=1e-4)
+    expected_loss = torch.stack(steered_losses).sum() / n_graded
+    assert torch.allclose(result.language_loss, expected_loss, atol=1e-4)
+    assert vector.grad is not None and vector.grad.abs().sum() > 0
+
+
+def test_max_act_equals_the_largest_score_seen_at_the_steered_layer(model):
+    model = model.float()
+    vector = torch.linspace(-1.0, 1.0, HIDDEN_SIZE)
+    batch = main.make_batch(FakeTokenizer(), [EXAMPLE], torch.device("cpu"))
+    seen = []
+    hook = model.model.layers[0].register_forward_hook(
+        lambda _module, _inputs, output: seen.append(output.detach())
+    )
+    model.model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
+    hook.remove()
+    expected = main.score_tokens(
+        seen[0], vector, main.real_tokens(batch["attention_mask"])
+    ).max()
+
+    max_act = main.measure_max_act(model, FakeTokenizer(), [EXAMPLE], vector, layer=0)
+
+    assert max_act == pytest.approx(expected.item())
+
+
 def test_language_loss_matches_the_model_loss_without_steering(model):
+    model = model.float()
     batch = main.make_batch(FakeTokenizer(), [EXAMPLE], torch.device("cpu"))
     zero_vector = torch.zeros(HIDDEN_SIZE)
     result = main.training_loss(model, batch, zero_vector, layer=1)
@@ -160,6 +250,7 @@ def test_language_loss_matches_the_model_loss_without_steering(model):
 def test_train_vector_learns_a_unit_vector_and_leaves_the_model_frozen(
     model, monkeypatch
 ):
+    model = model.float()
     monkeypatch.setattr(main, "EPOCHS", 2)
     before = {name: weight.clone() for name, weight in model.state_dict().items()}
 

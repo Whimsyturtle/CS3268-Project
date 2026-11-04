@@ -18,6 +18,10 @@ A benchmark for open-ended instruction following that uses an LLM as a judge of 
 
 A benchmark for measuring stereotype reliance in multiple-choice question answering.
 
+## BOS
+
+Short for beginning of sequence, the special token placed before every input.
+
 ## CAA
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
