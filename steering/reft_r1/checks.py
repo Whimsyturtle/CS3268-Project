@@ -41,11 +41,11 @@ CHECKS = [
     Check("reft_r1", "pilot-550-s05", 0.5, None),
     Check("reft_r1", "pilot-550-s1", 1.0, None),
     Check("reft_r1", "pilot-550-s2", 2.0, None),
-    Check("reft_r1", "probe-550-neg05", -0.5, None),
-    Check("reft_r1", "probe-550-neg1", -1.0, None),
-    Check("reft_r1", "probe-550-neg2", -2.0, None),
-    Check("reft_r1", "probe-550-random05", 0.5, RANDOM_DIR),
-    Check("reft_r1", "probe-550-random1", 1.0, RANDOM_DIR),
+    Check("reft_r1", "check-550-subtract05", -0.5, None),
+    Check("reft_r1", "check-550-subtract1", -1.0, None),
+    Check("reft_r1", "check-550-subtract2", -2.0, None),
+    Check("reft_r1", "check-550-random05", 0.5, RANDOM_DIR),
+    Check("reft_r1", "check-550-random1", 1.0, RANDOM_DIR),
 ]
 
 
@@ -254,6 +254,7 @@ def write_summary(
         "Strength is a multiple of `max_act`. Reproduce with `steering/reft_r1/checks.py`.",
         "The runs' saved configs show `limit: null`. Earlier runs do not record the subset,",
         "so it is defined by their `predictions.jsonl` and `balanced_subset`.",
+        "`checks.log` keeps these runs' earlier names, `probe-550-neg*` and `probe-550-random*`.",
         "",
         (
             "| Run | Invalid | Acc. ambig. | Acc. disambig. | Bias ambig. "
