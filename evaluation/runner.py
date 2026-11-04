@@ -59,6 +59,7 @@ def source_commit():
 def run(config_path, *, method, benchmark, run_id):
     config = json.loads(Path(config_path).read_text())
     benchmark_config = {**config["benchmarks"][benchmark], "seed": config["seed"]}
+    decoding = {**config["decoding"], "max_new_tokens": benchmark_config["max_new_tokens"]}
     method_config = config["methods"].get(method, {})
     if method != "baseline" and method_config["strength"] is None:
         raise ValueError(f"Set the {method} strength in the config after tuning it on development data.")
@@ -80,6 +81,7 @@ def run(config_path, *, method, benchmark, run_id):
         "method_config": method_config,
         "intervention_config": intervention_config,
         "benchmark_config": benchmark_config,
+        "decoding": decoding,
     }
     (run_dir / "config.json").write_text(json.dumps(resolved, indent=2))
 
@@ -88,7 +90,7 @@ def run(config_path, *, method, benchmark, run_id):
     prompts = [module.format_prompt(example, benchmark_config) for example in examples]
     model, tokenizer = load_model(config["model"])
     with steering_context(model, method, method_config):
-        outputs = generate(model, tokenizer, prompts, decoding=benchmark_config["decoding"], seed=config["seed"])
+        outputs = generate(model, tokenizer, prompts, decoding=decoding, seed=config["seed"])
 
     predictions = [{"example_id": e["example_id"], "output": o} for e, o in zip(examples, outputs)]
     with open(run_dir / "predictions.jsonl", "w") as file:
