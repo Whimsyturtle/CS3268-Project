@@ -6,6 +6,9 @@ dependencies = [
     "datasets>=5.1.0",
     "huggingface-hub>=2.2.0",
     "pandas>=3.0.6",
+    "sae-lens==6.54.14",
+    "safetensors>=0.8.0",
+    "scikit-learn>=1.9.1",
     "torch>=2.14.1",
     "transformers>=5.20.2",
 ]
@@ -14,6 +17,5 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
