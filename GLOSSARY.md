@@ -28,6 +28,11 @@ well scores rank positive examples above negative ones, with ties counting half;
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
 
+## Checkpoint
+
+A saved set of trained model parameters, loaded to reuse a model without training
+it again.
+
 ## Compute cluster
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.

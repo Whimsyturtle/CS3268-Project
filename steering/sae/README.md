@@ -6,8 +6,11 @@ the [proposal](../../CS3268_Project_Proposal_Group_6.md).
 
 ## Feature selection and application
 
-[configs/sae.json](../../configs/sae.json) pins a middle-layer residual-stream SAE
-from Google's Gemma Scope 2 suite. Its
+[configs/sae.json](../../configs/sae.json) pins one middle-layer residual-stream SAE
+[checkpoint](../../GLOSSARY.md#checkpoint) from Google's Gemma Scope 2 suite.
+Google's [release guide](https://huggingface.co/google/gemma-scope-2-1b-it)
+describes variants with different activation locations, feature counts, and
+typical numbers of active features. The pinned
 [checkpoint configuration](https://huggingface.co/google/gemma-scope-2-1b-it/blob/b0fa29457c3601df0a70c48a15534c738d7c10e0/resid_post/layer_13_width_16k_l0_medium/config.json)
 identifies the model and activation location. The base model, precision and seed
 come from [the experiment configuration](../../configs/main.json).
@@ -31,8 +34,8 @@ The selection procedure is:
    its largest pooled activation across both classes of construction responses.
 
 The response-only mask adapts AxBench's ranking to this project's paired data.
-Every pair has equal weight. Construction AUROC measures separation on this data;
-it does not establish bias reduction or exclude response-style/length effects.
+Every pair has equal weight. Interpret construction AUROC using the
+[shared construction and evaluation limitation](../README.md#construction-and-evaluation).
 No development or final evaluation examples determine the feature or its scale.
 
 At inference, add `strength * activation_scale * decoder_direction` to the chosen
