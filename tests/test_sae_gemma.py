@@ -5,8 +5,11 @@ import json
 import pytest
 import torch
 from safetensors.torch import save_file
-from transformers import Gemma3ForCausalLM, Gemma3TextConfig
+from tokenizers import Tokenizer
+from tokenizers.models import WordLevel
+from transformers import Gemma3ForCausalLM, Gemma3TextConfig, PreTrainedTokenizerFast
 
+from evaluation import runner
 from steering.sae import apply, load_intervention
 from steering.sae import build as builder
 
@@ -20,8 +23,43 @@ def tiny_gemma():
         bos_token_id=2, eos_token_id=1,
     )
     config.name_or_path = "test/tiny-gemma"
-    config._commit_hash = "synthetic-revision"
     return Gemma3ForCausalLM(config).eval()
+
+
+@pytest.fixture
+def loaded_gemma(tmp_path, monkeypatch):
+    """Exercise real from_pretrained calls against an offline Hub-cache snapshot."""
+    name, revision = "test/tiny-gemma", "a" * 40
+    cache = tmp_path / "hub"
+    snapshot = cache / "models--test--tiny-gemma" / "snapshots" / revision
+    tiny_gemma().save_pretrained(snapshot)
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=Tokenizer(WordLevel({"[UNK]": 0, "hello": 1}, unk_token="[UNK]")),
+        unk_token="[UNK]",
+    )
+    tokenizer.save_pretrained(snapshot)
+    tokenizer_loader = runner.AutoTokenizer.from_pretrained
+    model_loader = runner.AutoModelForCausalLM.from_pretrained
+    calls = []
+
+    def load_tokenizer(repo, **kwargs):
+        calls.append(("tokenizer", repo, kwargs["revision"]))
+        return tokenizer_loader(repo, cache_dir=cache, local_files_only=True, **kwargs)
+
+    def load_model(repo, **kwargs):
+        calls.append(("model", repo, kwargs["revision"]))
+        return model_loader(repo, cache_dir=cache, local_files_only=True, **kwargs)
+
+    monkeypatch.setattr(runner.AutoTokenizer, "from_pretrained", load_tokenizer)
+    monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", load_model)
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(torch.backends.mps, "is_available", lambda: False)
+    model, tokenizer = runner.load_model({"name": name, "revision": revision, "dtype": "float32"})
+    assert calls == [("tokenizer", name, revision), ("model", name, revision)]
+    assert not hasattr(model.config, "_commit_hash")
+    assert model.config.name_or_path == name and model.config.revision == revision
+    assert model.dtype == torch.float32 and not model.training
+    return model
 
 
 def test_pinned_weight_loader_uses_library_jumprelu_without_bias_subtraction(tmp_path, monkeypatch):
@@ -56,10 +94,10 @@ def test_pinned_weight_loader_uses_library_jumprelu_without_bias_subtraction(tmp
 
 
 @torch.inference_mode()
-def test_native_gemma_logits_cached_generation_and_state_restoration(tmp_path):
-    model = tiny_gemma()
+def test_native_gemma_logits_cached_generation_and_state_restoration(tmp_path, loaded_gemma):
+    model = loaded_gemma
     metadata = {
-        "model": {"name": model.config.name_or_path, "revision": model.config._commit_hash,
+        "model": {"name": model.config.name_or_path, "revision": model.config.revision,
                   "dtype": "float32"}, "layer": 0,
         "sae": {"model_name": model.config.name_or_path, "d_in": 32,
                 "hf_hook_point_in": "model.layers.0.output",

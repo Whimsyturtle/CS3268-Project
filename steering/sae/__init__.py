@@ -14,7 +14,7 @@ def load_intervention(intervention_dir, *, model):
         raise ValueError("Build the SAE intervention with python -m steering.sae.build first.")
     expected = metadata["model"]
     if (model.config.name_or_path != expected["name"]
-            or getattr(model.config, "_commit_hash", None) != expected["revision"]):
+            or getattr(model.config, "revision", None) != expected["revision"]):
         raise ValueError("SAE intervention model name/revision does not match the loaded model.")
     if model.dtype != getattr(torch, expected["dtype"]):
         raise ValueError("SAE intervention precision does not match the loaded model.")

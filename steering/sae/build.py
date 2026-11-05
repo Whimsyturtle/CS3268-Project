@@ -121,7 +121,7 @@ def build(config_path, sae_config_path, output_dir):
     torch.manual_seed(config["seed"])
     model, tokenizer = load_model(config["model"])
     if (model.config.name_or_path != config["model"]["name"]
-            or getattr(model.config, "_commit_hash", None) != config["model"]["revision"]):
+            or getattr(model.config, "revision", None) != config["model"]["revision"]):
         raise ValueError("Loaded model does not report the configured name and revision.")
     sae, checkpoint = load_sae(settings, model=model)
     activations = collect_activations(model, tokenizer, sae, checkpoint["layer"], rows)

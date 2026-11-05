@@ -17,6 +17,10 @@ The runner owns model loading, tokenization, formatting settings, decoding, and
 seeding. Each steering implementation applies its intervention through the
 [shared steering interface](../steering/README.md).
 
+`load_model` requires a full model commit hash and passes it to both pretrained
+loaders. After successful loading, it records that hash as `model.config.revision`
+for steering compatibility checks; Transformers no longer retains `_commit_hash`.
+
 Preserve metadata required for scoring. Scorers must reject missing, duplicate,
 or unexpected prediction IDs instead of silently scoring a subset.
 Save [raw predictions](../results/README.md) before scoring so metrics can be

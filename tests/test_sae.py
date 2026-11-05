@@ -23,7 +23,7 @@ class Model(torch.nn.Module):
     def __init__(self, tuple_output=False):
         super().__init__()
         self.layers = torch.nn.ModuleList([Layer(tuple_output)])
-        self.config = SimpleNamespace(name_or_path="test/gemma", _commit_hash="revision",
+        self.config = SimpleNamespace(name_or_path="test/gemma", revision="revision",
                                       hidden_size=2, max_position_embeddings=100)
         self.dtype = torch.float32
         self.device = torch.device("cpu")
@@ -90,6 +90,14 @@ def test_load_rejects_incompatible_metadata(saved, section, key, value):
     (path / "config.json").write_text(json.dumps(metadata))
     with pytest.raises(ValueError):
         load_intervention(path, model=Model())
+
+
+def test_load_rejects_missing_recorded_revision(saved):
+    path, _ = saved
+    model = Model()
+    del model.config.revision
+    with pytest.raises(ValueError, match="name/revision"):
+        load_intervention(path, model=model)
 
 
 @pytest.mark.parametrize("direction", [torch.zeros(2), torch.ones(3), torch.tensor([float("inf"), 1.])])
