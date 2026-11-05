@@ -82,3 +82,7 @@ def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypa
     assert torch.load(output / "vector.pt", weights_only=True).shape == (16,)
     with pytest.raises(FileExistsError):
         builder.build(config_path, settings_path, output)
+    config["model"]["revision"] = "main"
+    config_path.write_text(json.dumps(config))
+    with pytest.raises(ValueError, match="40-character"):
+        builder.build(config_path, settings_path, tmp_path / "unpinned")

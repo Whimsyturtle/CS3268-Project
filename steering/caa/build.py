@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 
 import torch
 
@@ -84,6 +85,9 @@ def build(config_path, caa_config_path, output_dir):
     rows = validate_local(construction, ROOT / "shared_examples/development.jsonl")["construction"]
     config = json.loads(Path(config_path).read_text(encoding="utf-8"))
     settings = json.loads(Path(caa_config_path).read_text(encoding="utf-8"))
+    revision = config["model"]["revision"]
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("CAA construction requires a full 40-character model revision")
     torch.manual_seed(config["seed"])
     model, tokenizer = load_model(config["model"])
     if (model.config.name_or_path != config["model"]["name"]
