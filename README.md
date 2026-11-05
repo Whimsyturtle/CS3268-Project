@@ -45,9 +45,22 @@ See [shared examples](shared_examples/README.md), [steering](steering/README.md)
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated on
-Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
-`uv run pytest`.
+Install [uv](https://docs.astral.sh/uv/), then run `uv sync --locked`.
+[pyproject.toml](pyproject.toml) declares dependency constraints and selects the
+PyTorch [CUDA](GLOSSARY.md#cuda) 12.6 (`cu126`) builds on Linux and Windows;
+macOS uses PyPI builds. [uv.lock](uv.lock) pins the resolved package versions
+and download hashes. Keep it committed and use `--locked` to reject stale locks.
+Python is constrained to 3.12 or newer, without an exact interpreter pin.
+
+The CUDA build selection does not install or pin the host NVIDIA driver or system
+CUDA toolkit. On a GPU compute node, check the installed build and GPU access:
+
+```bash
+uv run --locked python -c "import torch; print(torch.__version__, torch.version.cuda); assert torch.version.cuda == '12.6'; assert torch.cuda.is_available()"
+```
+
+Gemma 3 is gated on Hugging Face: accept its license, then run
+`uv run --locked hf auth login`. Run tests with `uv run --locked pytest`.
 
 ## Contributing
 
