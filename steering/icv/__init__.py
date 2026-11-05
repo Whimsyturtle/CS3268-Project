@@ -114,7 +114,6 @@ def _shift(hidden, vector, strength):
     # Source: https://github.com/shengliu66/ICV/blob/b187c6387ae41097f5e38182d5a8df7d06ca9ec4/utils/llm_layers.py#L8-L27
     weight = 1 + F.cosine_similarity(original, -vector, dim=-1).clamp_min(0).unsqueeze(-1)
     changed = F.normalize(original, dim=-1) + strength * weight * F.normalize(vector, dim=-1)
-    # The released code returns float16. Preserve Gemma's input dtype instead.
     return (F.normalize(changed, dim=-1) * original.norm(dim=-1, keepdim=True)).to(hidden.dtype)
 
 

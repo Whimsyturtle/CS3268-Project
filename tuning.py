@@ -289,6 +289,7 @@ def _model_text(model, tokenizer, prompt: str, settings: dict) -> str:
 def judge_batch(model, tokenizer, items: list[dict], config: dict) -> list[dict]:
     prompt = _judge_prompt(items)
     malformed = None
+    validation_error = None
     for attempt in range(2):
         if attempt:
             prompt = (
@@ -299,9 +300,14 @@ def judge_batch(model, tokenizer, items: list[dict], config: dict) -> list[dict]
         text = _model_text(model, tokenizer, prompt, config["judge"])
         try:
             return validate_judgments(items, json.loads(text))
-        except (json.JSONDecodeError, TypeError, ValueError):
-            malformed = text
-    raise ValueError("judge returned invalid output after two total attempts")
+        except (json.JSONDecodeError, TypeError, ValueError) as error:
+            malformed = text if isinstance(text, str) else repr(text)
+            validation_error = error
+    raise ValueError(
+        "judge returned invalid output after two total attempts\n"
+        f"Last validation error: {validation_error}\n"
+        f"Last response:\n{repr(malformed)[:4000]}"
+    )
 
 
 def load_judge(config: dict):

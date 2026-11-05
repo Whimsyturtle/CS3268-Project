@@ -352,12 +352,24 @@ def test_judge_batch_repairs_once_with_schema_and_items(monkeypatch):
 
 
 def test_judge_batch_stops_after_two_total_attempts(monkeypatch):
+    responses = iter(["first invalid", "second invalid"])
     calls = []
-    monkeypatch.setattr("tuning._model_text", lambda *_args: calls.append(1) or "not json")
-    with pytest.raises(ValueError, match="two total attempts"):
+    monkeypatch.setattr("tuning._model_text", lambda *_args: calls.append(1) or next(responses))
+    with pytest.raises(ValueError, match="two total attempts") as error:
         judge_batch(object(), object(), make_judge_items(_generated()[:1]),
                     {"judge": {"do_sample": False, "max_new_tokens": 10}})
     assert len(calls) == 2
+    assert "Last validation error:" in str(error.value)
+    assert "second invalid" in str(error.value)
+    assert "first invalid" not in str(error.value)
+
+
+def test_judge_batch_safely_reports_non_string_output(monkeypatch):
+    monkeypatch.setattr("tuning._model_text", lambda *_args: None)
+    with pytest.raises(ValueError, match="Last response") as error:
+        judge_batch(object(), object(), make_judge_items(_generated()[:1]),
+                    {"judge": {"do_sample": False, "max_new_tokens": 10}})
+    assert "None" in str(error.value)
 
 
 def test_pending_judge_items_excludes_completed_ids():
