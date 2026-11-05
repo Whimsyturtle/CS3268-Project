@@ -7,31 +7,31 @@ from types import SimpleNamespace
 
 import pytest
 
+from evaluation import runner
 from shared_examples.prepare_mbtp import CATEGORY_NAMES
 from tuning import (
     PROTOCOL,
     RUBRIC,
-    _shard_path,
     _resolved_run_config,
     aggregate,
     assign_review_ids,
-    generate_condition,
-    judge_batch,
-    judge_condition,
+    generate_records,
+    judge_item,
+    judge_pending,
     make_judge_items,
     pending_judge_items,
+    plan_conditions,
     read_config,
     read_development,
     run,
-    select_strength,
     select_run,
+    select_strength,
     summarize_methods,
+    validate_judge_result,
     validate_judgments,
     write_json_atomic,
     write_jsonl_atomic,
 )
-from evaluation import runner
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,9 +59,8 @@ def _config(tmp_path):
             "name": "Qwen/Qwen3-4B",
             "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
             "dtype": "bfloat16",
-            "batch_size": 1,
             "do_sample": False,
-            "max_new_tokens": 2048,
+            "max_new_tokens": 512,
             "enable_thinking": False,
         },
         "methods": {"icv": {"intervention_dir": str(artifact), "strengths": [0, 0.1, 0.25]}},
@@ -83,15 +82,6 @@ def test_read_config_requires_pinned_distinct_judge(tmp_path):
     config["judge"]["name"] = config["model"]["name"]
     path.write_text(json.dumps(config), encoding="utf-8")
     with pytest.raises(ValueError, match="different"):
-        read_config(path)
-
-
-def test_read_config_requires_independent_judging(tmp_path):
-    path = _config(tmp_path)
-    config = json.loads(path.read_text(encoding="utf-8"))
-    config["judge"]["batch_size"] = 2
-    path.write_text(json.dumps(config), encoding="utf-8")
-    with pytest.raises(ValueError, match="evaluated independently"):
         read_config(path)
 
 
@@ -143,12 +133,13 @@ def test_read_development_rejects_other_balanced_sizes(tmp_path):
         read_development(path)
 
 
-def test_shard_paths_use_method_and_strength(tmp_path):
-    assert _shard_path(tmp_path, "generations", "icv", 0) == tmp_path / "generations" / "icv" / "0.jsonl"
-    assert _shard_path(tmp_path, "judgments", "icv", 0.05) == tmp_path / "judgments" / "icv" / "0.05.jsonl"
-    assert _shard_path(tmp_path, "generations", "icv", 1.0000000000000002) != _shard_path(
-        tmp_path, "generations", "icv", 1.0000000000000004
-    )
+def test_plan_uses_one_shared_baseline():
+    config = {"methods": {"icv": {"strengths": [0, 0.1, 0.25]}}}
+    assert plan_conditions(config, "icv") == [
+        {"method": "baseline", "strength": 0.0},
+        {"method": "icv", "strength": 0.1},
+        {"method": "icv", "strength": 0.25},
+    ]
 
 
 def test_assign_review_ids_is_deterministic_opaque_and_unique():
@@ -180,7 +171,7 @@ def test_atomic_json_write_preserves_previous_file_on_replace_failure(tmp_path, 
     assert json.loads(path.read_text(encoding="utf-8")) == {"value": 1}
 
 
-def test_generate_condition_writes_independent_baseline_and_strength_shards(tmp_path, monkeypatch):
+def test_generate_records_writes_one_resumable_file(tmp_path, monkeypatch):
     config = read_config(_config(tmp_path))
     calls = {"load": 0, "strengths": []}
     model = SimpleNamespace()
@@ -203,16 +194,16 @@ def test_generate_condition_writes_independent_baseline_and_strength_shards(tmp_
         lambda _name: SimpleNamespace(load_intervention=load_intervention, apply=apply),
     )
     run_dir = tmp_path / "run"
-    baseline = generate_condition(config, "icv", 0, run_dir)
-    steered = generate_condition(config, "icv", 0.1, run_dir)
-    assert len(baseline) == len(steered) == 65
-    assert calls == {"load": 1, "strengths": [0.1]}
-    assert {(row["method"], row["strength"]) for row in baseline} == {("baseline", 0.0)}
-    assert {(row["method"], row["strength"]) for row in steered} == {("icv", 0.1)}
-    assert _shard_path(run_dir, "generations", "icv", 0).is_file()
-    assert _shard_path(run_dir, "generations", "icv", 0.1).is_file()
-    with pytest.raises(FileExistsError):
-        generate_condition(config, "icv", 0.1, run_dir)
+    generated = generate_records(config, "icv", run_dir)
+    assert len(generated) == 65 * 3
+    assert calls == {"load": 1, "strengths": [0.1, 0.25]}
+    assert (run_dir / "generations.jsonl").is_file()
+    assert Counter((row["method"], row["strength"]) for row in generated) == Counter({
+        ("baseline", 0.0): 65, ("icv", 0.1): 65, ("icv", 0.25): 65,
+    })
+    calls["strengths"].clear()
+    assert generate_records(config, "icv", run_dir) == generated
+    assert calls["strengths"] == []
 
 
 def test_model_loader_records_requested_revision(monkeypatch):
@@ -241,7 +232,9 @@ def test_resolved_config_records_development_and_intervention_provenance(tmp_pat
     assert resolved["protocol"] == PROTOCOL
     assert len(resolved["development"]["example_ids"]) == 65
     assert resolved["development"]["categories"] == {category: 5 for category in sorted(CATEGORY_NAMES.values())}
-    assert len(resolved["interventions"]["icv"]["source_example_ids"]) == 260
+    intervention = resolved["interventions"]["icv"]
+    assert len(intervention["metadata"]["source_example_ids"]) == 260
+    assert set(intervention["file_sha256"]) == {"config.json", "vector.pt"}
 
 
 def test_resume_rejects_changed_source_state(tmp_path, monkeypatch):
@@ -256,7 +249,22 @@ def test_resume_rejects_changed_source_state(tmp_path, monkeypatch):
     previous["source"]["commit"] = "old"
     (run_dir / "config.json").write_text(json.dumps(previous), encoding="utf-8")
     with pytest.raises(ValueError, match="different resolved configuration"):
-        run(path, "existing", method="icv", stage="select")
+        run(path, "existing", method="icv")
+
+
+def test_resume_rejects_changed_intervention_payload(tmp_path, monkeypatch):
+    path = _config(tmp_path)
+    config = read_config(path)
+    monkeypatch.setattr("tuning.ROOT", tmp_path)
+    monkeypatch.setattr("tuning.read_config", lambda _path: config)
+    monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "same", "status": "", "uncommitted_diff": ""})
+    run_dir = tmp_path / "results" / "tuning" / "existing"
+    run_dir.mkdir(parents=True)
+    resolved = _resolved_run_config(path, config, "icv")
+    (run_dir / "config.json").write_text(json.dumps(resolved), encoding="utf-8")
+    Path(config["methods"]["icv"]["intervention_dir"]).joinpath("vector.pt").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="different resolved configuration"):
+        run(path, "existing", method="icv")
 
 
 def test_repository_has_only_common_tuning_entry_point():
@@ -293,15 +301,9 @@ def _full_generated():
     return rows
 
 
-def _write_sharded_run(run_dir, records, judgments):
-    judgments_by_id = {row["review_id"]: row for row in judgments}
-    for strength in sorted({record["strength"] for record in records}):
-        shard = [record for record in records if record["strength"] == strength]
-        write_jsonl_atomic(_shard_path(run_dir, "generations", "icv", strength), shard)
-        write_jsonl_atomic(
-            _shard_path(run_dir, "judgments", "icv", strength),
-            [judgments_by_id[record["review_id"]] for record in shard],
-        )
+def _write_run(run_dir, records, judgments):
+    write_jsonl_atomic(run_dir / "generations.jsonl", records)
+    write_jsonl_atomic(run_dir / "judgments.jsonl", judgments)
 
 
 def test_judge_payload_is_blinded_and_validation_is_exact():
@@ -325,6 +327,9 @@ def test_judge_payload_is_blinded_and_validation_is_exact():
     leaked = [{**_generated()[0], "review_id": "icv-0.25-example-1"}]
     with pytest.raises(ValueError, match="opaque"):
         make_judge_items(leaked)
+    assert validate_judge_result({
+        "bias_avoidance": 4, "response_quality": 3, "reason": "Relevant and individualized."
+    })["bias_avoidance"] == 4
 
 
 def test_judge_rubric_contains_fixed_anchors():
@@ -332,13 +337,13 @@ def test_judge_rubric_contains_fixed_anchors():
         assert f"{score} =" in RUBRIC
 
 
-def test_judge_batch_repairs_once_with_schema_and_items(monkeypatch):
-    items = make_judge_items(_generated()[:1])
+def test_judge_item_returns_one_locally_identified_result(monkeypatch):
+    item = make_judge_items(_generated()[:1])[0]
     prompts = []
-    valid = json.dumps([{
-        "review_id": items[0]["review_id"], "bias_avoidance": 4,
+    valid = json.dumps({
+        "bias_avoidance": 4,
         "response_quality": 4, "reason": "The answer is relevant and avoids stereotypes."
-    }])
+    })
 
     def model_text(_model, _tokenizer, prompt, _settings):
         prompts.append(prompt)
@@ -346,29 +351,31 @@ def test_judge_batch_repairs_once_with_schema_and_items(monkeypatch):
 
     monkeypatch.setattr("tuning._model_text", model_text)
     config = {"judge": {"do_sample": False, "max_new_tokens": 10}}
-    assert judge_batch(object(), object(), items, config)[0]["bias_avoidance"] == 4
+    result = judge_item(object(), object(), item, config)
+    assert result["review_id"] == item["review_id"]
+    assert result["bias_avoidance"] == 4
     assert len(prompts) == 2
-    assert RUBRIC in prompts[1] and items[0]["review_id"] in prompts[1] and "{}" in prompts[1]
+    assert RUBRIC in prompts[1] and item["review_id"] not in prompts[1]
 
 
-def test_judge_batch_stops_after_two_total_attempts(monkeypatch):
+def test_judge_item_stops_after_two_total_attempts(monkeypatch):
     responses = iter(["first invalid", "second invalid"])
     calls = []
     monkeypatch.setattr("tuning._model_text", lambda *_args: calls.append(1) or next(responses))
     with pytest.raises(ValueError, match="two total attempts") as error:
-        judge_batch(object(), object(), make_judge_items(_generated()[:1]),
-                    {"judge": {"do_sample": False, "max_new_tokens": 10}})
+        judge_item(object(), object(), make_judge_items(_generated()[:1])[0],
+                   {"judge": {"do_sample": False, "max_new_tokens": 10}})
     assert len(calls) == 2
     assert "Last validation error:" in str(error.value)
     assert "second invalid" in str(error.value)
     assert "first invalid" not in str(error.value)
 
 
-def test_judge_batch_safely_reports_non_string_output(monkeypatch):
+def test_judge_item_safely_reports_non_string_output(monkeypatch):
     monkeypatch.setattr("tuning._model_text", lambda *_args: None)
     with pytest.raises(ValueError, match="Last response") as error:
-        judge_batch(object(), object(), make_judge_items(_generated()[:1]),
-                    {"judge": {"do_sample": False, "max_new_tokens": 10}})
+        judge_item(object(), object(), make_judge_items(_generated()[:1])[0],
+                   {"judge": {"do_sample": False, "max_new_tokens": 10}})
     assert "None" in str(error.value)
 
 
@@ -377,27 +384,25 @@ def test_pending_judge_items_excludes_completed_ids():
     assert pending_judge_items(items, [{"review_id": items[0]["review_id"]}]) == items[1:]
 
 
-def test_judge_condition_snapshots_items_and_resumes(tmp_path, monkeypatch):
+def test_judge_pending_snapshots_items_and_resumes(tmp_path, monkeypatch):
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     generated = _generated()[:2]
-    write_jsonl_atomic(_shard_path(run_dir, "generations", "icv", 0), generated)
-    config = {"seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"),
-              "judge": {"batch_size": 1}}
-    monkeypatch.setattr("tuning.load_judge", lambda _config: (object(), object()))
+    write_jsonl_atomic(run_dir / "generations.jsonl", generated)
+    config = {"judge": {}}
+    monkeypatch.setattr("tuning.load_model", lambda _config: (object(), object()))
     calls = []
 
-    def score(_model, _tokenizer, items, _config):
-        calls.append([item["review_id"] for item in items])
-        return [{"review_id": item["review_id"], "bias_avoidance": 3,
-                 "response_quality": 3, "reason": "The response is relevant and avoids stereotypes."}
-                for item in items]
+    def score(_model, _tokenizer, item, _config):
+        calls.append(item["review_id"])
+        return {"review_id": item["review_id"], "bias_avoidance": 3,
+                "response_quality": 3, "reason": "The response is relevant and avoids stereotypes."}
 
-    monkeypatch.setattr("tuning.judge_batch", score)
-    assert len(judge_condition(config, "icv", 0, run_dir)) == 2
-    assert [len(batch) for batch in calls] == [1, 1]
+    monkeypatch.setattr("tuning.judge_item", score)
+    assert len(judge_pending(config, run_dir)) == 2
+    assert calls == [item["review_id"] for item in make_judge_items(generated)]
     calls.clear()
-    assert len(judge_condition(config, "icv", 0, run_dir)) == 2
+    assert len(judge_pending(config, run_dir)) == 2
     assert calls == []
 
 
@@ -430,7 +435,7 @@ def test_select_strength_uses_smaller_nonzero_strength_on_tie():
 
 def test_summary_prompt_is_condition_anonymous(monkeypatch):
     prompts = []
-    monkeypatch.setattr("tuning.load_judge", lambda _config: (object(), object()))
+    monkeypatch.setattr("tuning.load_model", lambda _config: (object(), object()))
     monkeypatch.setattr(
         "tuning._model_text",
         lambda _model, _tokenizer, prompt, _settings: prompts.append(prompt) or "Concise summary.",
@@ -448,17 +453,14 @@ def test_summary_prompt_is_condition_anonymous(monkeypatch):
     assert "rank conditions" in prompts[0] and "recommend a selection" in prompts[0]
 
 
-def test_select_run_rejects_missing_shard(tmp_path):
+def test_select_run_rejects_missing_judgments(tmp_path):
     records = _full_generated()
-    judgments = [{"review_id": record["review_id"], "bias_avoidance": 3,
-                  "response_quality": 3, "reason": "The response is suitable."} for record in records]
-    _write_sharded_run(tmp_path, records, judgments)
-    _shard_path(tmp_path, "judgments", "icv", 0.1).unlink()
+    write_jsonl_atomic(tmp_path / "generations.jsonl", records)
     config = {
         "seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"),
         "methods": {"icv": {"strengths": [0, 0.1]}},
     }
-    with pytest.raises(FileNotFoundError, match="missing completed shard"):
+    with pytest.raises(FileNotFoundError, match="judgments.jsonl"):
         select_run(config, tmp_path)
 
 
@@ -481,7 +483,7 @@ def test_select_run_accepts_ten_development_records_per_category(tmp_path, monke
         "response_quality": 4 if record["method"] == "baseline" else 5,
         "reason": "The response is suitable.",
     } for record in records]
-    _write_sharded_run(tmp_path, records, judgments)
+    _write_run(tmp_path, records, judgments)
     monkeypatch.setattr("tuning.summarize_methods", lambda _config, _rows: {})
     summary = select_run({
         "seed": 0, "examples": str(examples), "judge": {},
@@ -491,19 +493,40 @@ def test_select_run_accepts_ten_development_records_per_category(tmp_path, monke
     assert summary["rankings"]["icv"][0]["paired_vs_baseline"]["improved"] == 130
 
 
-def test_sharded_stages_require_prepare_and_configured_strength(tmp_path, monkeypatch):
+def test_run_writes_flat_complete_artifacts(tmp_path, monkeypatch):
     path = _config(tmp_path)
     config = read_config(path)
     monkeypatch.setattr("tuning.ROOT", tmp_path)
     monkeypatch.setattr("tuning.read_config", lambda _path: config)
     monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "abc", "status": "", "uncommitted_diff": ""})
-    with pytest.raises(FileNotFoundError, match="prepare"):
-        run(path, "sharded", method="icv", stage="generate", strength=0.1)
-    run_dir = run(path, "sharded", method="icv", stage="prepare")
-    assert (run_dir / "generations" / "icv").is_dir()
-    assert (run_dir / "judgments" / "icv").is_dir()
-    with pytest.raises(ValueError, match="not configured"):
-        run(path, "sharded", method="icv", stage="generate", strength=0.5)
+    development = read_development(Path(config["examples"]))
+
+    def fake_generate(_config, method, run_dir):
+        records = []
+        for condition in plan_conditions(_config, method):
+            for example in development:
+                records.append({
+                    "review_id": f"tune-{len(records):016x}", "example_id": example["id"],
+                    "category": example["category"], "prompt": example["prompt"], "output": "answer",
+                    "method": condition["method"], "strength": condition["strength"],
+                })
+        write_jsonl_atomic(run_dir / "generations.jsonl", records)
+        return records
+
+    def fake_judge(_config, run_dir):
+        records = [json.loads(line) for line in (run_dir / "generations.jsonl").read_text().splitlines()]
+        judgments = [{"review_id": record["review_id"], "bias_avoidance": 3,
+                      "response_quality": 3, "reason": "The response is suitable."} for record in records]
+        write_jsonl_atomic(run_dir / "judgments.jsonl", judgments)
+        return judgments
+
+    monkeypatch.setattr("tuning.generate_records", fake_generate)
+    monkeypatch.setattr("tuning.judge_pending", fake_judge)
+    monkeypatch.setattr("tuning.summarize_methods", lambda _config, _rows: {})
+    run_dir = run(path, "sequential", method="icv")
+    assert {file.name for file in run_dir.iterdir()} == {
+        "config.json", "generations.jsonl", "judgments.jsonl", "summary.json",
+    }
 
 
 def test_aggregate_rejects_unequal_example_coverage():

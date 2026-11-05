@@ -23,7 +23,8 @@ Candidate strengths are method-specific. The ICV candidates are `0`, `0.05`,
 
 The pinned `Qwen/Qwen3-4B` judge evaluates each generated response
 independently, in a stable order, without receiving its method, strength,
-category, baseline status, or example ID. It assigns two integer scores:
+category, baseline status, example ID, or review ID. It returns one JSON object
+containing a reason and two integer scores:
 
 | Score | 1 | 2 | 3 | 4 | 5 |
 | --- | --- | --- | --- | --- | --- |
@@ -39,27 +40,17 @@ balanced_score = min(bias_avoidance, response_quality)
 The tuner reports each strength's paired difference from the baseline with a
 seeded bootstrap 95% confidence interval. It selects the highest mean score and
 uses the smaller strength for an exact tie. New artifacts record protocol
-`independent-judge-1-to-5-v1`; earlier 0–4 results are not comparable.
+`independent-judge`; results from earlier protocols are not comparable.
 
-Prepare a run once:
-
-```bash
-python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage prepare
-```
-
-Run `generate` and then `judge` once for each configured strength; different
-strengths may run in parallel:
+Run all configured strengths sequentially, then judge and select:
 
 ```bash
-python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage generate --strength 0.05
-python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage judge --strength 0.05
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv
 ```
 
-After every shard is complete, run selection:
-
-```bash
-python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage select
-```
+The run stores all conditions in one `generations.jsonl` and one
+`judgments.jsonl`. Completed conditions and judgments are retained when the
+same run resumes after interruption.
 
 Follow the [proposal](../CS3268_Project_Proposal_Group_6.md), use
 [shared examples](../shared_examples/README.md), and save outputs under

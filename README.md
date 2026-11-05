@@ -65,15 +65,13 @@ Gemma 3 is gated on Hugging Face: accept its license, then run
 ## Tune steering strength
 
 The common tuner uses the full development split and tunes one method per run.
-Tuning uses explicit prepare, generate, judge, and select stages so
-conditions can run in parallel. Start a run with
+It generates every candidate sequentially, judges each response, and selects a
+strength with one command:
 
 ```bash
 uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> \
-  --method icv --stage prepare
+  --method icv
 ```
-
-See [steering](steering/README.md) for the remaining stages.
 
 ## Contributing
 
