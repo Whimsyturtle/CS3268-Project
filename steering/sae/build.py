@@ -50,9 +50,11 @@ def load_sae(settings, *, model):
 def response_tokens(tokenizer, prompt, response):
     """Identify response content without prompt, padding, or chat boundary tokens."""
     user = [{"role": "user", "content": prompt}]
-    prefix = tokenizer.apply_chat_template(user, tokenize=True, add_generation_prompt=True)
-    empty = tokenizer.apply_chat_template(user + [{"role": "assistant", "content": ""}], tokenize=True)
-    full = tokenizer.apply_chat_template(user + [{"role": "assistant", "content": response}], tokenize=True)
+    prefix = tokenizer.apply_chat_template(user, tokenize=True, return_dict=False, add_generation_prompt=True)
+    empty = tokenizer.apply_chat_template(
+        user + [{"role": "assistant", "content": ""}], tokenize=True, return_dict=False)
+    full = tokenizer.apply_chat_template(
+        user + [{"role": "assistant", "content": response}], tokenize=True, return_dict=False)
     suffix = empty[len(prefix):]
     if (not suffix or empty[:len(prefix)] != prefix or full[:len(prefix)] != prefix
             or full[-len(suffix):] != suffix):

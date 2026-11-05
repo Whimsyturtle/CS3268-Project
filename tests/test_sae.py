@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+from transformers import BatchEncoding
 
 from steering.sae import apply, load_intervention
 from steering.sae import build as builder
@@ -111,12 +112,14 @@ def test_load_rejects_invalid_direction(saved, direction):
 class Tokenizer:
     all_special_ids = [99]
 
-    def apply_chat_template(self, messages, tokenize=True, add_generation_prompt=False):
+    def apply_chat_template(self, messages, tokenize=True, add_generation_prompt=False, return_dict=True):
         prefix = [90, 91]
         if add_generation_prompt:
-            return prefix
-        content = messages[-1]["content"]
-        return prefix + ([2, 99, 5] if content else []) + [80, 81]
+            tokens = prefix
+        else:
+            content = messages[-1]["content"]
+            tokens = prefix + ([2, 99, 5] if content else []) + [80, 81]
+        return BatchEncoding({"input_ids": tokens}) if return_dict else tokens
 
 
 def test_response_positions_exclude_prompt_special_and_multitoken_suffix():

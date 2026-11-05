@@ -1,17 +1,48 @@
 """Small real-library checks; these do not load pretrained Gemma weights."""
 
 import json
+import string
 
 import pytest
 import torch
 from safetensors.torch import save_file
 from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
+from tokenizers.pre_tokenizers import Split
 from transformers import Gemma3ForCausalLM, Gemma3TextConfig, PreTrainedTokenizerFast
 
 from evaluation import runner
 from steering.sae import apply, load_intervention
 from steering.sae import build as builder
+
+
+@pytest.mark.parametrize("response", ["answer", "  answer\n", "answer\nnext", "answer <end_of_turn> next"])
+def test_response_mask_with_real_tokenizer_and_gemma_style_template(response):
+    special = ["[UNK]", "<bos>", "<start_of_turn>", "<end_of_turn>"]
+    vocab = {token: index for index, token in enumerate(special + list(string.printable))}
+    backend = Tokenizer(WordLevel(vocab, unk_token="[UNK]"))
+    backend.pre_tokenizer = Split("", behavior="isolated")
+    tokenizer = PreTrainedTokenizerFast(
+        tokenizer_object=backend, unk_token="[UNK]", bos_token="<bos>",
+        additional_special_tokens=["<start_of_turn>", "<end_of_turn>"],
+        chat_template=(
+            "{{ bos_token }}{% for message in messages %}"
+            "{% set role = 'model' if message['role'] == 'assistant' else message['role'] %}"
+            "{{ '<start_of_turn>' + role + '\n' + (message['content'] | trim) + '<end_of_turn>\n' }}"
+            "{% endfor %}{% if add_generation_prompt %}{{ '<start_of_turn>model\n' }}{% endif %}"
+        ),
+    )
+    messages = [{"role": "user", "content": "prompt"}, {"role": "assistant", "content": response}]
+    default_output = tokenizer.apply_chat_template(messages, tokenize=True)
+    assert "input_ids" in default_output
+    tokens, positions = builder.response_tokens(tokenizer, "prompt", response)
+    assert tokens == default_output["input_ids"]
+    expected = tokenizer(response.strip(), add_special_tokens=False)["input_ids"]
+    expected = [token for token in expected if token not in tokenizer.all_special_ids]
+    assert [tokens[position] for position in positions] == expected
+    assert positions[0] > 0 and positions[-1] < len(tokens) - 2
+    with pytest.raises(ValueError, match="no content"):
+        builder.response_tokens(tokenizer, "prompt", "  \n")
 
 
 def tiny_gemma():
