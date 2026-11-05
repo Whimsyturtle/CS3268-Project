@@ -15,7 +15,7 @@
     "name": "Qwen/Qwen3-4B",
     "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
     "dtype": "bfloat16",
-    "batch_size": 5,
+    "batch_size": 1,
     "do_sample": false,
     "max_new_tokens": 2048,
     "enable_thinking": false
@@ -23,7 +23,7 @@
   "methods": {
     "icv": {
       "intervention_dir": "steering_vectors/icv",
-      "strengths": [0, 0.1, 0.25, 0.5]
+      "strengths": [0, 0.05, 0.1, 0.15, 0.2]
     }
   }
 }

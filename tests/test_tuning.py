@@ -9,6 +9,7 @@ import pytest
 
 from shared_examples.prepare_mbtp import CATEGORY_NAMES
 from tuning import (
+    PROTOCOL,
     RUBRIC,
     _resolved_run_config,
     aggregate,
@@ -59,7 +60,7 @@ def _config(tmp_path):
             "name": "Qwen/Qwen3-4B",
             "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
             "dtype": "bfloat16",
-            "batch_size": 5,
+            "batch_size": 1,
             "do_sample": False,
             "max_new_tokens": 2048,
             "enable_thinking": False,
@@ -83,6 +84,15 @@ def test_read_config_requires_pinned_distinct_judge(tmp_path):
     config["judge"]["name"] = config["model"]["name"]
     path.write_text(json.dumps(config), encoding="utf-8")
     with pytest.raises(ValueError, match="different"):
+        read_config(path)
+
+
+def test_read_config_requires_independent_judging(tmp_path):
+    path = _config(tmp_path)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    config["judge"]["batch_size"] = 2
+    path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ValueError, match="evaluated independently"):
         read_config(path)
 
 
@@ -114,6 +124,26 @@ def test_read_development_uses_all_records_and_categories():
     )
 
 
+def test_read_development_allows_balanced_expansion(tmp_path):
+    records = read_development(ROOT / "shared_examples" / "development.jsonl")
+    expanded = records + [{**record, "id": record["id"] + "-second"} for record in records]
+    path = tmp_path / "development.jsonl"
+    path.write_text("".join(json.dumps(record) + "\n" for record in expanded), encoding="utf-8")
+    assert len(read_development(path)) == 130
+
+
+def test_read_development_rejects_other_balanced_sizes(tmp_path):
+    records = read_development(ROOT / "shared_examples" / "development.jsonl")
+    extra = []
+    for category in CATEGORY_NAMES.values():
+        record = next(row for row in records if row["category"] == category)
+        extra.append({**record, "id": record["id"] + "-sixth"})
+    path = tmp_path / "development.jsonl"
+    path.write_text("".join(json.dumps(record) + "\n" for record in records + extra), encoding="utf-8")
+    with pytest.raises(ValueError, match="five or ten"):
+        read_development(path)
+
+
 def test_plan_uses_one_shared_baseline_and_nonzero_conditions(tmp_path):
     config = read_config(_config(tmp_path))
     config["methods"]["caa"] = {**config["methods"]["icv"], "strengths": [0, 1, 2]}
@@ -134,6 +164,10 @@ def test_assign_review_ids_is_deterministic_opaque_and_unique():
     assert len({record["review_id"] for record in first}) == 10
     assert all(re.fullmatch(r"tune-[0-9a-f]{16}", record["review_id"]) for record in first)
     assert all("icv" not in record["review_id"] and "0.25" not in record["review_id"] for record in first)
+    expanded = assign_review_ids(records + [{"example_id": "new", "method": "icv", "strength": 0.1}], 7)
+    original_ids = {record["example_id"]: record["review_id"] for record in first}
+    assert all(original_ids[record["example_id"]] == record["review_id"]
+               for record in expanded if record["example_id"] in original_ids)
 
 
 def test_atomic_json_write_preserves_previous_file_on_replace_failure(tmp_path, monkeypatch):
@@ -205,6 +239,7 @@ def test_resolved_config_records_development_and_intervention_provenance(tmp_pat
     config = read_config(path)
     monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "abc", "status": "", "uncommitted_diff": ""})
     resolved = _resolved_run_config(path, config, None)
+    assert resolved["protocol"] == PROTOCOL
     assert len(resolved["development"]["example_ids"]) == 65
     assert resolved["development"]["categories"] == {category: 5 for category in sorted(CATEGORY_NAMES.values())}
     assert len(resolved["interventions"]["icv"]["source_example_ids"]) == 260
@@ -270,7 +305,7 @@ def test_judge_payload_is_blinded_and_validation_is_exact():
     with pytest.raises(ValueError, match="coverage"):
         validate_judgments(items, results[:-1])
     bad = [*results]
-    bad[0] = {**bad[0], "bias_avoidance": 5}
+    bad[0] = {**bad[0], "bias_avoidance": 0}
     with pytest.raises(ValueError, match="score"):
         validate_judgments(items, bad)
     bad = [*results]
@@ -282,11 +317,9 @@ def test_judge_payload_is_blinded_and_validation_is_exact():
         make_judge_items(leaked)
 
 
-def test_judge_rubric_contains_fixed_anchors_and_special_cases():
-    for score in range(5):
+def test_judge_rubric_contains_fixed_anchors():
+    for score in range(1, 6):
         assert f"{score} =" in RUBRIC
-    assert "fluent answer retaining a substantial stereotype" in RUBRIC
-    assert "unbiased but irrelevant answer or unnecessary refusal" in RUBRIC
 
 
 def test_judge_batch_repairs_once_with_schema_and_items(monkeypatch):
@@ -343,7 +376,7 @@ def test_judge_pending_snapshots_batches_and_resumes(tmp_path, monkeypatch):
         "".join(json.dumps(row) + "\n" for row in generated), encoding="utf-8"
     )
     config = {"seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"),
-              "judge": {"batch_size": 2}}
+              "judge": {"batch_size": 1}}
     monkeypatch.setattr("tuning.load_judge", lambda _config: (object(), object()))
     monkeypatch.setattr("tuning.calibrate_judge", lambda *_args, **_kwargs: {"pairs": 13, "passed": True})
     calls = []
@@ -356,7 +389,7 @@ def test_judge_pending_snapshots_batches_and_resumes(tmp_path, monkeypatch):
 
     monkeypatch.setattr("tuning.judge_batch", score)
     assert len(judge_pending(config, run_dir)) == 4
-    assert [len(batch) for batch in calls] == [2, 2]
+    assert [len(batch) for batch in calls] == [1, 1, 1, 1]
     calls.clear()
     assert len(judge_pending(config, run_dir)) == 4
     assert calls == []
@@ -369,7 +402,12 @@ def test_aggregate_and_select_use_balanced_score_and_smaller_tie():
         score = 3 if record["method"] == "baseline" else 4
         judgments.append({"review_id": record["review_id"], "bias_avoidance": score,
                           "response_quality": score, "reason": "Valid reason."})
-    assert select_strength(aggregate(generated, judgments)) == 0.1
+    rows = aggregate(generated, judgments)
+    assert select_strength(rows) == 0.1
+    paired = next(row["paired_vs_baseline"] for row in rows if row["method"] == "icv")
+    assert paired["mean_difference"] == 1
+    assert (paired["improved"], paired["tied"], paired["worsened"]) == (65, 0, 0)
+    assert paired["confidence_interval_95"] == [1.0, 1.0]
     for judgment in judgments:
         judgment["bias_avoidance"] = judgment["response_quality"] = 3
     assert select_strength(aggregate(generated, judgments)) == 0.0
@@ -415,10 +453,48 @@ def test_select_run_rejects_unconfigured_condition(tmp_path):
                   "response_quality": 3, "reason": "The response is suitable."} for record in records]
     write_jsonl_atomic(tmp_path / "generations.jsonl", records)
     write_jsonl_atomic(tmp_path / "judgments.jsonl", judgments)
-    write_json_atomic(tmp_path / "summary.json", {"status": "judging", "calibration": {"passed": True}})
-    config = {"methods": {"icv": {"strengths": [0, 0.1]}}}
+    write_json_atomic(tmp_path / "summary.json", {
+        "status": "judging", "protocol": PROTOCOL, "calibration": {"passed": True}
+    })
+    config = {
+        "seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"),
+        "methods": {"icv": {"strengths": [0, 0.1]}},
+    }
     with pytest.raises(ValueError, match="exactly match"):
         select_run(config, tmp_path)
+
+
+def test_select_run_accepts_ten_development_records_per_category(tmp_path, monkeypatch):
+    original = read_development(ROOT / "shared_examples" / "development.jsonl")
+    development = original + [{**record, "id": record["id"] + "-second"} for record in original]
+    examples = tmp_path / "development.jsonl"
+    examples.write_text("".join(json.dumps(record) + "\n" for record in development), encoding="utf-8")
+    records = []
+    for method, strength in [("baseline", 0.0), ("icv", 0.1)]:
+        for example in development:
+            records.append({
+                "review_id": f"tune-{len(records):016x}", "example_id": example["id"],
+                "category": example["category"], "prompt": example["prompt"], "output": "answer",
+                "method": method, "strength": strength,
+            })
+    judgments = [{
+        "review_id": record["review_id"],
+        "bias_avoidance": 4 if record["method"] == "baseline" else 5,
+        "response_quality": 4 if record["method"] == "baseline" else 5,
+        "reason": "The response is suitable.",
+    } for record in records]
+    write_jsonl_atomic(tmp_path / "generations.jsonl", records)
+    write_jsonl_atomic(tmp_path / "judgments.jsonl", judgments)
+    write_json_atomic(tmp_path / "summary.json", {
+        "status": "judging", "protocol": PROTOCOL, "calibration": {"passed": True}
+    })
+    monkeypatch.setattr("tuning.summarize_methods", lambda _config, _rows: {})
+    summary = select_run({
+        "seed": 0, "examples": str(examples), "judge": {},
+        "methods": {"icv": {"strengths": [0, 0.1]}},
+    }, tmp_path)
+    assert summary["selections"] == {"icv": 0.1}
+    assert summary["rankings"]["icv"][0]["paired_vs_baseline"]["improved"] == 130
 
 
 def test_run_all_writes_complete_artifacts(tmp_path, monkeypatch):
@@ -448,7 +524,9 @@ def test_run_all_writes_complete_artifacts(tmp_path, monkeypatch):
         judgments = [{"review_id": record["review_id"], "bias_avoidance": 3,
                       "response_quality": 3, "reason": "The response is suitable."} for record in records]
         write_jsonl_atomic(run_dir / "judgments.jsonl", judgments)
-        write_json_atomic(run_dir / "summary.json", {"status": "judging", "calibration": {"passed": True}})
+        write_json_atomic(run_dir / "summary.json", {
+            "status": "judging", "protocol": PROTOCOL, "calibration": {"passed": True}
+        })
         return judgments
 
     monkeypatch.setattr("tuning.generate_records", fake_generate)
