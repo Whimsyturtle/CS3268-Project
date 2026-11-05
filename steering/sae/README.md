@@ -93,3 +93,5 @@ uv run pytest tests/test_sae.py tests/test_sae_gemma.py
 These tests use small synthetic models and data. The pretrained application check
 above remains necessary before completing #9. Strength in `configs/main.json`
 stays `null` until separate development tuning is complete.
+
+See the [verified cluster run](verification.md) for retained artifacts and checks.
