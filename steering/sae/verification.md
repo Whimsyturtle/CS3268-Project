@@ -21,7 +21,8 @@ the complete provenance is in the [saved metadata](../../steering_vectors/sae/co
   match baseline, steered logits are finite and changed, and normal and
   exceptional exit restore the baseline. It ran on an NVIDIA H100 NVL MIG
   3g.47gb in BF16, using two development prompts, strength 1, and eight output
-  tokens. Package versions match the lockfile.
+  tokens. Package versions match the
+  [lockfile at the verified source commit](https://github.com/Whimsyturtle/CS3268-Project/blob/f022357e9c1c71ee8d52da2beaede09fc222afd8/uv.lock).
 - The saved overlap log reports no exact normalized shared-text overlap with
   58,398 BBQ, 15,713 HolisticBias, 12,032 MMLU-Pro, and 805 AlpacaEval prompts.
 - The implementation's full test suite passed: 40 tests at the source commit
@@ -32,7 +33,70 @@ Strength 1 is an application check only. Development tuning and final benchmark
 evaluation remain pending; these checks do not establish bias reduction or
 preserved capability.
 
-## Retained artifacts
+## cu126 rebuild and verification
+
+Run `sae-cu126-20261105-202310` repeated construction and checked the new
+intervention on 2026-11-05, using clean source commit
+`7f1f84c6260a6ec6e255ac678971ffbd8e74be8c`. The retained environment log records
+Python 3.14.9, PyTorch `2.14.1+cu126`, CUDA build 12.6, and an NVIDIA H100 NVL MIG
+3g.47gb. The archived lockfile matches that source commit byte for byte.
+
+The base model, SAE checkpoint, BF16 precision, seed, and 260 construction pairs
+match the original run. Feature 292 remains the highest-scoring feature by
+construction AUROC:
+
+| Measurement | Original run | cu126 rebuild |
+| --- | ---: | ---: |
+| Selected feature | 292 | 292 |
+| Construction AUROC | 0.8428032544378699 | 0.8428180473372782 |
+| Activation scale | 606.2564697265625 | 606.4310913085938 |
+
+The decoder direction is byte-identical to the previously verified checkpoint
+row. The scale increased by 0.0288%; numerical outputs are not identical across
+these runs. The cu126 runner-up is feature 10115, with construction AUROC
+0.810258875739645. This comparison establishes the same construction winner for
+these two runs, not the best feature for bias reduction on held-out generations.
+
+Local inspection of the downloaded bundle confirmed:
+
+- Construction IDs and the data hash match the committed examples. Both saved
+  activation tensors are finite, nonnegative float32 arrays of shape
+  `[260, 16384]`.
+- An independent rank-sum calculation reproduces all 16,384 saved AUROCs within
+  `2.3e-16`; the selected feature and activation scale match the saved metadata.
+- Build and application-check provenance both report the clean source commit.
+  The check used the newly built intervention and the configured model,
+  development prompts, seed, and decoding settings.
+- All six application checks passed at strength 1 with eight output tokens.
+  Saved zero-strength and restored generations equal baseline; steered
+  generations differ. Development tuning and final benchmarks remain pending.
+
+The commands used on the GPU compute node were:
+
+```bash
+uv sync --locked
+uv run --locked python -m steering.sae.build --output-dir steering_vectors/sae/cu126-20261105-202310
+uv run --locked python -m steering.sae.check --intervention-dir steering_vectors/sae/cu126-20261105-202310 --run-id sae-cu126-20261105-202310
+```
+
+For another run, follow the [setup](../../README.md#setup) and
+[build instructions](README.md#build-and-check), using an unused output directory
+and run ID. The original intervention remains at `steering_vectors/sae/`; the
+cu126 rebuild is retained separately at the path above.
+
+The bundle is
+`bennett@xlogin.comp.nus.edu.sg:~/sae-cu126-20261105-202310.tar.gz`, with SHA-256
+`6bd4911beee0aa764c22158ccebfd96050aef0f76469974c52a4599f82e82f4c`.
+The downloaded copy matches this hash. Its intervention, check, and log files
+were extracted locally into their Git-ignored repository paths:
+
+| Path | Contents |
+| --- | --- |
+| `steering_vectors/sae/cu126-20261105-202310/` | Metadata, decoder direction, activations, and feature scores |
+| `results/sae_checks/sae-cu126-20261105-202310/checks.json` | Application-check settings, provenance, results, and generations |
+| `results/sae_checks/sae-cu126-20261105-202310-logs/` | Environment, GPU, source commit, build, check, and comparison logs |
+
+## Original retained artifacts
 
 The original bundle is
 `bennett@xlogin.comp.nus.edu.sg:~/sae-verification.tar.gz`. Its SHA-256 is
