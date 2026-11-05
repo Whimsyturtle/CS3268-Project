@@ -14,6 +14,8 @@ Store reviewed experiment configurations here. Each must record:
 intervention, and candidate strengths. Strength zero is one shared unsteered
 baseline. Model and intervention revisions must be immutable.
 
+[`tuning_caa.json`](tuning_caa.json) uses those same conditions with a CAA-only candidate grid; see the [CAA workflow](../steering/caa/README.md).
+
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay
 `null` until tuned on development data.
