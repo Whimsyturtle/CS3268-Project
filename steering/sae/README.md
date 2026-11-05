@@ -15,6 +15,11 @@ typical numbers of active features. The pinned
 identifies the model and activation location. The base model, precision and seed
 come from [the experiment configuration](../../configs/main.json).
 
+Width is fixed at 16k; this implementation does not compare wider checkpoints.
+A smaller width uses smaller SAE weight and activation tensors during
+construction. We have not established that 16k yields broader concepts or better
+bias steering. Google's release guide generally recommends 64k or 256k features.
+
 Automatic selection follows the
 SAE-A activation-ranking approach in [AxBench](https://github.com/stanfordnlp/axbench/blob/main/axbench/models/sae.py),
 including its use of AUROC to select one feature. The ranking rule and fixed layer
