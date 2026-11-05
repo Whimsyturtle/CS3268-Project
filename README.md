@@ -49,6 +49,15 @@ Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated o
 Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
 `uv run pytest`.
 
+## Tune steering strength
+
+The common tuner uses the full development split and one intervention per
+method. Run strength tuning with
+
+```bash
+uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id>
+```
+
 ## Contributing
 
 - Track major tasks, experiments, and deliverables in [GitHub issues](https://github.com/Whimsyturtle/CS3268-Project/issues). Small fixes can stay within an existing task or PR.

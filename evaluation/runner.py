@@ -19,6 +19,8 @@ def load_model(config):
     model = AutoModelForCausalLM.from_pretrained(
         config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
     )
+    # Transformers does not consistently retain the requested revision on nested model configs.
+    model._cs3268_source_revision = config["revision"]
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     return model.to(device).eval(), tokenizer
 
