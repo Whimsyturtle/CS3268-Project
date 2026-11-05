@@ -21,7 +21,8 @@ the complete provenance is in the [saved metadata](../../steering_vectors/sae/co
   match baseline, steered logits are finite and changed, and normal and
   exceptional exit restore the baseline. It ran on an NVIDIA H100 NVL MIG
   3g.47gb in BF16, using two development prompts, strength 1, and eight output
-  tokens. Package versions match the lockfile.
+  tokens. Package versions match the
+  [lockfile at the verified source commit](https://github.com/Whimsyturtle/CS3268-Project/blob/f022357e9c1c71ee8d52da2beaede09fc222afd8/uv.lock).
 - The saved overlap log reports no exact normalized shared-text overlap with
   58,398 BBQ, 15,713 HolisticBias, 12,032 MMLU-Pro, and 805 AlpacaEval prompts.
 - The implementation's full test suite passed: 40 tests at the source commit
@@ -31,6 +32,24 @@ the complete provenance is in the [saved metadata](../../steering_vectors/sae/co
 Strength 1 is an application check only. Development tuning and final benchmark
 evaluation remain pending; these checks do not establish bias reduction or
 preserved capability.
+
+## Check the saved intervention with cu126
+
+The run above predates the [cu126 setup](../../README.md#setup). Its evidence
+remains tied to the original source and environment. On an allocated GPU compute
+node, sync the new lockfile, run the setup's CUDA check, then reuse the saved
+intervention for a new application check:
+
+```bash
+uv sync --locked
+uv run --locked python -m steering.sae.check --run-id sae-application-cu126-001
+```
+
+This check remains pending. It does not repeat feature selection or establish
+that construction scores are identical across CUDA builds. To reproduce
+construction under cu126, build into a separate output directory using the
+[build instructions](README.md#build-and-check) and compare the saved selection
+and activation scale before replacing the original artifacts.
 
 ## Retained artifacts
 

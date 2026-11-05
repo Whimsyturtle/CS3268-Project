@@ -37,6 +37,11 @@ it again.
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
 
+## CUDA
+
+NVIDIA's platform for running computations on its GPUs. PyTorch's `cu126` build
+label means CUDA 12.6; it does not identify the installed NVIDIA driver version.
+
 ## Decoding hyperparameters
 
 Settings that control how a model generates text.
