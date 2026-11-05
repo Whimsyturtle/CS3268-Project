@@ -15,7 +15,6 @@ from tuning import (
     _resolved_run_config,
     aggregate,
     assign_review_ids,
-    calibrate_run,
     generate_condition,
     judge_batch,
     judge_condition,
@@ -27,7 +26,6 @@ from tuning import (
     select_strength,
     select_run,
     summarize_methods,
-    calibrate_judge,
     validate_judgments,
     write_json_atomic,
     write_jsonl_atomic,
@@ -293,9 +291,6 @@ def _full_generated():
 
 
 def _write_sharded_run(run_dir, records, judgments):
-    write_json_atomic(run_dir / "calibration.json", {
-        "protocol": PROTOCOL, "calibration": {"pairs": 13, "passed": True}
-    })
     judgments_by_id = {row["review_id"]: row for row in judgments}
     for strength in sorted({record["strength"] for record in records}):
         shard = [record for record in records if record["strength"] == strength]
@@ -367,40 +362,11 @@ def test_pending_judge_items_excludes_completed_ids():
     assert pending_judge_items(items, [{"review_id": items[0]["review_id"]}]) == items[1:]
 
 
-def test_calibration_requires_higher_unbiased_bias_avoidance(monkeypatch):
-    development = read_development(ROOT / "shared_examples" / "development.jsonl")
-
-    def equal_scores(_model, _tokenizer, items, _config):
-        return [{"review_id": item["review_id"], "bias_avoidance": 2,
-                 "response_quality": 3, "reason": "The response receives a calibration score."}
-                for item in items]
-
-    monkeypatch.setattr("tuning._score_items", equal_scores)
-    result = calibrate_judge({"seed": 0, "judge": {}}, development, model=object(), tokenizer=object())
-    assert result == {"pairs": 13, "mean_bias_avoidance": {"biased": 2.0, "unbiased": 2.0}, "passed": False}
-
-
-def test_calibrate_run_writes_one_shared_result(tmp_path, monkeypatch):
-    config = {"seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"), "judge": {}}
-    monkeypatch.setattr(
-        "tuning.calibrate_judge",
-        lambda *_args, **_kwargs: {"pairs": 13, "mean_bias_avoidance": {"biased": 2, "unbiased": 5}, "passed": True},
-    )
-    result = calibrate_run(config, tmp_path)
-    assert result["protocol"] == PROTOCOL
-    assert json.loads((tmp_path / "calibration.json").read_text()) == result
-    with pytest.raises(FileExistsError):
-        calibrate_run(config, tmp_path)
-
-
 def test_judge_condition_snapshots_items_and_resumes(tmp_path, monkeypatch):
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     generated = _generated()[:2]
     write_jsonl_atomic(_shard_path(run_dir, "generations", "icv", 0), generated)
-    write_json_atomic(run_dir / "calibration.json", {
-        "protocol": PROTOCOL, "calibration": {"pairs": 13, "passed": True}
-    })
     config = {"seed": 0, "examples": str(ROOT / "shared_examples" / "development.jsonl"),
               "judge": {"batch_size": 1}}
     monkeypatch.setattr("tuning.load_judge", lambda _config: (object(), object()))

@@ -304,71 +304,11 @@ def judge_batch(model, tokenizer, items: list[dict], config: dict) -> list[dict]
     raise ValueError("judge returned invalid output after two total attempts")
 
 
-def _score_items(model, tokenizer, items: list[dict], config: dict) -> list[dict]:
-    results = []
-    for item in items:
-        results.extend(judge_batch(model, tokenizer, [item], config))
-    return results
-
-
 def load_judge(config: dict):
     return load_model(config["judge"])
 
 
-def calibrate_judge(config: dict, development: list[dict], *, model=None, tokenizer=None) -> dict:
-    owned = model is None
-    if owned:
-        model, tokenizer = load_judge(config)
-    rng = random.Random(config["seed"])
-    items, labels = [], {}
-    for category in sorted(CATEGORY_NAMES.values()):
-        record = next(row for row in development if row["category"] == category)
-        for label, field in (("biased", "biased_response"), ("unbiased", "unbiased_response")):
-            review_id = f"tune-{rng.getrandbits(64):016x}"
-            items.append({"review_id": review_id, "prompt": record["prompt"], "output": record[field]})
-            labels[review_id] = label
-    try:
-        results = _score_items(model, tokenizer, items, config)
-    finally:
-        if owned:
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-    means = {}
-    for label in ("biased", "unbiased"):
-        scores = [result["bias_avoidance"] for result in results if labels[result["review_id"]] == label]
-        means[label] = sum(scores) / len(scores)
-    return {"pairs": 13, "mean_bias_avoidance": means, "passed": means["unbiased"] > means["biased"]}
-
-
-def calibrate_run(config: dict, run_dir: Path) -> dict:
-    output_path = run_dir / "calibration.json"
-    if output_path.exists():
-        raise FileExistsError(f"refusing to replace {output_path}")
-    calibration = calibrate_judge(
-        config, read_development(Path(config["examples"]))
-    )
-    result = {"protocol": PROTOCOL, "calibration": calibration}
-    write_json_atomic(output_path, result)
-    if not calibration["passed"]:
-        raise RuntimeError("judge calibration failed")
-    return result
-
-
-def _load_calibration(run_dir: Path) -> dict:
-    path = run_dir / "calibration.json"
-    if not path.is_file():
-        raise FileNotFoundError("run calibration before judging or selecting")
-    result = json.loads(path.read_text(encoding="utf-8"))
-    if result.get("protocol") != PROTOCOL:
-        raise ValueError("calibration uses a different tuning protocol")
-    if not result.get("calibration", {}).get("passed"):
-        raise ValueError("a passed judge calibration is required")
-    return result["calibration"]
-
-
 def judge_condition(config: dict, method: str, strength: float, run_dir: Path) -> list[dict]:
-    _load_calibration(run_dir)
     generations_path = _shard_path(run_dir, "generations", method, strength)
     if not generations_path.is_file():
         raise FileNotFoundError(f"missing generation shard {generations_path}")
@@ -523,7 +463,6 @@ def select_run(config: dict, run_dir: Path) -> dict:
         raise ValueError("summary uses a different tuning protocol")
     if existing.get("status") == "complete":
         raise FileExistsError(f"refusing to replace completed {summary_path}")
-    calibration = _load_calibration(run_dir)
     records, judgments = [], []
     for method, settings in config["methods"].items():
         for strength in settings["strengths"]:
@@ -557,7 +496,7 @@ def select_run(config: dict, run_dir: Path) -> dict:
         ))
         selections[method] = select_strength(method_rows)
     summary = {
-        "status": "complete", "protocol": PROTOCOL, "calibration": calibration,
+        "status": "complete", "protocol": PROTOCOL,
         "aggregates": _strip_reasons(rows), "rankings": rankings, "selections": selections,
         "condition_summaries": summarize_methods(config, rows),
     }
@@ -629,11 +568,7 @@ def run(
         return run_dir
 
     verify_run(config_path, config, method, run_dir)
-    if stage == "calibrate":
-        if strength is not None:
-            raise ValueError("calibrate does not accept --strength")
-        calibrate_run(config, run_dir)
-    elif stage == "generate":
+    if stage == "generate":
         strength = _require_strength(config, method, strength)
         generate_condition(config, method, strength, run_dir)
     elif stage == "judge":
@@ -654,7 +589,7 @@ def main() -> None:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--method", required=True, choices=["caa", "icv", "sae", "reft_r1"])
     parser.add_argument(
-        "--stage", required=True, choices=["prepare", "calibrate", "generate", "judge", "select"]
+        "--stage", required=True, choices=["prepare", "generate", "judge", "select"]
     )
     parser.add_argument("--strength", type=float)
     args = parser.parse_args()
