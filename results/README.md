@@ -10,7 +10,7 @@ for `run_id` and never overwrite an existing run.
 For metrics, use `all` for the overall subgroup, `n` for the contributing example
 count, and an empty value for undefined results. See [record types](../evaluation/api.pyi).
 
-Generated outputs are ignored by Git. `.gitkeep` files preserve empty folders.
+Raw generated outputs are ignored by Git. `.gitkeep` files preserve empty folders.
 
 ## Strength tuning
 
@@ -29,4 +29,5 @@ results/tuning/<run_id>/summary.json
 - `summary.json` stores aggregates, rankings, and selected strengths.
 
 Interrupted judging resumes from the saved judgments. Completed summaries are
-not overwritten.
+not overwritten. Commit `config.json` and `summary.json` for selected tuning
+runs, and keep `generations.jsonl` and `judgments.jsonl` outside Git.
