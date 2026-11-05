@@ -27,7 +27,7 @@ def _hidden(output):
 
 
 def _principal_direction(differences):
-    """Match upstream centered PCA, SVD sign convention, and mean addition."""
+    """Match the authors' centered PCA, SVD sign, and mean addition."""
     if differences.ndim != 2 or differences.shape[0] < 2:
         raise ValueError("ICV needs at least two difference vectors")
     if not torch.isfinite(differences).all():
@@ -36,7 +36,8 @@ def _principal_direction(differences):
     centered = differences - mean
     u, _, vh = torch.linalg.svd(centered, full_matrices=False)
     sign = u[u[:, 0].abs().argmax(), 0].sign()
-    # Unlike Eq. (2), upstream centers differences and adds the mean to PC1.
+    # The authors' code centers the differences and adds their mean to PC1.
+    # This differs from the uncentered objective written in paper Equation (2).
     # Source: https://github.com/shengliu66/ICV/blob/b187c6387ae41097f5e38182d5a8df7d06ca9ec4/tasks/base.py#L254-L273
     return sign * vh[0] + mean
 
@@ -65,7 +66,7 @@ def extract_differences(model, tokenizer, pairs):
             raise ValueError("model did not execute every decoder layer")
         return torch.stack([state[0] for state in captured]).flatten()
 
-    # Upstream extracts the final token from embeddings and decoder layers.
+    # The authors' code uses the final token from embeddings and decoder layers.
     handles = [module.register_forward_hook(capture) for module in modules]
     try:
         differences = torch.stack([
@@ -83,7 +84,8 @@ def construct_from_differences(differences):
     """Construct an ICV from a subset of previously extracted differences."""
     if differences.ndim != 3 or differences.shape[1] < 2:
         raise ValueError("ICV differences must include embeddings and decoder layers")
-    # Upstream fits jointly including embeddings, then drops their segment.
+    # The authors' code fits one PCA across embeddings and all decoder layers.
+    # The embedding segment is discarded because steering is applied only to MLPs.
     direction = _principal_direction(differences.flatten(1))
     return direction.reshape(differences.shape[1:])[1:]
 
@@ -117,10 +119,12 @@ def _shift(hidden, vector, strength):
         return hidden
     original = hidden.float()
     vector = vector.to(device=hidden.device, dtype=torch.float32)
-    # Upstream normalizes before addition and uses cosine-dependent strength.
+    # The authors' code normalizes both terms and increases the multiplier when
+    # the activation points against the ICV.
     weight = 1 + F.cosine_similarity(original, -vector, dim=-1).clamp_min(0).unsqueeze(-1)
     changed = F.normalize(original, dim=-1) + strength * weight * F.normalize(vector, dim=-1)
-    # Preserve Gemma's dtype rather than upstream's unconditional float16 cast.
+    # The released code returns float16. Use the input dtype so Gemma 3 BF16
+    # layers continue to receive BF16 activations.
     return (F.normalize(changed, dim=-1) * original.norm(dim=-1, keepdim=True)).to(hidden.dtype)
 
 

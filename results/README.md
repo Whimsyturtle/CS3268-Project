@@ -25,7 +25,7 @@ results/tuning/<run_id>/summary.json
 
 `config.json` records the exact source state, all development IDs and category
 counts, model and judge revisions, and intervention metadata. Generations and
-judgments are linked by an opaque `review_id`; condition metadata is never sent
+judgments are linked by an opaque `review_id`. Condition metadata is never sent
 to the judge. Judgment batches are saved as atomic complete snapshots, so a
 restarted `judge` stage evaluates only missing IDs. `summary.json` records judge
 calibration, overall and per-category aggregates, rankings, selected strengths,

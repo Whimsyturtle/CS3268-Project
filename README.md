@@ -51,33 +51,12 @@ Hugging Face: accept its license, then run `uv run hf auth login`. Run tests wit
 
 ## Tune steering strength
 
-The common tuner uses the full development split and one `pooled_all` artifact
-per method. For ICV, run:
+The common tuner uses the full development split and one intervention per
+method. Run strength tuning with
 
 ```bash
-uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> --method icv
+uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id>
 ```
-
-On the compute cluster, keep the Slurm script in `$HOME/tune_icv.sh` while the
-repository remains at `$HOME/ICV`:
-
-```bash
-#!/bin/sh
-#SBATCH --job-name=tune-icv
-#SBATCH --gpus=a100-40:1
-
-set -eu
-cd "$HOME/ICV"
-exec "$HOME/ICV/.venv/bin/python" tuning.py \
-  --config configs/tuning.json \
-  --run-id icv-pooled-all-01 \
-  --method icv
-```
-
-Submit it from `$HOME` with `sbatch "$HOME/tune_icv.sh"`. Results are written
-under `$HOME/ICV/results/tuning/<run-id>/`. The Qwen3-4B judge runs on the
-allocated A100; local tests do not load it. AlpacaEval's judge remains a separate
-undecided evaluation setting.
 
 ## Contributing
 

@@ -13,8 +13,8 @@ unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 
 ## Strength hyperparameter tuning
 
-The common tuner tunes one `pooled_all` intervention per method. It uses all 65
-records and all 13 categories in
+The common tuner tunes one intervention per method. It uses all 65 records and
+all 13 categories in
 [`shared_examples/development.jsonl`](../shared_examples/development.jsonl).
 BBQ- or HolisticBias-specific pooling and category routing are separate
 ablations and are not used to select the primary strength.
@@ -50,10 +50,11 @@ unbiased references a higher mean bias-avoidance score. This automated check
 does not constitute human validation.
 
 Strength tuning does not use BBQ, HolisticBias, MMLU-Pro, or AlpacaEval test
-examples and does not estimate final benchmark performance. Run ICV tuning with:
+examples and does not estimate final benchmark performance. Run strength tuning
+with
 
 ```bash
-python tuning.py --config configs/tuning.json --run-id <unique-run-id> --method icv
+python tuning.py --config configs/tuning.json --run-id <unique-run-id>
 ```
 
 The implementation plan and verification steps are in the workspace-level

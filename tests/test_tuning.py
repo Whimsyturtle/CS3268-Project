@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _config(tmp_path):
-    artifact = tmp_path / "pooled_all"
+    artifact = tmp_path / "intervention"
     artifact.mkdir()
     (artifact / "vector.pt").write_bytes(b"vector")
     construction_ids = [
@@ -45,7 +45,7 @@ def _config(tmp_path):
         for line in (ROOT / "shared_examples" / "construction.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     metadata = {
-        "method": "upstream_joint_pca_v1", "variant": "pooled_all",
+        "method": "upstream_joint_pca_v1",
         "model": "google/gemma-3-1b-it", "revision": "a" * 40,
         "source_example_ids": construction_ids,
     }
@@ -86,15 +86,24 @@ def test_read_config_requires_pinned_distinct_judge(tmp_path):
         read_config(path)
 
 
-def test_read_config_rejects_wrong_pooled_source_inventory(tmp_path):
+def test_read_config_rejects_wrong_source_inventory(tmp_path):
     path = _config(tmp_path)
     config = json.loads(path.read_text(encoding="utf-8"))
     metadata_path = Path(config["methods"]["icv"]["intervention_dir"]) / "config.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     metadata["source_example_ids"][0] = "wrong-example"
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-    with pytest.raises(ValueError, match="pooled_all"):
+    with pytest.raises(ValueError, match="260-example intervention"):
         read_config(path)
+
+
+def test_read_config_allows_method_native_payload_files(tmp_path):
+    path = _config(tmp_path)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    artifact = Path(config["methods"]["icv"]["intervention_dir"])
+    (artifact / "vector.pt").unlink()
+    (artifact / "method-native.bin").write_bytes(b"payload")
+    assert read_config(path)["methods"]["icv"]["intervention_dir"] == str(artifact)
 
 
 def test_read_development_uses_all_records_and_categories():
@@ -198,7 +207,6 @@ def test_resolved_config_records_development_and_intervention_provenance(tmp_pat
     resolved = _resolved_run_config(path, config, None)
     assert len(resolved["development"]["example_ids"]) == 65
     assert resolved["development"]["categories"] == {category: 5 for category in sorted(CATEGORY_NAMES.values())}
-    assert resolved["interventions"]["icv"]["variant"] == "pooled_all"
     assert len(resolved["interventions"]["icv"]["source_example_ids"]) == 260
 
 

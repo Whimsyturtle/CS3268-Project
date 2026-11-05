@@ -32,7 +32,6 @@ BBQ_DIRECT = {
 # occupational: profession stereotypes are not equivalent to BBQ socioeconomic-status bias.
 # political: BBQ has no political category.
 BBQ_VARIANTS = {
-    "pooled_all": None,
     "pooled_bbq_axes": tuple(BBQ_DIRECT.values()),
     **{name: (category,) for name, category in BBQ_DIRECT.items()},
     "race_x_gender_components": ("race_and_ethnicity", "gender"),

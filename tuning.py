@@ -1,4 +1,4 @@
-"""Generate, judge, and select pooled steering strengths on development data."""
+"""Generate, judge, and select steering strengths on development data."""
 
 import argparse
 import contextlib
@@ -91,15 +91,15 @@ def read_config(path: Path) -> dict:
                 or any(not isinstance(value, (int, float)) or value < 0 for value in strengths)):
             raise ValueError(f"{method} strengths must be unique, nonnegative, and contain zero")
         artifact = _resolved_path(settings.get("intervention_dir", ""))
-        if not all((artifact / name).is_file() and (artifact / name).stat().st_size for name in ("vector.pt", "config.json")):
-            raise ValueError(f"missing pooled intervention artifact for {method}: {artifact}")
-        metadata = json.loads((artifact / "config.json").read_text(encoding="utf-8"))
+        metadata_path = artifact / "config.json"
+        if not metadata_path.is_file() or not metadata_path.stat().st_size:
+            raise ValueError(f"missing intervention metadata for {method}: {artifact}")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         source_ids = metadata.get("source_example_ids", [])
-        if (metadata.get("variant") != "pooled_all"
-                or metadata.get("model") != config["model"]["name"]
+        if (metadata.get("model") != config["model"]["name"]
                 or metadata.get("revision") != config["model"]["revision"]
                 or set(source_ids) != construction_ids or len(source_ids) != len(construction_ids)):
-            raise ValueError(f"{method} artifact is not the approved 260-example pooled_all intervention")
+            raise ValueError(f"{method} artifact is not the approved 260-example intervention")
     config["examples"] = str(_resolved_path(config["examples"]))
     return config
 

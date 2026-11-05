@@ -22,7 +22,7 @@
   },
   "methods": {
     "icv": {
-      "intervention_dir": "steering_vectors/icv/bbq_variants/pooled_all",
+      "intervention_dir": "steering_vectors/icv",
       "strengths": [0, 0.1, 0.25, 0.5]
     }
   }
