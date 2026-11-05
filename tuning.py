@@ -62,9 +62,11 @@ def read_config(path: Path) -> dict:
     config = json.loads(path.read_text(encoding="utf-8"))
     for role in ("model", "judge"):
         model = config.get(role, {})
-        if not model.get("name") or not REVISION_RE.fullmatch(model.get("revision", "")):
+        if (not isinstance(model, dict) or not isinstance(model.get("name"), str)
+                or not model["name"] or not isinstance(model.get("revision"), str)
+                or not REVISION_RE.fullmatch(model["revision"])):
             raise ValueError(f"{role} needs an immutable 40-character revision")
-        if not hasattr(torch, model.get("dtype", "")):
+        if not isinstance(model.get("dtype"), str) or not hasattr(torch, model["dtype"]):
             raise ValueError(f"unsupported {role} dtype")
     if config["model"]["name"] == config["judge"]["name"]:
         raise ValueError("judge must use a different checkpoint from the generator")
@@ -81,10 +83,12 @@ def read_config(path: Path) -> dict:
         raise ValueError("seed must be an integer")
     if not config.get("methods"):
         raise ValueError("configure at least one steering method")
-    construction_ids = {
+    construction_ids = [
         json.loads(line)["id"]
         for line in CONSTRUCTION_PATH.read_text(encoding="utf-8").splitlines() if line.strip()
-    }
+    ]
+    if len(construction_ids) != 260 or len(set(construction_ids)) != 260:
+        raise ValueError("construction data must contain exactly 260 unique IDs")
     for method, settings in config["methods"].items():
         strengths = settings.get("strengths", [])
         if (not strengths or len(strengths) != len(set(strengths)) or 0 not in strengths
@@ -95,10 +99,25 @@ def read_config(path: Path) -> dict:
         if not metadata_path.is_file() or not metadata_path.stat().st_size:
             raise ValueError(f"missing intervention metadata for {method}: {artifact}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        source_ids = metadata.get("source_example_ids", [])
-        if (metadata.get("model") != config["model"]["name"]
-                or metadata.get("revision") != config["model"]["revision"]
-                or set(source_ids) != construction_ids or len(source_ids) != len(construction_ids)):
+        if not isinstance(metadata, dict):
+            raise ValueError(f"{method} intervention metadata must be an object")
+        artifact_model = metadata.get("model")
+        if isinstance(artifact_model, str) and method == "icv":
+            artifact_model = {"name": artifact_model, "revision": metadata.get("revision")}
+            model_matches = all(artifact_model.get(key) == config["model"][key]
+                                for key in ("name", "revision"))
+        else:
+            model_matches = isinstance(artifact_model, dict) and all(
+                artifact_model.get(key) == config["model"][key] for key in ("name", "revision", "dtype")
+            )
+        if method == "sae":
+            construction = metadata.get("construction")
+            source_ids = construction.get("example_ids") if isinstance(construction, dict) else None
+        else:
+            source_ids = metadata.get("source_example_ids")
+        if (not model_matches or not isinstance(source_ids, list)
+                or any(not isinstance(value, str) for value in source_ids)
+                or len(source_ids) != 260 or set(source_ids) != set(construction_ids)):
             raise ValueError(f"{method} artifact is not the approved 260-example intervention")
     config["examples"] = str(_resolved_path(config["examples"]))
     return config

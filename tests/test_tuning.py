@@ -106,6 +106,76 @@ def test_read_config_allows_method_native_payload_files(tmp_path):
     assert read_config(path)["methods"]["icv"]["intervention_dir"] == str(artifact)
 
 
+@pytest.mark.parametrize("method", ["caa", "sae", "reft_r1"])
+def test_read_config_accepts_nested_model_metadata_without_changing_artifacts(tmp_path, method):
+    path = _config(tmp_path)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    settings = config["methods"].pop("icv")
+    config["methods"][method] = settings
+    artifact = Path(settings["intervention_dir"])
+    metadata_path = artifact / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["model"] = dict(config["model"])
+    del metadata["revision"]
+    if method == "sae":
+        metadata["construction"] = {"example_ids": metadata.pop("source_example_ids")}
+    original = json.dumps(metadata)
+    metadata_path.write_text(original, encoding="utf-8")
+    (artifact / "vector.pt").unlink()
+    (artifact / "native-payload.bin").write_bytes(b"method-specific")
+    path.write_text(json.dumps(config), encoding="utf-8")
+    assert read_config(path)["methods"] == {method: settings}
+    assert metadata_path.read_text(encoding="utf-8") == original
+    assert (artifact / "native-payload.bin").read_bytes() == b"method-specific"
+
+
+@pytest.mark.parametrize("field, value", [
+    ("name", "wrong/model"), ("revision", "b" * 40), ("dtype", "float32"), ("dtype", None),
+])
+def test_read_config_rejects_incompatible_nested_model(tmp_path, field, value):
+    path = _config(tmp_path)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    metadata_path = Path(config["methods"]["icv"]["intervention_dir"]) / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["model"] = {**config["model"], field: value}
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="260-example intervention"):
+        read_config(path)
+
+
+@pytest.mark.parametrize("malformation", ["duplicate", "missing", "not-list", "unhashable", "not-object"])
+def test_read_config_rejects_malformed_intervention_metadata(tmp_path, malformation):
+    path = _config(tmp_path)
+    config = json.loads(path.read_text(encoding="utf-8"))
+    metadata_path = Path(config["methods"]["icv"]["intervention_dir"]) / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    ids = metadata["source_example_ids"]
+    if malformation == "duplicate":
+        ids[-1] = ids[0]
+    elif malformation == "missing":
+        ids.pop()
+    elif malformation == "not-list":
+        metadata["source_example_ids"] = "invalid"
+    elif malformation == "unhashable":
+        ids[0] = {}
+    else:
+        metadata = []
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="260-example intervention|must be an object"):
+        read_config(path)
+
+
+def test_read_config_rejects_duplicate_construction_inventory(tmp_path, monkeypatch):
+    path = _config(tmp_path)
+    records = (ROOT / "shared_examples" / "construction.jsonl").read_text(encoding="utf-8").splitlines()
+    records[-1] = records[0]
+    construction = tmp_path / "construction.jsonl"
+    construction.write_text("\n".join(records), encoding="utf-8")
+    monkeypatch.setattr("tuning.CONSTRUCTION_PATH", construction)
+    with pytest.raises(ValueError, match="exactly 260 unique IDs"):
+        read_config(path)
+
+
 def test_read_development_uses_all_records_and_categories():
     records = read_development(ROOT / "shared_examples" / "development.jsonl")
     assert len(records) == len({record["id"] for record in records}) == 65
@@ -187,6 +257,8 @@ def test_generate_records_reuses_baseline_and_loads_artifact_once(tmp_path, monk
 
 def test_model_loader_records_requested_revision(monkeypatch):
     class LoadableModel:
+        config = SimpleNamespace()
+
         def to(self, _device):
             return self
 
@@ -197,6 +269,7 @@ def test_model_loader_records_requested_revision(monkeypatch):
     monkeypatch.setattr(runner.AutoTokenizer, "from_pretrained", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", lambda *_args, **_kwargs: model)
     loaded, _ = runner.load_model({"name": "test/model", "revision": "abc123", "dtype": "float32"})
+    assert loaded.config.revision == "abc123"
     assert loaded._cs3268_source_revision == "abc123"
 
 
@@ -444,7 +517,7 @@ def test_run_all_writes_complete_artifacts(tmp_path, monkeypatch):
         return records
 
     def fake_judge(_config, run_dir):
-        records = [json.loads(line) for line in (run_dir / "generations.jsonl").read_text().splitlines()]
+        records = [json.loads(line) for line in (run_dir / "generations.jsonl").read_text(encoding="utf-8").splitlines()]
         judgments = [{"review_id": record["review_id"], "bias_avoidance": 3,
                       "response_quality": 3, "reason": "The response is suitable."} for record in records]
         write_jsonl_atomic(run_dir / "judgments.jsonl", judgments)

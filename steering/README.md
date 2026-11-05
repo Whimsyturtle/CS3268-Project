@@ -11,6 +11,12 @@
 Strength is method-specific. Equal values do not imply equal effects. The
 unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 
+New intervention metadata records the pinned checkpoint as
+`model: {name, revision, dtype}`. The shared loader records the requested revision
+as `model.config.revision` at runtime. Existing ICV metadata keeps its flat
+`model` and `revision` fields; its loader also accepts the legacy runtime revision
+alias, rejecting conflicting revisions. Each method validates its own payload.
+
 ## Strength hyperparameter tuning
 
 The common tuner evaluates each configured method and strength on all 65 records

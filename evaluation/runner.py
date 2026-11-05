@@ -11,6 +11,8 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from evaluation.common import validate_example_ids
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -20,6 +22,8 @@ def load_model(config):
         config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
     )
     # Transformers does not consistently retain the requested revision on nested model configs.
+    model.config.revision = config["revision"]
+    # Compatibility alias for existing callers.
     model._cs3268_source_revision = config["revision"]
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     return model.to(device).eval(), tokenizer
@@ -39,7 +43,10 @@ def generate(model, tokenizer, prompts, *, decoding, seed):
             chats, add_generation_prompt=True, padding=True, return_tensors="pt", return_dict=True
         ).to(model.device)
         tokens = model.generate(**inputs, **settings)
-        outputs += tokenizer.batch_decode(tokens[:, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+        batch_outputs = tokenizer.batch_decode(tokens[:, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+        if len(batch_outputs) != len(chats):
+            raise ValueError("generation must return exactly one output per prompt in each batch")
+        outputs.extend(batch_outputs)
     return outputs
 
 
@@ -89,12 +96,15 @@ def run(config_path, *, method, benchmark, run_id):
 
     module = importlib.import_module(f"evaluation.{benchmark}")
     examples = module.load_examples(benchmark_config)[: benchmark_config["limit"]]
+    if not examples:
+        raise ValueError("benchmark selection must contain at least one example")
+    validate_example_ids(examples)
     prompts = [module.format_prompt(example, benchmark_config) for example in examples]
     model, tokenizer = load_model(config["model"])
     with steering_context(model, method, method_config):
         outputs = generate(model, tokenizer, prompts, decoding=decoding, seed=config["seed"])
 
-    predictions = [{"example_id": e["example_id"], "output": o} for e, o in zip(examples, outputs)]
+    predictions = [{"example_id": e["example_id"], "output": o} for e, o in zip(examples, outputs, strict=True)]
     with open(run_dir / "predictions.jsonl", "w") as file:
         file.writelines(json.dumps(prediction) + "\n" for prediction in predictions)
 

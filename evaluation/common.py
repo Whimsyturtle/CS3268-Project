@@ -21,14 +21,22 @@ def format_options(question, options):
     return "\n".join(lines) + "\n\nAnswer with only the letter of the correct option."
 
 
+def validate_example_ids(examples):
+    """Return the example IDs, rejecting duplicates before generation or scoring."""
+    ids = [example["example_id"] for example in examples]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Duplicate example IDs")
+    return set(ids)
+
+
 def outputs_by_id(examples, predictions):
     """Map example IDs to outputs, rejecting missing, duplicate, or unexpected prediction IDs."""
+    expected = validate_example_ids(examples)
     outputs = {}
     for prediction in predictions:
         if prediction["example_id"] in outputs:
             raise ValueError(f"Duplicate prediction ID: {prediction['example_id']}")
         outputs[prediction["example_id"]] = prediction["output"]
-    expected = {example["example_id"] for example in examples}
     if outputs.keys() != expected:
         missing, unexpected = expected - outputs.keys(), outputs.keys() - expected
         raise ValueError(f"{len(missing)} missing and {len(unexpected)} unexpected prediction IDs")

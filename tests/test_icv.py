@@ -1,6 +1,7 @@
 """Focused ICV math and hook checks using a small real Gemma 3 model."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -71,6 +72,33 @@ def test_load_checks_layer_locations(tmp_path):
     (tmp_path / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(ValueError, match="rebuild"):
         load_intervention(tmp_path, model=model)
+
+
+@pytest.mark.parametrize("canonical, legacy, error", [
+    ("test-revision", None, None),
+    (None, "test-revision", None),
+    ("test-revision", "test-revision", None),
+    ("test-revision", "different-revision", "conflicts"),
+    ("different-revision", None, "model or revision"),
+    (None, None, "model or revision"),
+])
+def test_load_checks_canonical_revision_and_legacy_fallback(tmp_path, canonical, legacy, error):
+    config = SimpleNamespace(
+        model_type="gemma3_text", num_hidden_layers=2, hidden_size=4, _name_or_path="test/model",
+    )
+    model = SimpleNamespace(config=config, model=SimpleNamespace(layers=[object(), object()]))
+    if canonical is not None:
+        config.revision = canonical
+    if legacy is not None:
+        model._cs3268_source_revision = legacy
+    metadata = {"model": "test/model", "revision": "test-revision", "layers": [0, 1], "method": METHOD}
+    (tmp_path / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
+    torch.save(torch.zeros(2, 4), tmp_path / "vector.pt")
+    if error:
+        with pytest.raises(ValueError, match=error):
+            load_intervention(tmp_path, model=model)
+    else:
+        torch.testing.assert_close(load_intervention(tmp_path, model=model), torch.zeros(2, 4))
 
 
 def test_construct_extracts_each_layer_and_removes_hooks():
