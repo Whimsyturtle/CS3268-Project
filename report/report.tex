@@ -13,6 +13,9 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 \usepackage{paralist}
+\usepackage{amsmath}
+
+\newcommand{\pending}[1]{\textcolor{red}{[#1]}} % Open items. Remove before submission.
 
 \title{Empirical Benchmark of Steering Methods for LLM Bias Mitigation}
 
@@ -75,6 +78,70 @@ Additional pages can be used only for references/appendix.
 \section{Related Work}
 
 \section{Methodology}
+\label{sec:method}
+
+We compare four activation-steering methods under one shared setup. All methods build their interventions from the same examples and are scored by the same evaluation code, and an unsteered baseline serves as the control.
+
+\subsection{Model and decoding}
+
+All experiments use \texttt{gemma-3-1b-it} (Gemma Team, 2025) at a pinned revision in bfloat16. The model has 26 decoder layers and a hidden size of 1,152. Its weights stay frozen, since steering only changes activations during the forward pass. Evaluation prompts use the model's chat template, and every method decodes greedily with the same batch size (16) and seed. Only the maximum output length differs during evaluation, and it differs by benchmark rather than by method (Table~\ref{tab:benchmarks}).
+
+\subsection{Steering data}
+
+Interventions are built from the English records of MBTP, a multilingual social bias benchmark (Kaneko et al., 2026) in which each prompt comes with a biased and an unbiased response. We take 325 records balanced across MBTP's 13 bias categories and split them into 260 construction examples (20 per category), used to build or train interventions, and 65 development examples (5 per category), used to select steering strength. Records derived from the same stereotype stay in the same split, and we check that neither split shares exact text with the evaluation prompts.
+
+\subsection{Steering methods}
+
+Below, $h$ is a hidden state at one token position and $\alpha$ is the steering strength, selected as described in Section~\ref{sec:strength}. Each method scales its direction differently, so values of $\alpha$ are not comparable across methods.
+
+\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) averages the difference between activations on unbiased and biased examples to get a steering vector, which is added to the model's activations during generation. \pending{CAA owner: add the layer, token position and scaling once the implementation is pushed.}
+
+\paragraph{ICV.} In-Context Vector (Liu et al., 2024) captures the shift between paired demonstrations. For each construction pair, we encode the biased and the unbiased response on their own, without the prompt or chat template, and subtract their final-token activations at the embeddings and at every decoder layer. Following the authors' released code, we fit one centred PCA over these differences jointly across layers and take the first principal component plus the mean difference, which gives one vector $v_\ell$ per decoder layer. This joint PCA and the added mean differ from the per-layer first principal component in our proposal. \pending{ICV is in a draft PR. Confirm it is final and that the team has approved this change from the proposal.} At inference, the MLP output $h$ of each layer is changed at every token to
+\begin{equation}
+h' = \lVert h \rVert \,\operatorname{normalize}\!\Big(\hat{h} + \alpha\big(1 + \max(0, \cos(h, -v_\ell))\big)\,\hat{v}_\ell\Big),
+\end{equation}
+where hats denote unit vectors, so the steered output keeps its original norm.
+
+\paragraph{SAE.} A sparse autoencoder (Cunningham et al., 2023) decomposes activations into interpretable features. We use a pretrained Gemma Scope 2 SAE\footnote{\url{https://huggingface.co/google/gemma-scope-2-1b-it}, \texttt{resid\_post/layer\_13\_width\_16k\_l0\_medium}.} with 16k features on the residual stream of layer 13, and select one feature with the activation ranking from AxBench (Wu et al., 2025). We run each construction response through the unsteered model, take each feature's largest activation over the response tokens, and score features by the area under the ROC curve (AUROC) with unbiased responses as the positive class. The top feature's decoder direction $d$ is then used to steer: we add $\alpha s d$ to the layer's output at every token, where $s$ is the feature's largest pooled activation on the construction responses. \pending{SAE is on an unmerged branch. Confirm it is final.}
+
+\paragraph{ReFT-r1.} ReFT-r1 (Wu et al., 2025) trains a single unit vector $w$ at one layer while the model stays frozen. We use layer 10. \pending{ReFT-r1 is in an open PR. Confirm it is final, and update this if a second layer is tried.} Each token receives the score $a_t = \operatorname{ReLU}(h_t^\top w)$, and during training $\bar{a}\,w$ is added at every token except the beginning-of-sequence token and padding, where $\bar{a}$ is the mean of the sequence's top 8 scores. The loss is the language-modelling loss on the response tokens plus an L1 penalty on the remaining scores, whose weight rises linearly from 0 to 0.005. We train for 3 epochs (132 steps) with AdamW, batch size 6, learning rate 0.01 with linear decay, and gradient clipping at 1.0, and we renormalise $w$ at each step so that only its direction changes. At inference we add $\alpha m w$ at every token, where $m$ is the largest token score on the construction examples. AxBench also trains on negative examples. We train on unbiased responses only, because applying a language-modelling loss to biased text would reward the bias.
+
+\subsection{Strength selection}
+\label{sec:strength}
+
+Strength is the main setting tuned for each method, and it is selected on development examples only. For each candidate strength, the model generates a response of up to 256 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. A pinned Qwen3-4B judge (Yang et al., 2025), which sees neither the method nor the strength, scores each response from 0 to 4 on bias avoidance and on response quality. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength. Before selection, the judge must rate unbiased reference responses above biased ones on bias avoidance, on average over 13 reference pairs, one per development category. \pending{The tuner is in a draft PR. Confirm this procedure, then add each method's candidate strengths and the selected values.}
+
+\subsection{Evaluation}
+
+Table~\ref{tab:benchmarks} lists the benchmarks. All methods and the baseline use identical held-out prompts, and interventions and strengths are frozen before evaluation.
+
+\begin{table}[h]
+  \caption{Evaluation benchmarks. BBQ and HolisticBias measure bias, while MMLU-Pro and AlpacaEval 2.0 check that general capability is preserved.}
+  \label{tab:benchmarks}
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llll}
+    \toprule
+    Benchmark & Task & Metrics & Max.\ tokens \\
+    \midrule
+    BBQ (Parrish et al., 2022) & Multiple choice & Bias score, accuracy, invalid rate & 8 \\
+    HolisticBias (Smith et al., 2022) & Generation & Full and Summed-Cluster Gen Bias & 512 \\
+    MMLU-Pro (Wang et al., 2024) & Multiple choice & Accuracy, invalid rate & 8 \\
+    AlpacaEval 2.0 (Dubois et al., 2024) & Instructions & LLM-as-a-judge & 2,048 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+For the multiple-choice benchmarks, the model is asked to answer with only a letter, which we parse from the start of its output. Steering can break this format, so we report the rate of invalid outputs. Invalid outputs are excluded from the BBQ metrics and count as wrong on MMLU-Pro. \pending{Update if the team changes the MMLU-Pro answer format.}
+
+BBQ scores each context condition separately, following the authors' analysis script. In disambiguated contexts, the bias score is
+\begin{equation}
+s_{\text{dis}} = 2\,\frac{n_{\text{biased}}}{n_{\text{non-unknown}}} - 1,
+\end{equation}
+where $n_{\text{biased}}$ counts answers that select the stereotyped option and $n_{\text{non-unknown}}$ counts answers other than ``unknown''. In ambiguous contexts, where ``unknown'' is the correct answer, the same quantity is multiplied by $(1 - \text{accuracy})$. A score of 0 means no lean, and positive scores lean towards the stereotype. We report accuracy for each condition as well, because a model can lower its bias score by answering ``unknown'' everywhere, which would hurt accuracy on disambiguated questions.
+
+For HolisticBias, we keep only sentences whose noun is ``person'' or that use a fixed phrase, so that differences between descriptors are not mixed with noun gender, and then sample one sentence for each combination of axis, bucket, template and descriptor. \pending{Add the style classifier for Gen Bias and the AlpacaEval judge once they are chosen.}
 
 \section{Experiments \& Results}
 
@@ -275,20 +342,27 @@ Note that the Reference section does not count towards the page limit.
 {
 \small
 
-[1] Alexander, J.A.\ \& Mozer, M.C.\ (1995) Template-based algorithms for
-connectionist rule extraction. In G.\ Tesauro, D.S.\ Touretzky and T.K.\ Leen
-(eds.), {\it Advances in Neural Information Processing Systems 7},
-pp.\ 609--616. Cambridge, MA: MIT Press.
+Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
+Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
 
-[2] Bower, J.M.\ \& Beeman, D.\ (1995) {\it The Book of GENESIS: Exploring
-  Realistic Neural Models with the GEneral NEural SImulation System.}  New York:
-TELOS/Springer--Verlag.
+Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
 
+Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
 
-[3] Hasselmo, M.E., Schnell, E.\ \& Barkai, E.\ (1995) Dynamics of learning and
-recall at excitatory recurrent synapses and cholinergic modulation in rat
-hippocampal region CA3. {\it Journal of Neuroscience} {\bf 15}(7):5249-5262.
+Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in-context learning more effective and controllable through latent space steering. {\it Proceedings of the 41st International Conference on Machine Learning}, 235, 32287--32307.
+
+Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
+
+Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
+
+Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
+
+Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
+
+Wu, Z., Arora, A., Geiger, A., Wang, Z., Huang, J., Jurafsky, D., Manning, C.\ D., \& Potts, C.\ (2025). AxBench: Steering LLMs? Even simple baselines outperform sparse autoencoders. {\it Proceedings of the 42nd International Conference on Machine Learning}.
+
+Yang, A., et al.\ (2025). Qwen3 technical report. {\it arXiv preprint arXiv:2505.09388}.
 }
 
 
