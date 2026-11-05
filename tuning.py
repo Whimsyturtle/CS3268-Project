@@ -126,22 +126,6 @@ def read_development(path: Path) -> list[dict]:
     return records
 
 
-def plan_conditions(config: dict, records: list[dict], method: str | None = None) -> list[dict]:
-    if not records:
-        raise ValueError("development records are required")
-    names = [method] if method else sorted(config["methods"])
-    unknown = set(names) - set(config["methods"])
-    if unknown:
-        raise ValueError(f"unknown steering method: {sorted(unknown)}")
-    conditions = [{"method": "baseline", "strength": 0.0}]
-    for name in names:
-        conditions.extend(
-            {"method": name, "strength": float(strength)}
-            for strength in config["methods"][name]["strengths"] if strength != 0
-        )
-    return conditions
-
-
 def assign_review_ids(records: list[dict], seed: int) -> list[dict]:
     ordered = sorted(
         (dict(record) for record in records),
@@ -186,35 +170,48 @@ def _read_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def generate_records(config: dict, conditions: list[dict], run_dir: Path) -> list[dict]:
-    output_path = run_dir / "generations.jsonl"
+def _shard_path(run_dir: Path, kind: str, method: str, strength: float) -> Path:
+    strength = float(strength)
+    label = str(int(strength)) if strength.is_integer() else repr(strength)
+    return run_dir / kind / method / f"{label}.jsonl"
+
+
+def _require_strength(config: dict, method: str, strength: float | None) -> float:
+    if strength is None:
+        raise ValueError("generate and judge stages require --strength")
+    strength = float(strength)
+    configured = {float(value) for value in config["methods"][method]["strengths"]}
+    if strength not in configured:
+        raise ValueError(f"strength {strength} is not configured for {method}")
+    return strength
+
+
+def generate_condition(config: dict, method: str, strength: float, run_dir: Path) -> list[dict]:
+    output_path = _shard_path(run_dir, "generations", method, strength)
     if output_path.exists():
         raise FileExistsError(f"refusing to replace {output_path}")
     development = read_development(Path(config["examples"]))
     prompts = [record["prompt"] for record in development]
     model, tokenizer = load_model(config["model"])
-    interventions = {}
-    generated = []
     try:
-        for condition in conditions:
-            method = condition["method"]
-            if method == "baseline":
-                context = contextlib.nullcontext()
-            else:
-                steering = importlib.import_module(f"steering.{method}")
-                if method not in interventions:
-                    directory = _resolved_path(config["methods"][method]["intervention_dir"])
-                    interventions[method] = steering.load_intervention(directory, model=model)
-                context = steering.apply(model, interventions[method], strength=condition["strength"])
-            with context:
-                outputs = generate(
-                    model, tokenizer, prompts, decoding=config["generation"], seed=config["seed"]
-                )
-            generated.extend({
-                "example_id": record["id"], "category": record["category"],
-                "prompt": record["prompt"], "output": output,
-                "method": method, "strength": condition["strength"],
-            } for record, output in zip(development, outputs, strict=True))
+        if strength == 0:
+            record_method = "baseline"
+            context = contextlib.nullcontext()
+        else:
+            record_method = method
+            steering = importlib.import_module(f"steering.{method}")
+            directory = _resolved_path(config["methods"][method]["intervention_dir"])
+            intervention = steering.load_intervention(directory, model=model)
+            context = steering.apply(model, intervention, strength=strength)
+        with context:
+            outputs = generate(
+                model, tokenizer, prompts, decoding=config["generation"], seed=config["seed"]
+            )
+        generated = [{
+            "example_id": record["id"], "category": record["category"],
+            "prompt": record["prompt"], "output": output,
+            "method": record_method, "strength": strength,
+        } for record, output in zip(development, outputs, strict=True)]
     finally:
         del model
         if torch.cuda.is_available():
@@ -308,10 +305,9 @@ def judge_batch(model, tokenizer, items: list[dict], config: dict) -> list[dict]
 
 
 def _score_items(model, tokenizer, items: list[dict], config: dict) -> list[dict]:
-    size = config["judge"]["batch_size"]
     results = []
-    for start in range(0, len(items), size):
-        results.extend(judge_batch(model, tokenizer, items[start:start + size], config))
+    for item in items:
+        results.extend(judge_batch(model, tokenizer, [item], config))
     return results
 
 
@@ -345,34 +341,48 @@ def calibrate_judge(config: dict, development: list[dict], *, model=None, tokeni
     return {"pairs": 13, "mean_bias_avoidance": means, "passed": means["unbiased"] > means["biased"]}
 
 
-def judge_pending(config: dict, run_dir: Path) -> list[dict]:
-    generations = _read_jsonl(run_dir / "generations.jsonl")
+def calibrate_run(config: dict, run_dir: Path) -> dict:
+    output_path = run_dir / "calibration.json"
+    if output_path.exists():
+        raise FileExistsError(f"refusing to replace {output_path}")
+    calibration = calibrate_judge(
+        config, read_development(Path(config["examples"]))
+    )
+    result = {"protocol": PROTOCOL, "calibration": calibration}
+    write_json_atomic(output_path, result)
+    if not calibration["passed"]:
+        raise RuntimeError("judge calibration failed")
+    return result
+
+
+def _load_calibration(run_dir: Path) -> dict:
+    path = run_dir / "calibration.json"
+    if not path.is_file():
+        raise FileNotFoundError("run calibration before judging or selecting")
+    result = json.loads(path.read_text(encoding="utf-8"))
+    if result.get("protocol") != PROTOCOL:
+        raise ValueError("calibration uses a different tuning protocol")
+    if not result.get("calibration", {}).get("passed"):
+        raise ValueError("a passed judge calibration is required")
+    return result["calibration"]
+
+
+def judge_condition(config: dict, method: str, strength: float, run_dir: Path) -> list[dict]:
+    _load_calibration(run_dir)
+    generations_path = _shard_path(run_dir, "generations", method, strength)
+    if not generations_path.is_file():
+        raise FileNotFoundError(f"missing generation shard {generations_path}")
+    generations = _read_jsonl(generations_path)
     items = make_judge_items(generations)
-    output_path = run_dir / "judgments.jsonl"
+    output_path = _shard_path(run_dir, "judgments", method, strength)
     completed = _read_jsonl(output_path) if output_path.exists() else []
     pending = pending_judge_items(items, completed)
     if not pending:
         return validate_judgments(items, completed)
     model, tokenizer = load_judge(config)
     try:
-        summary_path = run_dir / "summary.json"
-        existing_summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
-        if existing_summary and existing_summary.get("protocol") != PROTOCOL:
-            raise ValueError("existing judgments use a different tuning protocol")
-        calibration = existing_summary.get("calibration")
-        if not calibration or not calibration.get("passed"):
-            development = read_development(Path(config["examples"]))
-            calibration = calibrate_judge(config, development, model=model, tokenizer=tokenizer)
-            write_json_atomic(summary_path, {
-                "status": "judging" if calibration["passed"] else "calibration_failed",
-                "protocol": PROTOCOL,
-                "calibration": calibration,
-            })
-        if not calibration["passed"]:
-            raise RuntimeError("judge calibration failed")
-        size = config["judge"]["batch_size"]
-        for start in range(0, len(pending), size):
-            completed.extend(judge_batch(model, tokenizer, pending[start:start + size], config))
+        for item in pending:
+            completed.extend(judge_batch(model, tokenizer, [item], config))
             ordered = validate_judgments(
                 [item for item in items if item["review_id"] in {row["review_id"] for row in completed}],
                 completed,
@@ -505,16 +515,24 @@ def summarize_methods(config: dict, rows: list[dict]) -> dict:
 
 
 def select_run(config: dict, run_dir: Path) -> dict:
+    if len(config["methods"]) != 1:
+        raise ValueError("selection requires exactly one method")
     summary_path = run_dir / "summary.json"
     existing = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
-    if existing.get("protocol") != PROTOCOL:
+    if existing and existing.get("protocol") != PROTOCOL:
         raise ValueError("summary uses a different tuning protocol")
     if existing.get("status") == "complete":
         raise FileExistsError(f"refusing to replace completed {summary_path}")
-    if not existing.get("calibration", {}).get("passed"):
-        raise ValueError("a passed judge calibration is required before selection")
-    records = _read_jsonl(run_dir / "generations.jsonl")
-    judgments = _read_jsonl(run_dir / "judgments.jsonl")
+    calibration = _load_calibration(run_dir)
+    records, judgments = [], []
+    for method, settings in config["methods"].items():
+        for strength in settings["strengths"]:
+            generation_path = _shard_path(run_dir, "generations", method, strength)
+            judgment_path = _shard_path(run_dir, "judgments", method, strength)
+            if not generation_path.is_file() or not judgment_path.is_file():
+                raise FileNotFoundError(f"missing completed shard for {method} strength {strength}")
+            records.extend(_read_jsonl(generation_path))
+            judgments.extend(_read_jsonl(judgment_path))
     development = read_development(Path(config["examples"]))
     rows = aggregate(records, judgments, development=development, seed=config["seed"])
     expected_conditions = {("baseline", 0.0)} | {
@@ -539,7 +557,7 @@ def select_run(config: dict, run_dir: Path) -> dict:
         ))
         selections[method] = select_strength(method_rows)
     summary = {
-        "status": "complete", "protocol": PROTOCOL, "calibration": existing.get("calibration"),
+        "status": "complete", "protocol": PROTOCOL, "calibration": calibration,
         "aggregates": _strip_reasons(rows), "rankings": rankings, "selections": selections,
         "condition_summaries": summarize_methods(config, rows),
     }
@@ -547,10 +565,9 @@ def select_run(config: dict, run_dir: Path) -> dict:
     return summary
 
 
-def _resolved_run_config(config_path: Path, config: dict, method: str | None) -> dict:
+def _resolved_run_config(config_path: Path, config: dict, method: str) -> dict:
     development = read_development(Path(config["examples"]))
-    methods = {name: settings for name, settings in config["methods"].items()
-               if method is None or name == method}
+    methods = {method: config["methods"][method]}
     interventions = {
         name: json.loads((_resolved_path(settings["intervention_dir"]) / "config.json").read_text(encoding="utf-8"))
         for name, settings in methods.items()
@@ -568,40 +585,66 @@ def _resolved_run_config(config_path: Path, config: dict, method: str | None) ->
     }
 
 
-def run(config_path: Path, run_id: str, *, method: str | None = None, stage: str = "all") -> Path:
+def prepare_run(config_path: Path, config: dict, method: str, run_dir: Path) -> None:
+    resolved = _resolved_run_config(config_path, config, method)
+    resolved_path = run_dir / "config.json"
+    if resolved_path.exists():
+        if json.loads(resolved_path.read_text(encoding="utf-8")) != resolved:
+            raise ValueError("existing run uses a different resolved configuration")
+    else:
+        write_json_atomic(resolved_path, resolved)
+    (run_dir / "generations" / method).mkdir(parents=True, exist_ok=True)
+    (run_dir / "judgments" / method).mkdir(parents=True, exist_ok=True)
+
+
+def verify_run(config_path: Path, config: dict, method: str, run_dir: Path) -> None:
+    resolved_path = run_dir / "config.json"
+    if not resolved_path.is_file():
+        raise FileNotFoundError("run the prepare stage first")
+    resolved = _resolved_run_config(config_path, config, method)
+    if json.loads(resolved_path.read_text(encoding="utf-8")) != resolved:
+        raise ValueError("existing run uses a different resolved configuration")
+
+
+def run(
+    config_path: Path,
+    run_id: str,
+    *,
+    method: str,
+    stage: str,
+    strength: float | None = None,
+) -> Path:
     if (run_id in {".", ".."} or Path(run_id).name != run_id
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", run_id)):
         raise ValueError("run_id must be a single directory name")
     config = read_config(config_path)
-    if method and method not in config["methods"]:
+    if method not in config["methods"]:
         raise ValueError(f"unknown steering method: {method}")
-    if method:
-        config = {**config, "methods": {method: config["methods"][method]}}
+    config = {**config, "methods": {method: config["methods"][method]}}
     run_dir = ROOT / "results" / "tuning" / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-    resolved = _resolved_run_config(config_path, config, method)
-    resolved_path = run_dir / "config.json"
-    if resolved_path.exists():
-        previous = json.loads(resolved_path.read_text(encoding="utf-8"))
-        if previous != resolved:
-            raise ValueError("existing run uses a different resolved configuration")
+    if stage == "prepare":
+        if strength is not None:
+            raise ValueError("prepare does not accept --strength")
+        prepare_run(config_path, config, method, run_dir)
+        return run_dir
+
+    verify_run(config_path, config, method, run_dir)
+    if stage == "calibrate":
+        if strength is not None:
+            raise ValueError("calibrate does not accept --strength")
+        calibrate_run(config, run_dir)
+    elif stage == "generate":
+        strength = _require_strength(config, method, strength)
+        generate_condition(config, method, strength, run_dir)
+    elif stage == "judge":
+        strength = _require_strength(config, method, strength)
+        judge_condition(config, method, strength, run_dir)
+    elif stage == "select":
+        if strength is not None:
+            raise ValueError("select does not accept --strength")
+        select_run(config, run_dir)
     else:
-        write_json_atomic(resolved_path, resolved)
-    stages = ("generate", "judge", "select") if stage == "all" else (stage,)
-    for current_stage in stages:
-        if current_stage == "generate":
-            if not (stage == "all" and (run_dir / "generations.jsonl").exists()):
-                generate_records(config, plan_conditions(config, read_development(Path(config["examples"])), method), run_dir)
-        elif current_stage == "judge":
-            judge_pending(config, run_dir)
-        elif current_stage == "select":
-            existing_summary = run_dir / "summary.json"
-            completed = (existing_summary.exists()
-                         and json.loads(existing_summary.read_text(encoding="utf-8")).get("status") == "complete")
-            if not (stage == "all" and completed):
-                select_run(config, run_dir)
-        else:
-            raise ValueError(f"unknown stage: {current_stage}")
+        raise ValueError(f"unknown stage: {stage}")
     return run_dir
 
 
@@ -609,10 +652,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--method", choices=["caa", "icv", "sae", "reft_r1"])
-    parser.add_argument("--stage", choices=["generate", "judge", "select", "all"], default="all")
+    parser.add_argument("--method", required=True, choices=["caa", "icv", "sae", "reft_r1"])
+    parser.add_argument(
+        "--stage", required=True, choices=["prepare", "calibrate", "generate", "judge", "select"]
+    )
+    parser.add_argument("--strength", type=float)
     args = parser.parse_args()
-    print(run(args.config, args.run_id, method=args.method, stage=args.stage))
+    print(run(args.config, args.run_id, method=args.method, stage=args.stage, strength=args.strength))
 
 
 if __name__ == "__main__":

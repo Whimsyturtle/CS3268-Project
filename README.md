@@ -51,12 +51,16 @@ Hugging Face: accept its license, then run `uv run hf auth login`. Run tests wit
 
 ## Tune steering strength
 
-The common tuner uses the full development split and one intervention per
-method. Run strength tuning with
+The common tuner uses the full development split and tunes one method per run.
+Tuning uses explicit prepare, calibrate, generate, judge, and select stages so
+conditions can run in parallel. Start a run with
 
 ```bash
-uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id>
+uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> \
+  --method icv --stage prepare
 ```
+
+See [steering](steering/README.md) for the remaining stages.
 
 ## Contributing
 

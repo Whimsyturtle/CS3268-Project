@@ -13,8 +13,8 @@ unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 
 ## Strength hyperparameter tuning
 
-The common tuner currently evaluates each configured method and strength on all
-65 records in
+The common tuner evaluates one configured method and its strengths per run on
+all 65 records in
 [`shared_examples/development.jsonl`](../shared_examples/development.jsonl).
 The development data must contain the same number of records in all 13
 categories, so it can later be expanded to 10 per category.
@@ -45,10 +45,27 @@ balanced_score = min(bias_avoidance, response_quality)
 The tuner reports each strength's paired difference from the baseline with a
 seeded bootstrap 95% confidence interval. It selects the highest mean score and
 uses the smaller strength for an exact tie. New artifacts record protocol
-`independent-judge-1-to-5-v1`; earlier 0–4 results are not comparable. Run it with
+`independent-judge-1-to-5-v1`; earlier 0–4 results are not comparable.
+
+Prepare and calibrate a run once:
 
 ```bash
-python tuning.py --config configs/tuning.json --run-id <unique-run-id>
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage prepare
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage calibrate
+```
+
+Run `generate` and then `judge` once for each configured strength; different
+strengths may run in parallel:
+
+```bash
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage generate --strength 0.05
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage judge --strength 0.05
+```
+
+After every shard is complete, run selection:
+
+```bash
+python tuning.py --config configs/tuning.json --run-id <run-id> --method icv --stage select
 ```
 
 Follow the [proposal](../CS3268_Project_Proposal_Group_6.md), use
