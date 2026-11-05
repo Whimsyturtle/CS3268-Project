@@ -42,8 +42,8 @@ def _principal_direction(differences):
     return sign * vh[0] + mean
 
 
-def extract_differences(model, tokenizer, pairs):
-    """Extract paired differences as (pairs, embeddings-plus-layers, hidden)."""
+def construct(model, tokenizer, pairs):
+    """Return an (layers, hidden_size) ICV from (biased, unbiased) responses."""
     pairs = list(pairs)
     if len(pairs) < 2:
         raise ValueError("ICV needs at least two demonstration pairs")
@@ -66,7 +66,8 @@ def extract_differences(model, tokenizer, pairs):
             raise ValueError("model did not execute every decoder layer")
         return torch.stack([state[0] for state in captured]).flatten()
 
-    # The authors' code uses the final token from embeddings and decoder layers.
+    # The authors use the final token from the embedding and every decoder layer.
+    # Source: https://github.com/shengliu66/ICV/tree/b187c6387ae41097f5e38182d5a8df7d06ca9ec4
     handles = [module.register_forward_hook(capture) for module in modules]
     try:
         differences = torch.stack([
@@ -77,22 +78,11 @@ def extract_differences(model, tokenizer, pairs):
         for handle in handles:
             handle.remove()
 
-    return differences.reshape(len(pairs), len(layers) + 1, -1)
-
-
-def construct_from_differences(differences):
-    """Construct an ICV from a subset of previously extracted differences."""
-    if differences.ndim != 3 or differences.shape[1] < 2:
-        raise ValueError("ICV differences must include embeddings and decoder layers")
-    # The authors' code fits one PCA across embeddings and all decoder layers.
-    # The embedding segment is discarded because steering is applied only to MLPs.
-    direction = _principal_direction(differences.flatten(1))
-    return direction.reshape(differences.shape[1:])[1:]
-
-
-def construct(model, tokenizer, pairs):
-    """Return an (layers, hidden_size) ICV from (biased, unbiased) responses."""
-    return construct_from_differences(extract_differences(model, tokenizer, pairs))
+    # The authors fit one PCA to the concatenated states. The embedding segment
+    # is removed because steering is applied at decoder MLP outputs.
+    # Source: https://github.com/shengliu66/ICV/blob/b187c6387ae41097f5e38182d5a8df7d06ca9ec4/tasks/base.py#L254-L273
+    direction = _principal_direction(differences)
+    return direction.reshape(len(layers) + 1, -1)[1:]
 
 
 def load_intervention(intervention_dir: Path, *, model):
@@ -119,18 +109,18 @@ def _shift(hidden, vector, strength):
         return hidden
     original = hidden.float()
     vector = vector.to(device=hidden.device, dtype=torch.float32)
-    # The authors' code normalizes both terms and increases the multiplier when
-    # the activation points against the ICV.
+    # The authors normalize both terms and increase strength when the activation
+    # points against the ICV.
+    # Source: https://github.com/shengliu66/ICV/blob/b187c6387ae41097f5e38182d5a8df7d06ca9ec4/utils/llm_layers.py#L8-L27
     weight = 1 + F.cosine_similarity(original, -vector, dim=-1).clamp_min(0).unsqueeze(-1)
     changed = F.normalize(original, dim=-1) + strength * weight * F.normalize(vector, dim=-1)
-    # The released code returns float16. Use the input dtype so Gemma 3 BF16
-    # layers continue to receive BF16 activations.
+    # The released code returns float16. Preserve Gemma's input dtype instead.
     return (F.normalize(changed, dim=-1) * original.norm(dim=-1, keepdim=True)).to(hidden.dtype)
 
 
 @contextmanager
 def apply(model, intervention, *, strength: float):
-    """Steer every MLP output and token; remove hooks on context exit."""
+    """Steer every token at each MLP output and remove hooks on exit."""
     layers = _layers(model)
     if not isinstance(strength, (int, float)) or not math.isfinite(strength):
         raise ValueError("ICV strength must be finite")

@@ -23,11 +23,10 @@ results/tuning/<run_id>/judgments.jsonl
 results/tuning/<run_id>/summary.json
 ```
 
-`config.json` records the exact source state, all development IDs and category
-counts, model and judge revisions, and intervention metadata. Generations and
-judgments are linked by an opaque `review_id`. Condition metadata is never sent
-to the judge. Judgment batches are saved as atomic complete snapshots, so a
-restarted `judge` stage evaluates only missing IDs. `summary.json` records judge
-calibration, overall and per-category aggregates, rankings, selected strengths,
-and condition-anonymous qualitative summaries. A completed summary is never
-overwritten.
+- `config.json` records the resolved configuration and source state.
+- `generations.jsonl` stores generated responses.
+- `judgments.jsonl` stores the judge scores.
+- `summary.json` stores aggregates, rankings, and selected strengths.
+
+Interrupted judging resumes from the saved judgments. Completed summaries are
+not overwritten.

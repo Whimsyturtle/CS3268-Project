@@ -12,7 +12,6 @@ from steering.icv import (
     _shift,
     apply,
     construct,
-    construct_from_differences,
     load_intervention,
 )
 
@@ -27,16 +26,6 @@ def test_pca_is_joint_across_segments():
     differences = torch.tensor([[1., 0., 2., 0.], [2., 0., 4., 0.], [4., 0., 8., 0.]])
     expected = differences.mean(0) + torch.tensor([1., 0., 2., 0.]) / 5**0.5
     torch.testing.assert_close(_principal_direction(differences), expected)
-
-
-def test_construct_from_extracted_differences_drops_embedding_segment():
-    differences = torch.tensor([
-        [[1., 0.], [2., 0.], [3., 0.]],
-        [[2., 0.], [4., 0.], [6., 0.]],
-        [[4., 0.], [8., 0.], [12., 0.]],
-    ])
-    expected = _principal_direction(differences.flatten(1)).reshape(3, 2)[1:]
-    torch.testing.assert_close(construct_from_differences(differences), expected)
 
 
 def test_shift_uses_cosine_weight_and_normalized_addition():

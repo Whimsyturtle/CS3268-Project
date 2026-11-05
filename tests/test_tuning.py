@@ -228,7 +228,9 @@ def test_resume_rejects_changed_source_state(tmp_path, monkeypatch):
 def test_repository_has_only_common_tuning_entry_point():
     assert not (ROOT / "steering" / "icv" / "tune.py").exists()
     readme = (ROOT / "steering" / "icv" / "README.md").read_text(encoding="utf-8")
-    assert "python tuning.py" in readme
+    shared_readme = (ROOT / "steering" / "README.md").read_text(encoding="utf-8")
+    assert "[common tuner](../README.md)" in readme
+    assert "python tuning.py" in shared_readme
     assert "python -m steering.icv.tune" not in readme
 
 
