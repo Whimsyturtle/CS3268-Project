@@ -1,3 +1,4 @@
+import json
 import string
 
 import pytest
@@ -46,3 +47,21 @@ def caa_pairs():
         {"id": "one", "prompt": "Question?", "unbiased_response": "Evidence.", "biased_response": "Assumption."},
         {"id": "two", "prompt": "Another?", "unbiased_response": "Individual.", "biased_response": "Stereotype."},
     ]
+
+
+@pytest.fixture
+def caa_artifact(tmp_path, monkeypatch, caa_model, caa_tokenizer, caa_pairs):
+    from steering.caa import build as builder
+
+    source = tmp_path / "shared_examples/construction.jsonl"
+    source.parent.mkdir()
+    source.write_text("source data", encoding="utf-8")
+    config = {"model": {"name": caa_model.config.name_or_path, "revision": caa_model.config.revision, "dtype": "float32"}, "seed": 0}
+    config_path, settings = tmp_path / "experiment.json", tmp_path / "settings.json"
+    config_path.write_text(json.dumps(config))
+    settings.write_text(json.dumps({"layer": 0}))
+    monkeypatch.setattr(builder, "ROOT", tmp_path)
+    monkeypatch.setattr(builder, "validate_local", lambda *args: {"construction": caa_pairs})
+    monkeypatch.setattr(builder, "load_model", lambda config: (caa_model, caa_tokenizer))
+    monkeypatch.setattr(builder, "source_commit", lambda: {"commit": "fixture"})
+    return builder.build(config_path, settings, tmp_path / "artifact")
