@@ -1,8 +1,8 @@
 # SAE steering
 
 Implements [issue #9](https://github.com/Whimsyturtle/CS3268-Project/issues/9) and the
-[shared interface](../api.pyi) using one selected pretrained SAE feature, as required
-by the [proposal](../../CS3268_Project_Proposal_Group_6.md).
+[shared interface](../api.pyi) using pretrained SAE feature selection, following
+the [proposal](../../CS3268_Project_Proposal_Group_6.md).
 
 ## Feature selection and application
 
@@ -13,7 +13,11 @@ identifies the model and activation location. The base model, precision and seed
 come from [the experiment configuration](../../configs/main.json).
 
 Automatic selection follows the
-SAE-A activation-ranking approach in [AxBench](https://github.com/stanfordnlp/axbench/blob/main/axbench/models/sae.py):
+SAE-A activation-ranking approach in [AxBench](https://github.com/stanfordnlp/axbench/blob/main/axbench/models/sae.py),
+including its use of AUROC to select one feature. The ranking rule and fixed layer
+are implementation choices; the proposal does not specify them.
+
+The selection procedure is:
 
 1. Process each shared construction prompt with its biased and unbiased responses,
    using the model's chat template and the frozen, unsteered model.
