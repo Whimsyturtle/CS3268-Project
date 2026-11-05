@@ -217,6 +217,8 @@ def test_generate_condition_writes_independent_baseline_and_strength_shards(tmp_
 
 def test_model_loader_records_requested_revision(monkeypatch):
     class LoadableModel:
+        config = SimpleNamespace(name_or_path="test/model")
+
         def to(self, _device):
             return self
 
@@ -226,8 +228,9 @@ def test_model_loader_records_requested_revision(monkeypatch):
     model = LoadableModel()
     monkeypatch.setattr(runner.AutoTokenizer, "from_pretrained", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", lambda *_args, **_kwargs: model)
-    loaded, _ = runner.load_model({"name": "test/model", "revision": "abc123", "dtype": "float32"})
-    assert loaded._cs3268_source_revision == "abc123"
+    revision = "a" * 40
+    loaded, _ = runner.load_model({"name": "test/model", "revision": revision, "dtype": "float32"})
+    assert loaded._cs3268_source_revision == revision
 
 
 def test_resolved_config_records_development_and_intervention_provenance(tmp_path, monkeypatch):

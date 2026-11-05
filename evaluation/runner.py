@@ -5,6 +5,7 @@ import contextlib
 import csv
 import importlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -15,10 +16,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_model(config):
+    if not isinstance(config["revision"], str) or not re.fullmatch(r"[0-9a-f]{40}", config["revision"]):
+        raise ValueError("Model revision must be a full 40-character commit hash.")
     tokenizer = AutoTokenizer.from_pretrained(config["name"], revision=config["revision"])
     model = AutoModelForCausalLM.from_pretrained(
         config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
     )
+    if model.config.name_or_path != config["name"]:
+        raise ValueError("Loaded model name does not match the configured model.")
+    model.config.revision = config["revision"]
     # Transformers does not consistently retain the requested revision on nested model configs.
     model._cs3268_source_revision = config["revision"]
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"

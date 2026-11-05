@@ -26,3 +26,6 @@ benchmark sets only `max_new_tokens`. Other generation settings come from the mo
 `generation_config.json` at the pinned revision (which sets the stop tokens `<eos>` and
 `<end_of_turn>`) and the transformers version in `uv.lock`; the model's sampling
 settings (`top_k`, `top_p`) have no effect under greedy decoding.
+
+[sae.json](sae.json) pins the pretrained checkpoint used for
+[SAE feature selection](../steering/sae/README.md).

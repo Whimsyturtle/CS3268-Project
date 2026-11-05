@@ -2,8 +2,28 @@ import json
 import sys
 import types
 
+import pytest
+
 from evaluation import runner
 
+
+@pytest.mark.parametrize("revision", ["main", "short", "g" * 40, None])
+def test_load_model_rejects_unpinned_revision_before_loading(revision, monkeypatch):
+    def unexpected_load(*args, **kwargs):
+        pytest.fail("Unpinned model settings must fail before downloading anything")
+
+    monkeypatch.setattr(runner.AutoTokenizer, "from_pretrained", unexpected_load)
+    monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", unexpected_load)
+    with pytest.raises(ValueError, match="commit hash"):
+        runner.load_model({"name": "test/gemma", "revision": revision, "dtype": "float32"})
+
+
+def test_load_model_rejects_unexpected_model_name(monkeypatch):
+    monkeypatch.setattr(runner.AutoTokenizer, "from_pretrained", lambda *args, **kwargs: object())
+    model = types.SimpleNamespace(config=types.SimpleNamespace(name_or_path="other/model"))
+    monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", lambda *args, **kwargs: model)
+    with pytest.raises(ValueError, match="model name"):
+        runner.load_model({"name": "test/gemma", "revision": "a" * 40, "dtype": "float32"})
 
 def test_run_uses_shared_decoding_with_benchmark_max_new_tokens(tmp_path, monkeypatch):
     config = json.loads((runner.ROOT / "configs" / "main.json").read_text())

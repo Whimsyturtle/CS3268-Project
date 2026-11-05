@@ -18,17 +18,38 @@ A benchmark for open-ended instruction following that uses an LLM as a judge of 
 
 A benchmark for measuring stereotype reliance in multiple-choice question answering.
 
+## AUROC
+
+Short for area under the receiver operating characteristic curve. It measures how
+well scores rank positive examples above negative ones, with ties counting half;
+0.5 indicates chance-level ranking.
+
 ## CAA
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
+
+## Checkpoint
+
+A saved set of trained model parameters, loaded to reuse a model without training
+it again.
 
 ## Compute cluster
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
 
+## CUDA
+
+NVIDIA's platform for running computations on its GPUs. PyTorch's `cu126` build
+label means CUDA 12.6; it does not identify the installed NVIDIA driver version.
+
 ## Decoding hyperparameters
 
 Settings that control how a model generates text.
+
+## Decoder direction
+
+The vector that an SAE uses to map one feature's activation back into the model's
+activation space.
 
 ## Gemma 3
 
@@ -89,6 +110,16 @@ Short for Rank-1 Representation Finetuning, a method that learns a single hidden
 ## SAE
 
 Short for Sparse Autoencoder, a model that reconstructs activations using a small number of active features.
+
+## SAE feature
+
+One component of an SAE's sparse representation, with an activation value and a
+decoder direction.
+
+## Residual stream
+
+The internal representation passed between transformer layers and updated by
+their attention and feed-forward computations.
 
 ## Social bias
 
