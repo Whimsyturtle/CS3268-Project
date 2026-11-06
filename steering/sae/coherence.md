@@ -7,6 +7,9 @@ requested after inspection found contradictions and a severe repeated passage.
 It does not select a strength or change [the final configuration](../../configs/main.json).
 The proposal's held-out capability evaluations remain necessary.
 
+See the [verification record](verification.md#development-coherence-diagnostic)
+for the downloaded run and its separate supplementary model review.
+
 ## Protocol
 
 [The audit configuration](../../configs/sae_coherence.json) fixes the strength

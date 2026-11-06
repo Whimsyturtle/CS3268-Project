@@ -123,14 +123,115 @@ The selected strength's paired 95% confidence interval touches zero. This is
 development selection evidence; final benchmark evaluation and claims about
 bias reduction or preserved capability remain pending.
 
-The separate [coherence audit](coherence.md) is prepared for a broader strength
-sweep; its generation, judging, and manual review results remain pending.
+The separate [coherence diagnostic](#development-coherence-diagnostic) checks a
+broader strength sweep; its supplementary model review is distinct from human
+adjudication and the proposal's held-out evaluations.
 
 The complete run is retained at
 `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/results/tuning/sae-tuning-20261106-202053/`
 and was copied locally to the same repository-relative path. Raw generations,
 judgments, logs, and environment snapshots remain Git-ignored under the
 [results convention](../../results/README.md#strength-tuning).
+
+## Development coherence diagnostic
+
+Run `sae-coherence-20261106-225813` generated all 520 responses on clean source
+`02cb8e422d38059d3f058617727a5ce64c101942`, using the
+[saved configuration](../../results/coherence/sae-coherence-20261106-225813/config.json).
+The saved environment reports an H100 NVL MIG 3g.47gb, PyTorch
+`2.14.1+cu126`, Transformers `5.20.2`, and Python `3.13.18`.
+Each of the eight conditions contains the same 65 development prompts.
+
+The downloaded `sae-coherence-20261106-225813.tar.gz` has SHA-256
+`6c36bdbd58d5f4353960ed3a041c1adf16658ed6acd9472d98900d0124f2e76f`.
+All 1,198 extracted files match the archive byte for byte. Read-only verification
+checked the prompt inventory, review IDs, generation seal, intervention hashes,
+both judging continuation records, retained judgment prefixes, and raw-response
+hashes. All 1,002 saved judgments pass schema and exact-evidence validation;
+the 38 pending entries are exactly the missing pass/response pairs, covering
+23 responses. The original run remains unchanged and has no completed summary.
+
+Passing evidence validation does not establish a correct coherence label.
+The SoClaaS judge assigned severity 3 to two hiring responses in both passes,
+explicitly counting racial stereotypes as incoherence despite the rubric's
+exclusion. The actual runaway-repetition response instead has two pending
+judgments: the judge copied a very long repeated passage and its JSON was
+truncated. Further format recovery alone would not validate these labels.
+
+A separate, post-hoc model review therefore assessed every response. Eight
+fresh Codex reviewer subagents each read 65 randomly assigned responses, with
+strength, method, category, and earlier labels hidden. Four fresh consistency
+reviewers then reassessed all 182 responses flagged by either available SoClaaS
+pass or the first review, left unresolved, or given less than high confidence
+by the first reviewer. They saw earlier reasons but remained blind to strength;
+selected responses to the same prompt went to the same reviewer. The
+[review protocol](../../results/coherence/sae-coherence-20261106-225813-review/review_protocol.json)
+records the selection and timing clarification. Exact evidence and complete
+coverage were checked programmatically. These are model assessments, not human
+adjudication; the model checkpoint was not recorded by this review workflow.
+
+The [supplementary summary](../../results/coherence/sae-coherence-20261106-225813-review/summary.json)
+retains both the initial and reviewed results. The following counts use the
+reviewed labels; minor, major, and severe are mutually exclusive, and every row
+contains 65 responses. The rate interval is Wilson 95%; the paired difference
+uses the same prompts and 10,000 bootstrap samples, in percentage points (pp).
+
+| Strength | Minor | Major | Severe | Any issue | Rate, 95% interval | Difference from baseline, 95% interval (pp) |
+| --- | ---: | ---: | ---: | ---: | --- | --- |
+| Baseline | 7 | 0 | 0 | 7/65 | 10.8% [5.3, 20.6] | Reference |
+| 0.01 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-12.3, 7.7] |
+| 0.025 | 9 | 1 | 0 | 10/65 | 15.4% [8.6, 26.1] | +4.6 [-4.6, 15.4] |
+| 0.05 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-10.8, 7.7] |
+| 0.1 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-10.8, 9.2] |
+| 0.25 | 4 | 0 | 0 | 4/65 | 6.2% [2.4, 14.8] | -4.6 [-13.8, 4.6] |
+| 0.5 | 8 | 0 | 0 | 8/65 | 12.3% [6.4, 22.5] | +1.5 [-9.2, 12.3] |
+| 1.0 | 12 | 1 | 1 | 14/65 | 21.5% [13.3, 33.0] | +10.8 [-1.5, 23.1] |
+
+At 0.25, four prompts became affected and seven baseline issues resolved; none
+of the flagged prompts overlapped. Its four retained local errors are:
+
+- `tune-1f303749dc4dbd96`: addresses Sarah as having suffered the bereavement
+  assigned to James in the prompt.
+- `tune-08b8d8e6d4b5c515`: labels a section "Ignoring Employee Concerns" but
+  describes an employee dismissing the manager's concerns.
+- `tune-3a3a3ecf08c4ce71`: proposes a 5–7-minute research-methods talk despite
+  the prompt's explicit 10–15-minute talks.
+- `tune-43bbf40a3e1f77b8`: recommends a 3–4-hour event, then supplies consecutive
+  morning-through-evening activities spanning over eight hours.
+
+The one severe response is `tune-8beecf7afe25880e` at strength 1.0, for sitcom
+prompt `mbtp-f212c12-00293`: its most frequent eight-word sequence occurs 161
+times in a runaway repeated passage. The severe rate is 1/65 (1.5%, Wilson 95%
+interval 0.3–8.2%). No empty response occurred at any strength; the repetition
+screen also flags only this response. No severe breakdown was identified at
+the other strengths, including 0.25 and 0.5. Zero of 65 still has a Wilson upper
+bound of 5.6%; it does not establish zero risk.
+
+The reviewed results do not show increased incoherence at 0.25 on this set.
+All seven paired intervals for any issue include zero, including the higher
+point estimate at 1.0. Smaller strengths do not consistently have fewer errors.
+These findings do not establish a safer strength or replace the recorded tuning
+selection or held-out capability evaluations.
+
+Label uncertainty is material: 37 severity labels changed during consistency
+review, reducing the initial 85 flagged responses to 61; 17 retained positives
+have medium confidence. Reviewer confidence is not calibrated. The intervals
+condition on the model labels and do not account for judge error or multiple
+comparisons. These 65 development prompts are not a representative population
+sample. Human adjudication remains pending, and the incomplete SoClaaS passes
+must not be presented as completed or as verified prevalence.
+
+The full supplementary review is retained locally at
+`results/coherence/sae-coherence-20261106-225813-review.tar.gz`, SHA-256
+`476db00653e87cffd1c04c942c542fd85a478a49b3bdb6034e7a88fb3579add7`.
+Its 28 files include blinded inputs, initial and consistency labels, merged
+labels, protocol, summary, and `analysis.py`; every archived member was compared
+with its source bytes. With both run and review bundles extracted under
+`results/coherence/`, that script recomputes and checks the summary using the
+statistical functions from source `dd407d2`. The committed summary records its
+input hashes. Independent read-only verification reproduced the summary,
+checked exact evidence and original-source preservation, and reviewed the
+documented examples. No new Gemma generation or SoClaaS request was made locally.
 
 ## Original retained artifacts
 

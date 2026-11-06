@@ -39,3 +39,10 @@ under `results/coherence/<run_id>/`; commit checked `config.json`, `summary.json
 and all `judging_continuation*.json` records when present explicitly with `git add -f`.
 Retain the remaining raw files outside Git. The whole directory stays ignored
 during execution so stage transitions and resumes preserve a clean source checkout.
+
+Supplementary model reviews belong in a separate `<run_id>-review/` directory.
+Commit their checked `summary.json` and `review_protocol.json` explicitly; retain
+input pairs, individual labels, consistency reviews, and analysis code in the
+local review bundle. These summaries must identify model review as such and must
+not fill missing judgments or imply completion of the original audit's human
+adjudication. Link checked findings from the SAE verification record.
