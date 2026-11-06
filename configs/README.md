@@ -12,9 +12,7 @@ Store reviewed experiment configurations here. Each must record:
 
 [`tuning.json`](tuning.json) configures the development data, generator, judge,
 intervention, and candidate strengths. Strength zero is one shared unsteered
-baseline. Generator and intervention revisions must be immutable. The SoClaaS
-judge is recorded by its service model ID because the service does not expose a
-model revision.
+baseline. Generator and intervention revisions must be immutable.
 
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay
