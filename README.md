@@ -65,12 +65,16 @@ Gemma 3 is gated on Hugging Face: accept its license, then run
 ## Tune steering strength
 
 The common tuner uses the full development split and tunes one method per run.
-It generates every candidate sequentially, judges each response, and selects a
-strength with one command:
+The `--method` choices are `caa`, `icv`, `sae`, and `reft_r1`. The selected
+method must have an implementation, intervention, and candidate strengths in
+[`configs/tuning.json`](configs/tuning.json). The tuner generates every
+candidate sequentially, judges each response, and selects a strength with one
+command:
 
 ```bash
-uv run python tuning.py --config configs/tuning.json --run-id <unique-run-id> \
-  --method icv
+export SOCLAAS_API_KEY=<api-key>
+uv run --locked python tuning.py --config configs/tuning.json \
+  --run-id <unique-run-id> --method <method>
 ```
 
 ## Contributing

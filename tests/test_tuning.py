@@ -6,12 +6,15 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import requests
 
 from evaluation import runner
 from shared_examples.prepare_mbtp import CATEGORY_NAMES
 from tuning import (
     PROTOCOL,
     RUBRIC,
+    _judge_text,
+    _judge_client,
     _resolved_run_config,
     aggregate,
     assign_review_ids,
@@ -56,12 +59,12 @@ def _config(tmp_path):
         "model": {"name": "google/gemma-3-1b-it", "revision": "a" * 40, "dtype": "bfloat16"},
         "generation": {"batch_size": 4, "do_sample": False, "max_new_tokens": 256},
         "judge": {
-            "name": "Qwen/Qwen3-4B",
-            "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
-            "dtype": "bfloat16",
-            "do_sample": False,
-            "max_new_tokens": 512,
-            "enable_thinking": False,
+            "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+            "model": "x-test-3",
+            "api_key_env": "SOCLAAS_API_KEY",
+            "reasoning_effort": "none",
+            "temperature": 0,
+            "max_tokens": 512,
         },
         "methods": {"icv": {"intervention_dir": str(artifact), "strengths": [0, 0.1, 0.25]}},
     }
@@ -70,19 +73,24 @@ def _config(tmp_path):
     return path
 
 
-def test_read_config_requires_pinned_distinct_judge(tmp_path):
+def test_read_config_requires_approved_api_judge(tmp_path):
     path = _config(tmp_path)
-    assert read_config(path)["judge"]["name"] == "Qwen/Qwen3-4B"
+    assert read_config(path)["judge"]["model"] == "x-test-3"
     config = json.loads(path.read_text(encoding="utf-8"))
-    config["judge"]["revision"] = "main"
+    config["judge"]["model"] = "x-test-2"
     path.write_text(json.dumps(config), encoding="utf-8")
-    with pytest.raises(ValueError, match="revision"):
+    with pytest.raises(ValueError, match="approved SoClaaS"):
         read_config(path)
-    config["judge"]["revision"] = "1cfa9a7208912126459214e8b04321603b3df60c"
-    config["judge"]["name"] = config["model"]["name"]
+    config["judge"]["model"] = "x-test-3"
+    config["judge"]["temperature"] = 1
     path.write_text(json.dumps(config), encoding="utf-8")
-    with pytest.raises(ValueError, match="different"):
+    with pytest.raises(ValueError, match="temperature"):
         read_config(path)
+
+
+def test_repository_tuning_config_uses_2048_generation_tokens():
+    config = json.loads((ROOT / "configs" / "tuning.json").read_text(encoding="utf-8"))
+    assert config["generation"]["max_new_tokens"] == 2048
 
 
 def test_read_config_rejects_wrong_source_inventory(tmp_path):
@@ -243,6 +251,7 @@ def test_resume_rejects_changed_source_state(tmp_path, monkeypatch):
     monkeypatch.setattr("tuning.ROOT", tmp_path)
     monkeypatch.setattr("tuning.read_config", lambda _path: config)
     monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "new", "status": "", "uncommitted_diff": ""})
+    monkeypatch.setenv("SOCLAAS_API_KEY", "test-key")
     run_dir = tmp_path / "results" / "tuning" / "existing"
     run_dir.mkdir(parents=True)
     previous = _resolved_run_config(path, config, "icv")
@@ -258,6 +267,7 @@ def test_resume_rejects_changed_intervention_payload(tmp_path, monkeypatch):
     monkeypatch.setattr("tuning.ROOT", tmp_path)
     monkeypatch.setattr("tuning.read_config", lambda _path: config)
     monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "same", "status": "", "uncommitted_diff": ""})
+    monkeypatch.setenv("SOCLAAS_API_KEY", "test-key")
     run_dir = tmp_path / "results" / "tuning" / "existing"
     run_dir.mkdir(parents=True)
     resolved = _resolved_run_config(path, config, "icv")
@@ -322,7 +332,11 @@ def test_judge_payload_is_blinded_and_validation_is_exact():
         validate_judgments(items, bad)
     bad = [*results]
     bad[0] = {**bad[0], "reason": "First sentence. Second sentence."}
-    with pytest.raises(ValueError, match="one nonempty sentence"):
+    assert validate_judgments(items, bad)[0]["reason"] == "First sentence. Second sentence."
+    bad[0] = {**bad[0], "reason": "Detailed explanation " * 20}
+    assert len(validate_judgments(items, bad)[0]["reason"]) > 240
+    bad[0] = {**bad[0], "reason": "  "}
+    with pytest.raises(ValueError, match="nonempty string"):
         validate_judgments(items, bad)
     leaked = [{**_generated()[0], "review_id": "icv-0.25-example-1"}]
     with pytest.raises(ValueError, match="opaque"):
@@ -337,6 +351,54 @@ def test_judge_rubric_contains_fixed_anchors():
         assert f"{score} =" in RUBRIC
 
 
+def test_judge_text_sends_the_approved_deterministic_request():
+    requests = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"choices": [{"message": {"content": '{"bias_avoidance": 5}'}}]}
+
+    class Client:
+        def post(self, url, **kwargs):
+            requests.append({"url": url, **kwargs})
+            return Response()
+
+    client = Client()
+    settings = {
+        "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+        "model": "x-test-3", "reasoning_effort": "none",
+        "temperature": 0, "max_tokens": 512,
+    }
+    assert _judge_text(client, "score this", settings) == '{"bias_avoidance": 5}'
+    assert requests == [{
+        "url": "https://soclaas-api.comp.nus.edu.sg/v1/chat/completions",
+        "json": {
+            "model": "x-test-3",
+            "messages": [{"role": "user", "content": "score this"}],
+            "reasoning_effort": "none",
+            "temperature": 0,
+            "max_tokens": 512,
+        },
+        "timeout": 300,
+    }]
+
+
+def test_judge_client_bearer_auth_overrides_netrc(monkeypatch):
+    monkeypatch.setenv("SOCLAAS_API_KEY", "test-key")
+    monkeypatch.setattr(requests.sessions, "get_netrc_auth", lambda _url: ("netrc", "password"))
+    settings = {
+        "api_key_env": "SOCLAAS_API_KEY",
+        "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+    }
+    with _judge_client(settings) as client:
+        request = requests.Request("POST", settings["base_url"] + "/chat/completions")
+        prepared = client.prepare_request(request)
+    assert prepared.headers["Authorization"] == "Bearer test-key"
+
+
 def test_judge_item_returns_one_locally_identified_result(monkeypatch):
     item = make_judge_items(_generated()[:1])[0]
     prompts = []
@@ -345,13 +407,13 @@ def test_judge_item_returns_one_locally_identified_result(monkeypatch):
         "response_quality": 4, "reason": "The answer is relevant and avoids stereotypes."
     })
 
-    def model_text(_model, _tokenizer, prompt, _settings):
+    def model_text(_client, prompt, _settings):
         prompts.append(prompt)
         return "{}" if len(prompts) == 1 else valid
 
-    monkeypatch.setattr("tuning._model_text", model_text)
-    config = {"judge": {"do_sample": False, "max_new_tokens": 10}}
-    result = judge_item(object(), object(), item, config)
+    monkeypatch.setattr("tuning._judge_text", model_text)
+    config = {"judge": {"max_tokens": 10}}
+    result = judge_item(object(), item, config)
     assert result["review_id"] == item["review_id"]
     assert result["bias_avoidance"] == 4
     assert len(prompts) == 2
@@ -361,10 +423,10 @@ def test_judge_item_returns_one_locally_identified_result(monkeypatch):
 def test_judge_item_stops_after_two_total_attempts(monkeypatch):
     responses = iter(["first invalid", "second invalid"])
     calls = []
-    monkeypatch.setattr("tuning._model_text", lambda *_args: calls.append(1) or next(responses))
+    monkeypatch.setattr("tuning._judge_text", lambda *_args: calls.append(1) or next(responses))
     with pytest.raises(ValueError, match="two total attempts") as error:
-        judge_item(object(), object(), make_judge_items(_generated()[:1])[0],
-                   {"judge": {"do_sample": False, "max_new_tokens": 10}})
+        judge_item(object(), make_judge_items(_generated()[:1])[0],
+                   {"judge": {"max_tokens": 10}})
     assert len(calls) == 2
     assert "Last validation error:" in str(error.value)
     assert "second invalid" in str(error.value)
@@ -372,10 +434,10 @@ def test_judge_item_stops_after_two_total_attempts(monkeypatch):
 
 
 def test_judge_item_safely_reports_non_string_output(monkeypatch):
-    monkeypatch.setattr("tuning._model_text", lambda *_args: None)
+    monkeypatch.setattr("tuning._judge_text", lambda *_args: None)
     with pytest.raises(ValueError, match="Last response") as error:
-        judge_item(object(), object(), make_judge_items(_generated()[:1])[0],
-                   {"judge": {"do_sample": False, "max_new_tokens": 10}})
+        judge_item(object(), make_judge_items(_generated()[:1])[0],
+                   {"judge": {"max_tokens": 10}})
     assert "None" in str(error.value)
 
 
@@ -390,10 +452,10 @@ def test_judge_pending_snapshots_items_and_resumes(tmp_path, monkeypatch):
     generated = _generated()[:2]
     write_jsonl_atomic(run_dir / "generations.jsonl", generated)
     config = {"judge": {}}
-    monkeypatch.setattr("tuning.load_model", lambda _config: (object(), object()))
+    monkeypatch.setattr("tuning._judge_client", lambda _config: nullcontext(object()))
     calls = []
 
-    def score(_model, _tokenizer, item, _config):
+    def score(_client, item, _config):
         calls.append(item["review_id"])
         return {"review_id": item["review_id"], "bias_avoidance": 3,
                 "response_quality": 3, "reason": "The response is relevant and avoids stereotypes."}
@@ -435,10 +497,10 @@ def test_select_strength_uses_smaller_nonzero_strength_on_tie():
 
 def test_summary_prompt_is_condition_anonymous(monkeypatch):
     prompts = []
-    monkeypatch.setattr("tuning.load_model", lambda _config: (object(), object()))
+    monkeypatch.setattr("tuning._judge_client", lambda _config: nullcontext(object()))
     monkeypatch.setattr(
-        "tuning._model_text",
-        lambda _model, _tokenizer, prompt, _settings: prompts.append(prompt) or "Concise summary.",
+        "tuning._judge_text",
+        lambda _client, prompt, _settings: prompts.append(prompt) or "Concise summary.",
     )
     rows = [{
         "method": "icv", "strength": 0.25, "mean_bias_avoidance": 3.0,
@@ -499,6 +561,7 @@ def test_run_writes_flat_complete_artifacts(tmp_path, monkeypatch):
     monkeypatch.setattr("tuning.ROOT", tmp_path)
     monkeypatch.setattr("tuning.read_config", lambda _path: config)
     monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "abc", "status": "", "uncommitted_diff": ""})
+    monkeypatch.setenv("SOCLAAS_API_KEY", "test-key")
     development = read_development(Path(config["examples"]))
 
     def fake_generate(_config, method, run_dir):
@@ -527,6 +590,31 @@ def test_run_writes_flat_complete_artifacts(tmp_path, monkeypatch):
     assert {file.name for file in run_dir.iterdir()} == {
         "config.json", "generations.jsonl", "judgments.jsonl", "summary.json",
     }
+
+
+def test_run_requires_api_key_before_generation(tmp_path, monkeypatch):
+    path = _config(tmp_path)
+    monkeypatch.setattr("tuning.ROOT", tmp_path)
+    monkeypatch.delenv("SOCLAAS_API_KEY", raising=False)
+    generated = []
+    monkeypatch.setattr("tuning.generate_records", lambda *_args: generated.append(True))
+    with pytest.raises(ValueError, match="Set SOCLAAS_API_KEY"):
+        run(path, "missing-key", method="icv")
+    assert generated == []
+
+
+def test_completed_run_does_not_require_api_key(tmp_path, monkeypatch):
+    path = _config(tmp_path)
+    config = read_config(path)
+    monkeypatch.setattr("tuning.ROOT", tmp_path)
+    monkeypatch.setattr("tuning.read_config", lambda _path: config)
+    monkeypatch.setattr("tuning.source_commit", lambda: {"commit": "abc", "status": "", "uncommitted_diff": ""})
+    monkeypatch.delenv("SOCLAAS_API_KEY", raising=False)
+    run_dir = tmp_path / "results" / "tuning" / "complete"
+    run_dir.mkdir(parents=True)
+    write_json_atomic(run_dir / "config.json", _resolved_run_config(path, config, "icv"))
+    write_json_atomic(run_dir / "summary.json", {"status": "complete"})
+    assert run(path, "complete", method="icv") == run_dir
 
 
 def test_aggregate_rejects_unequal_example_coverage():

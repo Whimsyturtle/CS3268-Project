@@ -16,12 +16,15 @@ unsteered baseline bypasses steering with `contextlib.nullcontext()`.
 The common tuner evaluates one configured method and its strengths per run on
 all 65 records in
 [`shared_examples/development.jsonl`](../shared_examples/development.jsonl).
+The `--method` choices are `caa`, `icv`, `sae`, and `reft_r1`. A runnable
+method needs its implementation, intervention, and candidate strengths in
+[`configs/tuning.json`](../configs/tuning.json).
 The development data must contain the same number of records in all 13
 categories, so it can later be expanded to 10 per category.
-Candidate strengths are method-specific. The ICV candidates are `0`, `0.05`,
-`0.1`, `0.15`, and `0.2`. Strength zero uses one shared unsteered baseline.
+Candidate strengths are method-specific. Strength zero uses one shared
+unsteered baseline.
 
-The pinned `Qwen/Qwen3-4B` judge evaluates each generated response
+The SoClaaS `x-test-3` judge evaluates each generated response
 independently, in a stable order, without receiving its method, strength,
 category, baseline status, example ID, or review ID. It returns one JSON object
 containing a reason and two integer scores:
@@ -45,7 +48,9 @@ uses the smaller strength for an exact tie. New artifacts record protocol
 Run all configured strengths sequentially, then judge and select:
 
 ```bash
-python tuning.py --config configs/tuning.json --run-id <run-id> --method icv
+export SOCLAAS_API_KEY=<api-key>
+uv run --locked python tuning.py --config configs/tuning.json \
+  --run-id <run-id> --method <method>
 ```
 
 The run stores all conditions in one `generations.jsonl` and one
