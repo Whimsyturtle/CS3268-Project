@@ -51,8 +51,9 @@ pointwise, exploratory estimates; they do not correct for multiple comparisons
 or judge errors. These development prompts are not a representative sample of
 all future use.
 
-The two passes remain separate. Their disagreements, all flagged responses, and
-a seeded 20% sample of responses rated zero by both passes form a blinded manual
+The two passes remain separate. Their disagreements, all flagged responses,
+all responses with repaired evidence quotes, and a seeded 20% sample of the
+remaining responses rated zero by both passes form a blinded manual
 review queue. Review its prompt/response pairs before consulting the judge's
 labels. Automated results remain unadjudicated until that review is completed;
 do not describe them as verified incoherence prevalence. Empty-output and
@@ -105,17 +106,34 @@ unset SOCLAAS_API_KEY
 ```
 
 Repeat the judging command after an interruption; saved valid judgments are not
-requested again. A malformed reply gets up to two retries per invocation; after
-those fail, inspect the saved replies and rerun to try the unfinished item again.
-Earlier replies are preserved. Summarization needs no API key. `--stage all` runs
+requested again. An invalid reply gets up to two retries per invocation. An item
+that still fails is left unresolved while the script processes other items.
+After the batch, `pending_judgments.jsonl` lists unresolved items and judging
+exits with an error if any remain. They are never scored as zero or omitted from
+a completed summary; summarization rejects missing judgments. Inspect their raw
+replies before retrying. Earlier replies are preserved. Summarization needs no
+API key. `--stage all` runs
 generation, judging, and summarization in sequence when the key is already set.
 
 ### Recover from quote-formatting failures
 
 The judge can omit Markdown markers when quoting a response, such as quoting
-`Visual Aids:` when the source contains `**Visual Aids:**`. The exact evidence
-check rejects this. Retries now explicitly require literal formatting; they do
-not normalize quotes, change the severity rubric, or accept unsupported evidence.
+`Visual Aids:` when the source contains `**Visual Aids:**`. Wording reminders
+did not resolve the observed failure. The script now tries a narrow deterministic
+repair after exact validation fails: restore paired bold markers around one
+complete `**Label:**` at the start of a single-line list item. All other characters
+must match, and the source span must be unique. Partial labels, paraphrases,
+whitespace or punctuation changes and ambiguous matches are rejected. Recovery
+is conservatively disabled for any source containing backticks or tilde fences,
+including multiline code spans.
+
+The repaired evidence is an exact slice of the original source and passes the
+unchanged validator. The raw reply, severity, and reason remain unchanged.
+`evidence_recovery` on the derived judgment records the original and exact quotes,
+source offsets, and raw-file identity/hash. Saved failed replies are tried before
+new API calls. Every repaired response joins the blinded manual review queue,
+and the summary reports recovery counts per pass/strength. This is a format
+repair, not confirmation that the judge's coherence claim is correct.
 
 For a stopped run created before this fix, use the following on a compute node.
 Keep its original run ID, enter the API key as above, and ensure no other process
@@ -132,14 +150,19 @@ The explicit continuation requires a clean checkout and all 520 sealed
 generations. Configuration, rubric, development data, intervention, and response
 hashes must match. `config.json` retains the original generation source;
 `judging_continuation.json` records the new judging source and hashes of the
-retained judgment prefix and raw replies. Later resumes verify that evidence
-and require the continuation source. Only `judge` and `summarize` stages are
+retained judgment prefix and raw replies. If a later fix is needed, the same
+explicit command adds `judging_continuation-2.json`, then numbered successors,
+each recording the previous file's hash. Earlier records remain unchanged.
+Later resumes verify every record and its retained evidence and require the
+latest continuation source. The summary binds the complete record history.
+Only `judge` and `summarize` stages are
 allowed after continuation; no generation is repeated. Completed judgments and
 valid saved replies are reused. If interrupted, repeat the same recovery command.
 
 New raw files include the actual `request_prompt`; older files lack this field.
 Retain that distinction when inspecting retry behavior. The continuation mixes
-old and new retry wording, which may affect labels even with an unchanged rubric.
+retry/format-recovery implementations, which may affect accepted judgments even
+with an unchanged rubric; completed judgments are not retroactively replaced.
 Manual review remains necessary: an exact quote alone does not establish a
 contradiction or validate the judge's severity label.
 

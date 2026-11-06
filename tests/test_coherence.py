@@ -1,5 +1,6 @@
 import contextlib
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -127,17 +128,17 @@ def test_failed_invocations_append_attempts_and_recover_without_rejudging(tmp_pa
     monkeypatch.setattr(audit, "request_raw", lambda *args: calls.append(args[1]) or "malformed")
     originals = {}
     for invocation in range(2):
-        with pytest.raises(ValueError, match="three attempts"):
+        with pytest.raises(ValueError, match="unresolved judgments"):
             audit.judge_pending(config, tmp_path, records)
         for path, content in originals.items():
             assert path.read_bytes() == content
         originals = {p: p.read_bytes() for p in (tmp_path / "raw_judgments").glob("*.json")}
-        assert len(originals) == 3 * (invocation + 1)
-    assert len(calls) == 6 and "Previous response invalid:" in calls[1]
+        assert len(originals) == 6 * (invocation + 1)
+    assert len(calls) == 12 and "Previous response invalid:" in calls[1]
     valid = json.dumps({"choices": [{"message": {"content": json.dumps(result())}}]})
     monkeypatch.setattr(audit, "request_raw", lambda *args: calls.append(args[1]) or valid)
     completed = audit.judge_pending(config, tmp_path, records)
-    assert len(completed) == 2 and len(calls) == 8
+    assert len(completed) == 2 and len(calls) == 14
     for path, content in originals.items():
         assert path.read_bytes() == content
     # Simulate a crash after raw success but before the completed JSONL write.
@@ -178,6 +179,94 @@ def test_markdown_quote_retry_keeps_strict_evidence_and_raw_history(tmp_path, mo
     assert all(path.read_bytes() == content for path, content in originals.items())
     audit.judge_pending(config, tmp_path, [item])
     assert len(calls) == 1
+
+
+def test_saved_markdown_label_failure_recovers_without_api_call(tmp_path, monkeypatch):
+    config, records = fixture_data()
+    item = records[0]
+    lines = ["* **Avoid Complex Visuals:**  Minimize the use of complex animations, gradients, or color palettes.",
+             "* **Visual Aids:**  Use diagrams, sketches, and models to explain concepts."]
+    item["output"] = "\n\n".join(lines)
+    original = {"severity": 1, "reason": "Judge's original claim, still requiring manual review.",
+                "evidence": [{"source": "response", "quote": line[2:].replace("**", "")} for line in lines]}
+    raw = json.dumps({"choices": [{"message": {"content": json.dumps(original)}}]})
+    raw_path = tmp_path / "raw_judgments" / f"1-{item['review_id']}-0.json"
+    tuning.write_json_atomic(raw_path, {"http_body": raw})
+    before = raw_path.read_bytes()
+    prior = [{"pass": 2, "review_id": item["review_id"], **result()}]
+    tuning.write_jsonl_atomic(tmp_path / "judgments.jsonl", prior)
+    monkeypatch.setattr(tuning, "_judge_client", lambda _: contextlib.nullcontext(object()))
+    monkeypatch.setattr(audit, "request_raw", lambda *args: pytest.fail("recover saved reply without API cost"))
+    rows = audit.judge_pending(config, tmp_path, [item])
+    recovered = rows[1]
+    assert rows[:1] == prior and raw_path.read_bytes() == before
+    assert recovered["severity"] == original["severity"] and recovered["reason"] == original["reason"]
+    assert [e["quote"] for e in recovered["evidence"]] == [line[2:] for line in lines]
+    trace = recovered["evidence_recovery"]
+    assert trace["raw_file"] == raw_path.name and trace["raw_sha256"] == hashlib.sha256(before).hexdigest()
+    for repair in trace["repairs"]:
+        assert item["output"][repair["start"]:repair["end"]] == repair["exact_quote"]
+        assert repair["original_quote"] == original["evidence"][repair["evidence_index"]]["quote"]
+    assert audit.judge_pending(config, tmp_path, [item]) == rows
+
+
+@pytest.mark.parametrize("source,quote", [
+    ("* **Label:** text\n* **Label:** text", "Label: text"),
+    ("* **Label:**  text", "Label: text"),
+    ("* **Label:** text", "Label: invented"),
+    ("* **Label:** text", "label: text"),
+    ("* **Label:** text", "bel: text"),
+    ("```\n* **Label:** text\n```", "Label: text"),
+    ("`\n* **Label:** text\n`", "Label: text"),
+    ("~~~\n* **Label:** text\n~~~", "Label: text"),
+    ("    * **Label:** text", "Label: text"),
+    ("\t* **Label:** text", "Label: text"),
+    (" \t* **Label:** text", "Label: text"),
+    ("* ** Label:** text", " Label: text"),
+    ("* \\**Label:** text", "Label: text"),
+    ("* **Label:** `code`", "Label: `code`"),
+    ("2**3 + 4**5", "23 + 45"),
+])
+def test_evidence_recovery_rejects_text_changes_ambiguity_partial_labels_and_code(source, quote):
+    assert audit.restore_list_label_quote(source, quote) is None
+
+
+def test_invalid_judgments_do_not_block_other_items_or_become_zeroes(tmp_path, monkeypatch):
+    config, records = fixture_data()
+    records = records[:2]
+    records[0]["output"] = "UNRESOLVED"
+    monkeypatch.setattr(tuning, "_judge_client", lambda _: contextlib.nullcontext(object()))
+    def request(_client, prompt, _settings):
+        response = ({**result(1), "evidence": [{"source": "response", "quote": "invented"}]}
+                    if "UNRESOLVED" in prompt else result())
+        return json.dumps({"choices": [{"message": {"content": json.dumps(response)}}]})
+    monkeypatch.setattr(audit, "request_raw", request)
+    with pytest.raises(ValueError, match="2 unresolved judgments"):
+        audit.judge_pending(config, tmp_path, records)
+    completed = tuning._read_jsonl(tmp_path / "judgments.jsonl")
+    assert len(completed) == 2 and all(r["review_id"] == records[1]["review_id"] for r in completed)
+    pending = tuning._read_jsonl(tmp_path / "pending_judgments.jsonl")
+    assert len(pending) == 2 and all("severity" not in r for r in pending)
+    assert len(list((tmp_path / "raw_judgments").glob("*.json"))) == 8
+    with pytest.raises(ValueError, match="incomplete judgment inventory"):
+        audit.summarize(config, tmp_path, records)
+
+
+def test_recovered_zero_labels_are_counted_and_always_manually_reviewed(tmp_path):
+    config, records = fixture_data()
+    # Pick a zero-rated response outside the ordinary sampled review queue.
+    write_judgments(tmp_path, records)
+    audit.summarize(config, tmp_path, records)
+    sampled = {r["review_id"] for r in tuning._read_jsonl(tmp_path / "review_queue.jsonl")}
+    item = next(r for r in records if r["review_id"] not in sampled)
+    separate = tmp_path / "recovered"
+    judgments = write_judgments(separate, records)
+    row = next(r for r in judgments if r["review_id"] == item["review_id"] and r["pass"] == 1)
+    row["evidence_recovery"] = {"repairs": [{"original_quote": "format-recovery fixture"}]}
+    tuning.write_jsonl_atomic(separate / "judgments.jsonl", judgments)
+    summary = audit.summarize(config, separate, records)
+    assert sum(r["recovered_evidence_count"] for r in summary["aggregates"]) == 1
+    assert item["review_id"] in {r["review_id"] for r in tuning._read_jsonl(separate / "review_queue.jsonl")}
 
 
 @pytest.fixture
@@ -237,8 +326,43 @@ def test_explicit_judging_continuation_preserves_inputs_and_pins_new_source(cont
         audit.run(Path("unused"), "continued", "judge")
     source["status"] = ""
     source["commit"] = "another"
-    with pytest.raises(ValueError, match="changed inputs or source"):
+    with pytest.raises(ValueError, match="cannot continue judging a completed summary"):
         audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+
+
+def test_second_continuation_preserves_and_checks_every_previous_record(continuation_run, monkeypatch):
+    _, records, run_dir, source = continuation_run
+    monkeypatch.setattr(audit, "judge_pending", lambda *args: None)
+    audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    first_path = run_dir / "judging_continuation.json"
+    first = first_path.read_bytes()
+    # The user already tried the first fix and saved additional failed replies.
+    raw_path = run_dir / "raw_judgments/second-attempt.json"
+    tuning.write_json_atomic(raw_path, {"http_body": "new failure"})
+    source["commit"] = "second-fix"
+    with pytest.raises(ValueError, match="--resume-judging"):
+        audit.run(Path("unused"), "continued", "judge")
+    audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    second_path = run_dir / "judging_continuation-2.json"
+    second = second_path.read_bytes()
+    saved = json.loads(second)
+    assert saved["previous_manifest_sha256"] == hashlib.sha256(first).hexdigest()
+    assert "second-attempt.json" in saved["retained_raw_sha256"]
+    assert first_path.read_bytes() == first
+    audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    assert second_path.read_bytes() == second and len(audit.continuation_paths(run_dir)) == 2
+    raw_path.write_bytes(b"changed")
+    with pytest.raises(ValueError, match="changed retained raw"):
+        audit.run(Path("unused"), "continued", "judge")
+    tuning.write_json_atomic(raw_path, {"http_body": "new failure"})
+    first_path.write_bytes(first + b"\n")
+    with pytest.raises(ValueError, match="changed judging continuation history"):
+        audit.run(Path("unused"), "continued", "judge")
+    first_path.write_bytes(first)
+    write_judgments(run_dir, records)
+    audit.run(Path("unused"), "continued", "summarize")
+    summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+    assert "judging_continuations" in summary["inputs"]
 
 
 @pytest.mark.parametrize("change", ["judge", "decoding", "rubric", "data", "intervention", "generation",

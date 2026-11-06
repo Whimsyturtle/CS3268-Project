@@ -1,6 +1,7 @@
 """Development-only SAE coherence audit; does not select a steering strength."""
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -111,6 +112,54 @@ def judge_prompt(item):
         {"prompt": item["prompt"], "response": item["output"]}, ensure_ascii=False)
 
 
+def restore_list_label_quote(source, quote):
+    """Restore omitted bold markers around one complete list label, never text."""
+    if "\n" in quote or "\r" in quote or "`" in source or "~~~" in source:
+        return None
+    candidates = []
+    offset = 0
+    for line in source.splitlines(keepends=True):
+        match = re.match(r"^ {0,3}(?:[-+*]|\d+[.)]) (\*\*)([^\s*`\\][^*`\\\r\n]*:)(\*\*)(?=[ \t]|$)", line)
+        if match:
+            plain = line[:match.start(1)] + match[2] + line[match.end(3):]
+            start = plain.find(quote)
+            # The quote must cover the full label; partial-marker matches are ambiguous.
+            if 0 <= start <= match.start(1) and start + len(quote) >= match.start(1) + len(match[2]):
+                candidates.append((offset + start, offset + start + len(quote) + 4))
+        offset += len(line)
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def decode_judgment(raw, item):
+    content = json.loads(raw)["choices"][0]["message"]["content"]
+    result = json.loads(content)
+    try:
+        return validate_result(result, item), []
+    except ValueError as error:
+        if not isinstance(result, dict) or not isinstance(result.get("evidence"), list):
+            raise
+        repaired = copy.deepcopy(result)
+        repairs = []
+        for index, entry in enumerate(repaired["evidence"]):
+            if (not isinstance(entry, dict) or set(entry) != {"source", "quote"}
+                    or entry["source"] not in {"prompt", "response"}
+                    or not isinstance(entry["quote"], str) or not entry["quote"]):
+                raise error
+            source = item["prompt" if entry["source"] == "prompt" else "output"]
+            if entry["quote"] in source:
+                continue
+            span = restore_list_label_quote(source, entry["quote"])
+            if span is None:
+                raise error
+            start, end = span
+            exact = source[start:end]
+            repairs.append({"evidence_index": index, "source": entry["source"],
+                            "original_quote": entry["quote"], "exact_quote": exact,
+                            "start": start, "end": end, "method": "restore_bold_list_label"})
+            entry["quote"] = exact
+        return validate_result(repaired, item), repairs
+
+
 def saved_json(path, value):
     if path.exists():
         if json.loads(path.read_text(encoding="utf-8")) != value:
@@ -162,7 +211,9 @@ def judge_pending(config, run_dir, records):
         orders[1] = orders[1][1:] + orders[1][:1]
     pending = [(p, rid) for p in (1, 2) for rid in orders[p - 1] if (p, rid) not in known]
     if not pending:
+        tuning.write_jsonl_atomic(run_dir / "pending_judgments.jsonl", [])
         return completed
+    failures = []
     with tuning._judge_client(config["judge"]) as client:
         for pass_number, review_id in pending:
             item = by_id[review_id]
@@ -178,8 +229,7 @@ def judge_pending(config, run_dir, records):
             for raw_path in previous:
                 raw = json.loads(raw_path.read_text(encoding="utf-8"))["http_body"]
                 try:
-                    content = json.loads(raw)["choices"][0]["message"]["content"]
-                    result = validate_result(json.loads(content), item)
+                    result, repairs = decode_judgment(raw, item)
                     break
                 except (TypeError, ValueError, KeyError, IndexError) as error:
                     validation_error = f"{type(error).__name__}: {error}"[:200]
@@ -197,20 +247,31 @@ def judge_pending(config, run_dir, records):
                     raw_path = raw_dir / f"{prefix}{attempt}.json"
                     tuning.write_json_atomic(raw_path, {"http_body": raw, "request_prompt": prompt})
                     try:
-                        content = json.loads(raw)["choices"][0]["message"]["content"]
-                        result = validate_result(json.loads(content), item)
+                        result, repairs = decode_judgment(raw, item)
                         break
                     except (TypeError, ValueError, KeyError, IndexError) as error:
                         validation_error = f"{type(error).__name__}: {error}"[:200]
             if result is None:
-                raise ValueError(f"invalid judge response after three attempts this invocation: {raw_path}. "
-                                 f"Last error: {validation_error}. Rerun to retry this pending item; "
-                                 "all raw responses and completed judgments are preserved.")
-            completed.append({"pass": pass_number, "review_id": review_id, **result})
+                failures.append({"pass": pass_number, "review_id": review_id,
+                                 "raw_file": raw_path.name, "error": validation_error})
+                print(f"Unresolved pass {pass_number}, {review_id}; continuing with other items.", flush=True)
+                continue
+            row = {"pass": pass_number, "review_id": review_id, **result}
+            if repairs:
+                row["evidence_recovery"] = {"repairs": repairs, "raw_file": raw_path.name,
+                                            "raw_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest()}
+                print(f"Recovered literal Markdown evidence: pass {pass_number}, {review_id}, {raw_path.name}", flush=True)
+            completed.append(row)
             tuning.write_jsonl_atomic(output, completed)
             if len(completed) % 10 == 0 or len(completed) == len(records)*2:
                 print(f"Pass {pass_number}: saved {len(completed)}/{len(records)*2} judgments; "
                       f"raw requests saved under {raw_dir}", flush=True)
+    tuning.write_jsonl_atomic(run_dir / "pending_judgments.jsonl", failures)
+    if failures:
+        raise ValueError(f"{len(failures)} unresolved judgments after processing all pending items; "
+                         f"saved {len(completed)}/{len(records)*2} valid judgments. "
+                         f"See {run_dir / 'pending_judgments.jsonl'}. "
+                         "All raw replies are retained; summarization remains blocked until resolved.")
     return completed
 
 
@@ -243,6 +304,7 @@ def summarize(config, run_dir, records):
     judgments = tuning._read_jsonl(run_dir / "judgments.jsonl")
     by_id = {r["review_id"]: r for r in records}
     labels = {}
+    recovered = {(row["pass"], row["review_id"]) for row in judgments if row.get("evidence_recovery")}
     for row in judgments:
         key = (row.get("pass"), row.get("review_id"))
         if key in labels or key[0] not in (1, 2) or key[1] not in by_id:
@@ -256,6 +318,11 @@ def summarize(config, run_dir, records):
     continuation_path = run_dir / "judging_continuation.json"
     if continuation_path.exists():
         inputs["judging_continuation"] = digest(json.loads(continuation_path.read_text(encoding="utf-8")))
+    continuations = continuation_paths(run_dir)
+    if len(continuations) > 1:
+        inputs["judging_continuations"] = digest([
+            {"file": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            for path in continuations])
     summary_path = run_dir / "summary.json"
     if summary_path.exists():
         existing = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -271,7 +338,7 @@ def summarize(config, run_dir, records):
         for row in rows:
             a, b = (labels[(p, row["review_id"])] for p in (1, 2))
             disagreements_count += a != b
-            if a or b:
+            if a or b or any((p, row["review_id"]) in recovered for p in (1, 2)):
                 queue.append(row)
             else:
                 zeros.append(row)
@@ -294,6 +361,7 @@ def summarize(config, run_dir, records):
                                     "paired_vs_baseline": paired_summary(values,
                                         [labels[(p, r["review_id"])] >= threshold for r in baseline], config["seed"])}
             aggregates.append({**condition, "pass": p, "n": len(rows),
+                               "recovered_evidence_count": sum((p, r["review_id"]) in recovered for r in rows),
                                "severity_counts": {str(i): scores.count(i) for i in range(4)}, "thresholds": thresholds})
     random.Random(config["seed"]).shuffle(queue)
     tuning.write_jsonl_atomic(run_dir / "review_queue.jsonl", [
@@ -307,33 +375,53 @@ def summarize(config, run_dir, records):
     return summary
 
 
+def continuation_paths(run_dir):
+    first = run_dir / "judging_continuation.json"
+    extra = sorted(run_dir.glob("judging_continuation-*.json"),
+                   key=lambda p: int(p.stem.removeprefix("judging_continuation-")))
+    if extra and (not first.exists() or [p.name for p in extra] != [
+            f"judging_continuation-{i}.json" for i in range(2, len(extra) + 2)]):
+        raise ValueError("missing judging continuation record")
+    return ([first] if first.exists() else []) + extra
+
+
 def check_judging_continuation(run_dir, original, source, records, *, create):
     """Keep the original generation source and the pre-fix judging evidence intact."""
     if source["status"] or source["uncommitted_diff"]:
         raise ValueError("judging continuation requires a clean source checkout")
-    path = run_dir / "judging_continuation.json"
+    paths = continuation_paths(run_dir)
     judgments_path = run_dir / "judgments.jsonl"
     judgments = tuning._read_jsonl(judgments_path) if judgments_path.exists() else []
-    identity = {"generation_config_sha256": digest(original), "source": source,
+    identity = {"generation_config_sha256": digest(original),
                 "original_source": original["source"], "generations_sha256": digest(records)}
-    if path.exists():
+    previous_hash = None
+    for path in paths:
         saved = json.loads(path.read_text(encoding="utf-8"))
         if any(saved[key] != value for key, value in identity.items()):
-            raise ValueError("changed inputs or source for judging continuation")
+            raise ValueError("changed inputs for judging continuation")
+        if previous_hash is not None and saved.get("previous_manifest_sha256") != previous_hash:
+            raise ValueError("changed judging continuation history")
         if digest(judgments[:saved["retained_judgments_count"]]) != saved["retained_judgments_sha256"]:
             raise ValueError("changed retained judgments")
         for name, expected_hash in saved["retained_raw_sha256"].items():
             raw_path = run_dir / "raw_judgments" / name
             if not raw_path.exists() or hashlib.sha256(raw_path.read_bytes()).hexdigest() != expected_hash:
                 raise ValueError(f"changed retained raw response: {name}")
-    elif create:
+        previous_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if paths and saved["source"] == source:
+        return
+    if create:
         if (run_dir / "summary.json").exists():
             raise ValueError("cannot continue judging a completed summary")
-        saved_json(path, {**identity,
-            "reason": "Formatting-only retry feedback; rubric and exact evidence validation unchanged.",
+        path = run_dir / (f"judging_continuation-{len(paths) + 1}.json" if paths else "judging_continuation.json")
+        record = {**identity, "source": source,
+            "reason": "Recover literal Markdown evidence and defer invalid items; severity rubric unchanged.",
             "retained_judgments_count": len(judgments), "retained_judgments_sha256": digest(judgments),
             "retained_raw_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                    for p in sorted((run_dir / "raw_judgments").glob("*.json"))}})
+                                    for p in sorted((run_dir / "raw_judgments").glob("*.json"))}}
+        if previous_hash is not None:
+            record["previous_manifest_sha256"] = previous_hash
+        saved_json(path, record)
     else:
         raise ValueError("source changed; use --stage judge --resume-judging to record a continuation")
 
@@ -353,7 +441,7 @@ def run(config_path, run_id, stage="all", *, resume_judging=False):
         raise ValueError("generation requires a clean source checkout")
     config_file = run_dir / "config.json"
     original = json.loads(config_file.read_text(encoding="utf-8")) if config_file.exists() else resolved
-    continuation = (run_dir / "judging_continuation.json").exists()
+    continuation = bool(continuation_paths(run_dir))
     if stage in {"generate", "all"}:
         if continuation:
             raise ValueError("judging continuation permits only judge and summarize stages")
