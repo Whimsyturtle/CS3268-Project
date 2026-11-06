@@ -1,6 +1,6 @@
 # Development coherence audit
 
-[audit_coherence.py](../../audit_coherence.py) measures coherence separately from
+[audit_coherence.py](audit_coherence.py) measures coherence separately from
 the common tuner's combined response-quality score. This is a development-only
 diagnostic for [issue #13](https://github.com/Whimsyturtle/CS3268-Project/issues/13),
 requested after inspection found contradictions and a severe repeated passage.
@@ -67,7 +67,11 @@ the configured path; Git does not transfer its ignored tensor files. Its
 [verification record](verification.md#cu126-rebuild-and-verification) gives the
 retained bundle location. Avoid rebuilding the intervention for this audit.
 
-From the repository root on the allocated GPU node:
+For an audit already started with the root-level script at commit `02cb8e4`,
+finish all stages using that checkout and the original commands before pulling
+this relocation. Resuming an existing run requires its recorded source commit.
+
+For a new audit, from the repository root on the allocated GPU node:
 
 ```bash
 git switch sae-tuning
@@ -76,7 +80,7 @@ uv sync --locked
 uv run --locked python -c "import torch; print(torch.__version__, torch.version.cuda); assert torch.cuda.is_available()"
 AUDIT_RUN_ID="sae-coherence-$(date +%Y%m%d-%H%M%S)"
 echo "$AUDIT_RUN_ID"
-uv run --locked python audit_coherence.py --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage generate
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage generate
 ```
 
 Keep the printed run ID. Generation requires the same pinned model access as
@@ -93,8 +97,8 @@ history or a repository file:
 read -rsp "SoClaaS API key: " SOCLAAS_API_KEY
 echo
 export SOCLAAS_API_KEY
-uv run --locked python audit_coherence.py --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage judge
-uv run --locked python audit_coherence.py --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage summarize
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage judge
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage summarize
 unset SOCLAAS_API_KEY
 ```
 

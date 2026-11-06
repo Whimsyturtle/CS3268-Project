@@ -5,8 +5,14 @@ from pathlib import Path
 
 import pytest
 
-import audit_coherence as audit
+from steering.sae import audit_coherence as audit
 import tuning
+
+
+def test_audit_paths_still_resolve_from_repository_root():
+    assert audit.ROOT == tuning.ROOT
+    config = json.loads((audit.ROOT / "configs/sae_coherence.json").read_text(encoding="utf-8"))
+    assert (audit.ROOT / config["examples"]).is_file()
 
 
 def fixture_data():
