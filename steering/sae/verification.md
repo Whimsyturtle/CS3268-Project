@@ -29,9 +29,9 @@ the complete provenance is in the [saved metadata](../../steering_vectors/sae/co
   above. These tests include native Gemma and SAELens integration with small
   synthetic weights.
 
-Strength 1 is an application check only. Development tuning and final benchmark
-evaluation remain pending; these checks do not establish bias reduction or
-preserved capability.
+Strength 1 is an application check only; these checks do not establish bias
+reduction or preserved capability. See [development tuning](#development-strength-tuning)
+for the subsequent strength selection.
 
 ## cu126 rebuild and verification
 
@@ -69,7 +69,7 @@ Local inspection of the downloaded bundle confirmed:
   development prompts, seed, and decoding settings.
 - All six application checks passed at strength 1 with eight output tokens.
   Saved zero-strength and restored generations equal baseline; steered
-  generations differ. Development tuning and final benchmarks remain pending.
+  generations differ.
 
 The commands used on the GPU compute node were:
 
@@ -95,6 +95,39 @@ were extracted locally into their Git-ignored repository paths:
 | `steering_vectors/sae/cu126-20261105-202310/` | Metadata, decoder direction, activations, and feature scores |
 | `results/sae_checks/sae-cu126-20261105-202310/checks.json` | Application-check settings, provenance, results, and generations |
 | `results/sae_checks/sae-cu126-20261105-202310-logs/` | Environment, GPU, source commit, build, check, and comparison logs |
+
+## Development strength tuning
+
+Run `sae-tuning-20261106-202053` used clean source commit
+`8d8bbe21f3b50a8f2b35b6786ce0b5daa3ccb4b0` and the cu126 intervention above.
+The [saved configuration](../../results/tuning/sae-tuning-20261106-202053/config.json)
+records the development-only settings and intervention hashes. The
+[summary](../../results/tuning/sae-tuning-20261106-202053/summary.json) selects
+strength 0.25 under the [common tuning rule](../README.md#strength-hyperparameter-tuning).
+[The final configuration](../../configs/main.json) uses that strength and the
+same intervention directory.
+
+Inspection of the downloaded run confirmed:
+
+- All five conditions contain the same 65 development IDs, prompts, and
+  categories, with exactly 325 unique generations and matching judgments.
+- Recomputing every overall and category score, paired comparison, seeded
+  bootstrap interval, and ranking reproduces the summary and selected strength.
+- The recorded intervention metadata and all four file hashes match the retained
+  cu126 intervention. The archived lockfile matches the source commit exactly.
+- Package versions recorded after the run match the lockfile for PyTorch,
+  Transformers, SAELens, scikit-learn, requests, and huggingface-hub. The GPU
+  snapshot recorded after the run shows an H100 NVL with a 47 GB MIG device.
+
+The selected strength's paired 95% confidence interval touches zero. This is
+development selection evidence; final benchmark evaluation and claims about
+bias reduction or preserved capability remain pending.
+
+The complete run is retained at
+`bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/results/tuning/sae-tuning-20261106-202053/`
+and was copied locally to the same repository-relative path. Raw generations,
+judgments, logs, and environment snapshots remain Git-ignored under the
+[results convention](../../results/README.md#strength-tuning).
 
 ## Original retained artifacts
 
