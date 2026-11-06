@@ -31,3 +31,11 @@ results/tuning/<run_id>/summary.json
 Interrupted judging resumes from the saved judgments. Completed summaries are
 not overwritten. Commit `config.json` and `summary.json` for selected tuning
 runs, and keep `generations.jsonl` and `judgments.jsonl` outside Git.
+
+## Coherence audit
+
+The [development coherence audit](../steering/sae/coherence.md) retains its run
+under `results/coherence/<run_id>/`; commit checked `config.json` and
+`summary.json` explicitly with `git add -f`, and retain the remaining raw files
+outside Git. The whole directory stays ignored during execution so stage
+transitions and resumes preserve a clean source checkout.

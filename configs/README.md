@@ -16,6 +16,9 @@ baseline. Generator and intervention revisions must be immutable. The SoClaaS
 judge is recorded by its service model ID because the service does not expose a
 model revision.
 
+[`sae_coherence.json`](sae_coherence.json) configures the separate
+[development coherence audit](../steering/sae/coherence.md).
+
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay
 `null` until tuned on development data.

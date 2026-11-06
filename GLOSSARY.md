@@ -28,6 +28,12 @@ well scores rank positive examples above negative ones, with ties counting half;
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
 
+## Bootstrap confidence interval
+
+An estimate of uncertainty obtained by repeatedly sampling the observed examples
+with replacement and recomputing a statistic. Paired comparisons resample each
+prompt's baseline and steered result together.
+
 ## Checkpoint
 
 A saved set of trained model parameters, loaded to reuse a model without training
@@ -36,6 +42,12 @@ it again.
 ## Compute cluster
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
+
+## Coherence
+
+Whether a response is understandable and consistent within itself and with
+explicit facts in its prompt. The [development audit](steering/sae/coherence.md)
+defines which errors count and how their severity is measured.
 
 ## CUDA
 
@@ -132,3 +144,9 @@ A direction in a model's activation space used to influence its behavior.
 ## Unsteered baseline
 
 The base model evaluated without activation steering or changes to the evaluation prompts.
+
+## Wilson confidence interval
+
+An interval estimating uncertainty in an observed proportion, such as the fraction
+of responses with coherence failures. It retains a positive upper bound when no
+failures are observed in a finite sample.

@@ -123,6 +123,9 @@ The selected strength's paired 95% confidence interval touches zero. This is
 development selection evidence; final benchmark evaluation and claims about
 bias reduction or preserved capability remain pending.
 
+The separate [coherence audit](coherence.md) is prepared for a broader strength
+sweep; its generation, judging, and manual review results remain pending.
+
 The complete run is retained at
 `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/results/tuning/sae-tuning-20261106-202053/`
 and was copied locally to the same repository-relative path. Raw generations,

@@ -77,6 +77,9 @@ uv run --locked python tuning.py --config configs/tuning.json \
   --run-id <unique-run-id> --method <method>
 ```
 
+For the separate development diagnostic, see the
+[SAE coherence audit](steering/sae/coherence.md).
+
 ## Contributing
 
 - Track major tasks, experiments, and deliverables in [GitHub issues](https://github.com/Whimsyturtle/CS3268-Project/issues). Small fixes can stay within an existing task or PR.
