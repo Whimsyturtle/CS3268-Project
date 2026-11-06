@@ -11,6 +11,7 @@ dependencies = [
     "sae-lens==6.54.14",
     "safetensors>=0.8.0",
     "scikit-learn>=1.9.1",
+    "setuptools<82",
     "torch>=2.14.1",
     "transformers>=5.20.2",
 ]
