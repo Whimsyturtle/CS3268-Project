@@ -32,7 +32,9 @@ def test_run_uses_shared_decoding_with_benchmark_max_new_tokens(tmp_path, monkey
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config))
 
+    validated = []
     benchmark = types.SimpleNamespace(
+        validate=lambda config: validated.append(config),
         load_examples=lambda config: [{"example_id": "1", "data": {}}],
         format_prompt=lambda example, config: "prompt",
         score=lambda examples, predictions, config: [],
@@ -52,5 +54,6 @@ def test_run_uses_shared_decoding_with_benchmark_max_new_tokens(tmp_path, monkey
     run_dir = runner.run(config_path, method="baseline", benchmark="bbq", run_id="test")
 
     expected = {**config["decoding"], "max_new_tokens": config["benchmarks"]["bbq"]["max_new_tokens"]}
+    assert validated == [{**config["benchmarks"]["bbq"], "seed": config["seed"]}]
     assert calls == [expected]
     assert json.loads((run_dir / "config.json").read_text())["decoding"] == expected

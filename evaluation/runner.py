@@ -74,6 +74,9 @@ def run(config_path, *, method, benchmark, run_id):
     intervention_config = None
     if method != "baseline":
         intervention_config = json.loads((ROOT / method_config["intervention_dir"] / "config.json").read_text())
+    module = importlib.import_module(f"evaluation.{benchmark}")
+    if hasattr(module, "validate"):
+        module.validate(benchmark_config)
     run_dir = ROOT / "results" / benchmark / method / run_id
     run_dir.mkdir(parents=True)  # Fails if the run already exists, so runs are never overwritten.
 
@@ -91,7 +94,6 @@ def run(config_path, *, method, benchmark, run_id):
     }
     (run_dir / "config.json").write_text(json.dumps(resolved, indent=2))
 
-    module = importlib.import_module(f"evaluation.{benchmark}")
     examples = module.load_examples(benchmark_config)[: benchmark_config["limit"]]
     prompts = [module.format_prompt(example, benchmark_config) for example in examples]
     model, tokenizer = load_model(config["model"])
@@ -103,7 +105,8 @@ def run(config_path, *, method, benchmark, run_id):
         file.writelines(json.dumps(prediction) + "\n" for prediction in predictions)
 
     try:
-        metrics = module.score(examples, predictions, benchmark_config)
+        score_config = {**benchmark_config, "output_dir": run_dir, "generator": method}
+        metrics = module.score(examples, predictions, score_config)
     except NotImplementedError as error:
         print(f"Saved predictions to {run_dir}, but did not score them: {error}")
         return run_dir
