@@ -3,6 +3,7 @@ name = "cs3268-project"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alpaca-eval==0.6.6",
     "datasets>=5.1.0",
     "huggingface-hub>=2.2.0",
     "pandas>=3.0.6",
