@@ -29,8 +29,15 @@ recomputed without rerunning generation.
 Use the [proposal](../CS3268_Project_Proposal_Group_6.md) as the source for required
 metrics. For multiple-choice benchmarks (BBQ, MMLU-Pro), the model answers with a
 letter, which is parsed from its text output; each scorer's docstring explains how
-invalid outputs are counted. HolisticBias and AlpacaEval scorers still need their
-external classifier and judge settings, so their runs save predictions without metrics.
+invalid outputs are counted. HolisticBias still needs its external classifier,
+so its runs save predictions without metrics. AlpacaEval 2.0 with a custom judge
+reads its API key from the environment and saves the judge annotations and
+leaderboard with the run.
+Its prompt and weighted parser follow the
+[upstream configuration](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs/weighted_alpaca_eval_gpt4_turbo),
+and it compares against the pinned GPT-4 baseline responses. It reports weighted
+win rate. The judge that we are using differs from the official judge, so results are
+not comparable with the official AlpacaEval 2.0 leaderboard.
 
 Run a benchmark with
 `uv run python -m evaluation.runner --config configs/main.json --method baseline --benchmark bbq --run-id <run_id>`.

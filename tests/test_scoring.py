@@ -1,6 +1,10 @@
+import sys
+import types
+
+import pandas as pd
 import pytest
 
-from evaluation import bbq, mmlu_pro
+from evaluation import alpaca_eval, bbq, mmlu_pro
 from evaluation.common import outputs_by_id, parse_choice
 
 
@@ -71,4 +75,73 @@ def test_mmlu_pro_counts_invalid_outputs_as_wrong():
     predictions = [{"example_id": str(i), "output": output} for i, output in enumerate(outputs)]
     result = values(mmlu_pro.score(examples, predictions, {}), "math")
     assert result == {"accuracy": 0.5, "invalid_rate": 0.25}
+
+
+def test_alpaca_eval_uses_configured_judge_and_reference_outputs(monkeypatch):
+    monkeypatch.setenv("TEST_SOCLAAS_KEY", "secret")
+    captured = {}
+
+    def evaluate(**kwargs):
+        captured.update(kwargs)
+        leaderboard = pd.DataFrame(
+            {
+                "win_rate": [52.0],
+                "standard_error": [1.5],
+                "n_total": [2],
+                "avg_length": [20],
+            },
+            index=["icv"],
+        )
+        return leaderboard, []
+
+    monkeypatch.setitem(sys.modules, "alpaca_eval", types.SimpleNamespace(evaluate=evaluate))
+    examples = [
+        {"example_id": "a", "data": {"instruction": "A", "output": "Reference A"}},
+        {"example_id": "b", "data": {"instruction": "B", "output": "Reference B"}},
+    ]
+    predictions = [
+        {"example_id": "b", "output": "Candidate B"},
+        {"example_id": "a", "output": "Candidate A"},
+    ]
+    config = {
+        "generator": "icv",
+        "output_dir": ".",
+        "judge": {
+            "base_url": "https://example.test/v1",
+            "model": "judge-model",
+            "reasoning_effort": "none",
+            "api_key_env": "TEST_SOCLAAS_KEY",
+        },
+    }
+
+    result = values(alpaca_eval.score(examples, predictions, config))
+
+    assert captured["model_outputs"] == [
+        {"instruction": "A", "output": "Candidate A", "generator": "icv"},
+        {"instruction": "B", "output": "Candidate B", "generator": "icv"},
+    ]
+    assert captured["reference_outputs"][0]["output"] == "Reference A"
+    completions = captured["annotators_config"]["soclaas_weighted"]["completions_kwargs"]
+    assert completions["model_name"] == "judge-model"
+    assert completions["requires_chatml"] is True
+    assert completions["reasoning_effort"] == "none"
+    assert completions["openai_api_keys"] == ["secret"]
+    assert completions["client_kwargs"] == {"base_url": "https://example.test/v1"}
+    assert captured["fn_metric"] == "get_winrate"
+    assert result == {
+        "win_rate": 52.0,
+        "standard_error": 1.5,
+        "avg_length": 20.0,
+    }
+
+
+def test_alpaca_eval_requires_api_key(monkeypatch):
+    monkeypatch.delenv("TEST_SOCLAAS_KEY", raising=False)
+    config = {
+        "generator": "baseline",
+        "output_dir": ".",
+        "judge": {"api_key_env": "TEST_SOCLAAS_KEY"},
+    }
+    with pytest.raises(ValueError, match="TEST_SOCLAAS_KEY"):
+        alpaca_eval.validate(config)
 
