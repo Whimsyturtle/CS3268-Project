@@ -146,6 +146,150 @@ def test_failed_invocations_append_attempts_and_recover_without_rejudging(tmp_pa
     assert audit.judge_pending(config, tmp_path, records) == completed
 
 
+def test_markdown_quote_retry_keeps_strict_evidence_and_raw_history(tmp_path, monkeypatch):
+    config, records = fixture_data()
+    item = records[0]
+    item["output"] = "**Visual Aids:**  Use diagrams, sketches, and models to explain concepts."
+    bad = {**result(1), "evidence": [{"source": "response", "quote": item["output"].replace("**", "")}]}
+    good = {**result(1), "evidence": [{"source": "response", "quote": item["output"]}]}
+    with pytest.raises(ValueError, match="exact source substring"):
+        audit.validate_result(bad, item)
+    audit.validate_result(good, item)
+    # The other pass already succeeded; the failed pass has three durable replies.
+    prior = [{"pass": 2, "review_id": item["review_id"], **result()}]
+    tuning.write_jsonl_atomic(tmp_path / "judgments.jsonl", prior)
+    originals = {}
+    for attempt in range(3):
+        path = tmp_path / "raw_judgments" / f"1-{item['review_id']}-{attempt}.json"
+        tuning.write_json_atomic(path, {"http_body": json.dumps({"choices": [{"message": {"content": json.dumps(bad)}}]})})
+        originals[path] = path.read_bytes()
+    calls = []
+    monkeypatch.setattr(tuning, "_judge_client", lambda _: contextlib.nullcontext(object()))
+    def request(_client, prompt, _settings):
+        calls.append(prompt)
+        return json.dumps({"choices": [{"message": {"content": json.dumps(good)}}]})
+    monkeypatch.setattr(audit, "request_raw", request)
+    completed = audit.judge_pending(config, tmp_path, [item])
+    assert completed[:1] == prior and completed[1]["evidence"] == good["evidence"]
+    assert len(calls) == 1 and "Do not remove ** or paraphrase" in calls[0]
+    assert "Apply the same severity rubric" in calls[0]
+    saved = json.loads((tmp_path / "raw_judgments" / f"1-{item['review_id']}-3.json").read_text(encoding="utf-8"))
+    assert saved["request_prompt"] == calls[0]
+    assert all(path.read_bytes() == content for path, content in originals.items())
+    audit.judge_pending(config, tmp_path, [item])
+    assert len(calls) == 1
+
+
+@pytest.fixture
+def continuation_run(tmp_path, monkeypatch):
+    config, records = fixture_data()
+    development = tmp_path / "development.jsonl"
+    development.write_bytes(Path(config["examples"]).read_bytes())
+    config["examples"] = str(development)
+    config["methods"]["sae"]["intervention_dir"] = "unused"
+    source = {"commit": "old", "status": "", "uncommitted_diff": ""}
+    monkeypatch.setattr(audit, "ROOT", tmp_path)
+    monkeypatch.setattr(audit, "read_config", lambda _: copy.deepcopy(config))
+    monkeypatch.setattr(tuning, "source_commit", lambda: dict(source))
+    monkeypatch.setattr(tuning, "_intervention_provenance", lambda _: {"hash": "original"})
+    monkeypatch.setattr(tuning, "generate_records", lambda *args: pytest.fail("no regeneration"))
+    monkeypatch.setattr(audit, "generation_environment", lambda: pytest.fail("no GPU required"))
+    monkeypatch.setattr(audit, "judge_pending", lambda *args: pytest.fail("no judging before validation"))
+    run_dir = tmp_path / "results/coherence/continued"
+    tuning.write_jsonl_atomic(run_dir / "generations.jsonl", records)
+    audit.run(Path("unused"), "continued", "generate")
+    tuning.write_jsonl_atomic(run_dir / "judgments.jsonl", [
+        {"pass": 1, "review_id": records[0]["review_id"], **result()}])
+    tuning.write_json_atomic(run_dir / "raw_judgments/old.json", {"http_body": "retained"})
+    source["commit"] = "new"
+    return config, records, run_dir, source
+
+
+def test_explicit_judging_continuation_preserves_inputs_and_pins_new_source(continuation_run, monkeypatch):
+    config, records, run_dir, source = continuation_run
+    original = (run_dir / "config.json").read_bytes()
+    with pytest.raises(ValueError, match="--resume-judging"):
+        audit.run(Path("unused"), "continued", "judge")
+    for stage in ("generate", "all", "summarize"):
+        with pytest.raises(ValueError, match="only valid"):
+            audit.run(Path("unused"), "continued", stage, resume_judging=True)
+    for stage in ("generate", "all"):
+        with pytest.raises(ValueError, match="changed inputs"):
+            audit.run(Path("unused"), "continued", stage)
+    monkeypatch.setattr(audit, "judge_pending", lambda *args: None)
+    audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    manifest = (run_dir / "judging_continuation.json").read_bytes()
+    saved = json.loads(manifest)
+    assert saved["original_source"]["commit"] == "old"
+    assert saved["source"]["commit"] == "new" and saved["retained_judgments_count"] == 1
+    # Resume after a stop immediately following manifest creation, then append work.
+    audit.run(Path("unused"), "continued", "judge")
+    write_judgments(run_dir, records)
+    tuning.write_json_atomic(run_dir / "raw_judgments/new.json", {"http_body": "new"})
+    audit.run(Path("unused"), "continued", "summarize")
+    assert (run_dir / "summary.json").exists()
+    summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+    assert summary["inputs"]["judging_continuation"] == audit.digest(saved)
+    assert (run_dir / "config.json").read_bytes() == original
+    assert (run_dir / "judging_continuation.json").read_bytes() == manifest
+    with pytest.raises(ValueError, match="clean source"):
+        source["status"] = "M file"
+        audit.run(Path("unused"), "continued", "judge")
+    source["status"] = ""
+    source["commit"] = "another"
+    with pytest.raises(ValueError, match="changed inputs or source"):
+        audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+
+
+@pytest.mark.parametrize("change", ["judge", "decoding", "rubric", "data", "intervention", "generation",
+                                    "incomplete", "seal", "dirty", "summary"])
+def test_continuation_rejects_changed_or_incomplete_inputs(continuation_run, monkeypatch, change):
+    config, records, run_dir, source = continuation_run
+    if change == "judge":
+        config["judge"]["model"] = "different"
+    elif change == "decoding":
+        config["generation"] = {"max_new_tokens": 1}
+    elif change == "rubric":
+        monkeypatch.setattr(audit, "RUBRIC", "different")
+    elif change == "data":
+        path = Path(config["examples"])
+        path.write_bytes(path.read_bytes() + b"\n")
+    elif change == "intervention":
+        monkeypatch.setattr(tuning, "_intervention_provenance", lambda _: {"hash": "changed"})
+    elif change == "generation":
+        records[0]["output"] = "changed"
+        tuning.write_jsonl_atomic(run_dir / "generations.jsonl", records)
+    elif change == "incomplete":
+        tuning.write_jsonl_atomic(run_dir / "generations.jsonl", records[:-1])
+    elif change == "seal":
+        (run_dir / "generation_inputs.json").unlink()
+    elif change == "dirty":
+        source["status"] = "M file"
+    elif change == "summary":
+        tuning.write_json_atomic(run_dir / "summary.json", {})
+    with pytest.raises(ValueError):
+        audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    assert not (run_dir / "judging_continuation.json").exists()
+
+
+@pytest.mark.parametrize("change", ["judgment", "raw", "missing_raw"])
+def test_continuation_rejects_changes_to_retained_evidence(continuation_run, monkeypatch, change):
+    _, _, run_dir, _ = continuation_run
+    monkeypatch.setattr(audit, "judge_pending", lambda *args: None)
+    audit.run(Path("unused"), "continued", "judge", resume_judging=True)
+    monkeypatch.setattr(audit, "judge_pending", lambda *args: pytest.fail("changed evidence must stop"))
+    if change == "judgment":
+        rows = tuning._read_jsonl(run_dir / "judgments.jsonl")
+        rows[0]["reason"] = "changed"
+        tuning.write_jsonl_atomic(run_dir / "judgments.jsonl", rows)
+    elif change == "raw":
+        tuning.write_json_atomic(run_dir / "raw_judgments/old.json", {"http_body": "changed"})
+    else:
+        (run_dir / "raw_judgments/old.json").unlink()
+    with pytest.raises(ValueError, match="changed retained"):
+        audit.run(Path("unused"), "continued", "judge")
+
+
 def test_finite_strength_validation_precedes_tuner_load(tmp_path, monkeypatch):
     config = {"methods": {"sae": {"strengths": [0, float("nan")]}}}
     path = tmp_path / "config.json"

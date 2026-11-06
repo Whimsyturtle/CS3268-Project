@@ -187,10 +187,15 @@ def judge_pending(config, run_dir, records):
                 for attempt in range(next_attempt, next_attempt + 3):
                     prompt = judge_prompt(item)
                     if validation_error:
-                        prompt += "\nPrevious response invalid: " + validation_error + ". Correct the JSON format and evidence."
+                        prompt += ("\nPrevious response invalid: " + validation_error
+                                   + ". Correct the JSON format and evidence. Evidence must match the "
+                                   "decoded source text character for character, including Markdown "
+                                   "markers, punctuation, capitalization, and whitespace. Do not remove "
+                                   "** or paraphrase. You may quote a shorter exact excerpt within a "
+                                   "sentence if it supports the judgment. Apply the same severity rubric.")
                     raw = request_raw(client, prompt, config["judge"])
                     raw_path = raw_dir / f"{prefix}{attempt}.json"
-                    tuning.write_json_atomic(raw_path, {"http_body": raw})
+                    tuning.write_json_atomic(raw_path, {"http_body": raw, "request_prompt": prompt})
                     try:
                         content = json.loads(raw)["choices"][0]["message"]["content"]
                         result = validate_result(json.loads(content), item)
@@ -248,6 +253,9 @@ def summarize(config, run_dir, records):
         raise ValueError("incomplete judgment inventory")
     saved_json(run_dir / "judge_inputs.json", {"sha256": digest(records), "rubric": RUBRIC})
     inputs = {"generations": digest(records), "judgments": digest(judgments)}
+    continuation_path = run_dir / "judging_continuation.json"
+    if continuation_path.exists():
+        inputs["judging_continuation"] = digest(json.loads(continuation_path.read_text(encoding="utf-8")))
     summary_path = run_dir / "summary.json"
     if summary_path.exists():
         existing = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -299,7 +307,40 @@ def summarize(config, run_dir, records):
     return summary
 
 
-def run(config_path, run_id, stage="all"):
+def check_judging_continuation(run_dir, original, source, records, *, create):
+    """Keep the original generation source and the pre-fix judging evidence intact."""
+    if source["status"] or source["uncommitted_diff"]:
+        raise ValueError("judging continuation requires a clean source checkout")
+    path = run_dir / "judging_continuation.json"
+    judgments_path = run_dir / "judgments.jsonl"
+    judgments = tuning._read_jsonl(judgments_path) if judgments_path.exists() else []
+    identity = {"generation_config_sha256": digest(original), "source": source,
+                "original_source": original["source"], "generations_sha256": digest(records)}
+    if path.exists():
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if any(saved[key] != value for key, value in identity.items()):
+            raise ValueError("changed inputs or source for judging continuation")
+        if digest(judgments[:saved["retained_judgments_count"]]) != saved["retained_judgments_sha256"]:
+            raise ValueError("changed retained judgments")
+        for name, expected_hash in saved["retained_raw_sha256"].items():
+            raw_path = run_dir / "raw_judgments" / name
+            if not raw_path.exists() or hashlib.sha256(raw_path.read_bytes()).hexdigest() != expected_hash:
+                raise ValueError(f"changed retained raw response: {name}")
+    elif create:
+        if (run_dir / "summary.json").exists():
+            raise ValueError("cannot continue judging a completed summary")
+        saved_json(path, {**identity,
+            "reason": "Formatting-only retry feedback; rubric and exact evidence validation unchanged.",
+            "retained_judgments_count": len(judgments), "retained_judgments_sha256": digest(judgments),
+            "retained_raw_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                    for p in sorted((run_dir / "raw_judgments").glob("*.json"))}})
+    else:
+        raise ValueError("source changed; use --stage judge --resume-judging to record a continuation")
+
+
+def run(config_path, run_id, stage="all", *, resume_judging=False):
+    if resume_judging and stage != "judge":
+        raise ValueError("--resume-judging is only valid with --stage judge")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", run_id):
         raise ValueError("run_id must be a single directory name")
     config = read_config(config_path)
@@ -310,7 +351,16 @@ def run(config_path, run_id, stage="all"):
                 "intervention": tuning._intervention_provenance(tuning._resolved_path(config["methods"]["sae"]["intervention_dir"]))}
     if stage in {"generate", "all"} and (source["status"] or source["uncommitted_diff"]):
         raise ValueError("generation requires a clean source checkout")
-    saved_json(run_dir / "config.json", resolved)
+    config_file = run_dir / "config.json"
+    original = json.loads(config_file.read_text(encoding="utf-8")) if config_file.exists() else resolved
+    continuation = (run_dir / "judging_continuation.json").exists()
+    if stage in {"generate", "all"}:
+        if continuation:
+            raise ValueError("judging continuation permits only judge and summarize stages")
+        saved_json(config_file, resolved)
+    else:
+        # Source changes need explicit, separately recorded continuation below.
+        saved_json(config_file, {**resolved, "source": original["source"]})
     generations_path = run_dir / "generations.jsonl"
     if generations_path.exists():
         records = validate_inventory(config, tuning._read_jsonl(generations_path), complete=False)
@@ -330,6 +380,10 @@ def run(config_path, run_id, stage="all"):
     elif not seal.exists():
         raise ValueError("missing completed generation hash; finish generate stage first")
     saved_json(seal, {"sha256": digest(records)})
+    if stage in {"judge", "summarize"}:
+        saved_json(run_dir / "judge_inputs.json", {"sha256": digest(records), "rubric": RUBRIC})
+        if source != original["source"] or continuation:
+            check_judging_continuation(run_dir, original, source, records, create=resume_judging)
     if stage in {"judge", "all"}:
         judge_pending(config, run_dir, records)
     if stage in {"summarize", "all"}:
@@ -342,8 +396,10 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--stage", choices=["generate", "judge", "summarize", "all"], default="all")
+    parser.add_argument("--resume-judging", action="store_true",
+                        help="record a source change for judging sealed generations; preserve prior evidence")
     args = parser.parse_args()
-    print(run(args.config, args.run_id, args.stage))
+    print(run(args.config, args.run_id, args.stage, resume_judging=args.resume_judging))
 
 
 if __name__ == "__main__":

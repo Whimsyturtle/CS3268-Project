@@ -67,9 +67,10 @@ the configured path; Git does not transfer its ignored tensor files. Its
 [verification record](verification.md#cu126-rebuild-and-verification) gives the
 retained bundle location. Avoid rebuilding the intervention for this audit.
 
-For an audit already started with the root-level script at commit `02cb8e4`,
-finish all stages using that checkout and the original commands before pulling
-this relocation. Resuming an existing run requires its recorded source commit.
+Ordinary resumes require the recorded source commit. For an audit already
+started with the root-level script at commit `02cb8e4`, keep that checkout and
+the original commands unless using the explicit [judging recovery](#recover-from-quote-formatting-failures)
+below.
 
 For a new audit, from the repository root on the allocated GPU node:
 
@@ -88,8 +89,9 @@ the original tuning run. Completed strength conditions are retained if the
 process stops; rerun the command with that same ID and source/configuration to
 resume. Use the same GPU type and software environment for generation resumes.
 
-Judging does not load Gemma or need a GPU. On a compute allocation with network
-access, activate the same checkout/environment, set `AUDIT_RUN_ID` to the saved
+Judging does not load Gemma or need a GPU, but its shared imports still load
+PyTorch. Use a compute allocation with network access, not the resource-limited
+login node. Activate the same checkout/environment, set `AUDIT_RUN_ID` to the saved
 ID if using a new shell, and enter the API key without putting it in command
 history or a repository file:
 
@@ -108,11 +110,46 @@ those fail, inspect the saved replies and rerun to try the unfinished item again
 Earlier replies are preserved. Summarization needs no API key. `--stage all` runs
 generation, judging, and summarization in sequence when the key is already set.
 
+### Recover from quote-formatting failures
+
+The judge can omit Markdown markers when quoting a response, such as quoting
+`Visual Aids:` when the source contains `**Visual Aids:**`. The exact evidence
+check rejects this. Retries now explicitly require literal formatting; they do
+not normalize quotes, change the severity rubric, or accept unsupported evidence.
+
+For a stopped run created before this fix, use the following on a compute node.
+Keep its original run ID, enter the API key as above, and ensure no other process
+is writing to the run directory:
+
+```bash
+git pull --ff-only origin sae-tuning
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage judge --resume-judging &&
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage summarize
+unset SOCLAAS_API_KEY
+```
+
+The explicit continuation requires a clean checkout and all 520 sealed
+generations. Configuration, rubric, development data, intervention, and response
+hashes must match. `config.json` retains the original generation source;
+`judging_continuation.json` records the new judging source and hashes of the
+retained judgment prefix and raw replies. Later resumes verify that evidence
+and require the continuation source. Only `judge` and `summarize` stages are
+allowed after continuation; no generation is repeated. Completed judgments and
+valid saved replies are reused. If interrupted, repeat the same recovery command.
+
+New raw files include the actual `request_prompt`; older files lack this field.
+Retain that distinction when inspecting retry behavior. The continuation mixes
+old and new retry wording, which may affect labels even with an unchanged rubric.
+Manual review remains necessary: an exact quote alone does not establish a
+contradiction or validate the judge's severity label.
+
+## Retain and review results
+
 Retain the entire `results/coherence/<run_id>/` directory for verification,
 including raw API responses and the manual review queue. The script rejects
-changed source/configuration, data, interventions, or generation contents on
-resume. No real-model generation or live judging is established merely by the
-script's unit tests passing.
+changed configuration, data, interventions, or generation contents on resume;
+source changes require the explicit judging continuation above. No real-model
+generation or live judging is established merely by the script's unit tests passing.
 
 Use `summary.json` for the per-pass rates and paired comparisons,
 `judgments.jsonl` for labels and quoted evidence, and `review_queue.jsonl` for the

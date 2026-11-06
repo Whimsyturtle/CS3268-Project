@@ -35,7 +35,7 @@ runs, and keep `generations.jsonl` and `judgments.jsonl` outside Git.
 ## Coherence audit
 
 The [development coherence audit](../steering/sae/coherence.md) retains its run
-under `results/coherence/<run_id>/`; commit checked `config.json` and
-`summary.json` explicitly with `git add -f`, and retain the remaining raw files
-outside Git. The whole directory stays ignored during execution so stage
+under `results/coherence/<run_id>/`; commit checked `config.json`, `summary.json`,
+and `judging_continuation.json` when present explicitly with `git add -f`.
+Retain the remaining raw files outside Git. The whole directory stays ignored during execution so stage
 transitions and resumes preserve a clean source checkout.
