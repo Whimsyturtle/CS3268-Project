@@ -39,7 +39,7 @@ from tuning import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _config(tmp_path):
+def _config(tmp_path, method="icv"):
     artifact = tmp_path / "intervention"
     artifact.mkdir()
     (artifact / "vector.pt").write_bytes(b"vector")
@@ -52,11 +52,15 @@ def _config(tmp_path):
         "model": "google/gemma-3-1b-it", "revision": "a" * 40,
         "source_example_ids": construction_ids,
     }
+    model = {"name": "google/gemma-3-1b-it", "revision": "a" * 40, "dtype": "bfloat16"}
+    if method == "sae":
+        metadata = json.loads((ROOT / "steering_vectors" / "sae" / "config.json").read_text(encoding="utf-8"))
+        model = dict(metadata["model"])
     (artifact / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     config = {
         "examples": str(ROOT / "shared_examples" / "development.jsonl"),
         "seed": 0,
-        "model": {"name": "google/gemma-3-1b-it", "revision": "a" * 40, "dtype": "bfloat16"},
+        "model": model,
         "generation": {"batch_size": 4, "do_sample": False, "max_new_tokens": 256},
         "judge": {
             "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
@@ -66,7 +70,7 @@ def _config(tmp_path):
             "temperature": 0,
             "max_tokens": 512,
         },
-        "methods": {"icv": {"intervention_dir": str(artifact), "strengths": [0, 0.1, 0.25]}},
+        "methods": {method: {"intervention_dir": str(artifact), "strengths": [0, 0.1, 0.25]}},
     }
     path = tmp_path / "tuning.json"
     path.write_text(json.dumps(config), encoding="utf-8")
@@ -101,6 +105,43 @@ def test_read_config_rejects_wrong_source_inventory(tmp_path):
     metadata["source_example_ids"][0] = "wrong-example"
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(ValueError, match="260-example intervention"):
+        read_config(path)
+
+
+def test_read_config_accepts_saved_sae_metadata(tmp_path):
+    config = read_config(_config(tmp_path, method="sae"))
+    assert config["methods"]["sae"]["intervention_dir"] == str(tmp_path / "intervention")
+
+
+@pytest.mark.parametrize("field,value", [
+    ("name", "other/model"), ("revision", "b" * 40), ("dtype", "float32"),
+])
+def test_read_config_rejects_incompatible_sae_model(tmp_path, field, value):
+    path = _config(tmp_path, method="sae")
+    metadata_path = tmp_path / "intervention" / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["model"][field] = value
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="sae artifact"):
+        read_config(path)
+
+
+@pytest.mark.parametrize("change", ["wrong", "missing", "duplicate", "extra"])
+def test_read_config_rejects_invalid_sae_construction_ids(tmp_path, change):
+    path = _config(tmp_path, method="sae")
+    metadata_path = tmp_path / "intervention" / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    ids = metadata["construction"]["example_ids"]
+    if change == "wrong":
+        ids[0] = "wrong-example"
+    elif change == "missing":
+        ids.pop()
+    elif change == "duplicate":
+        ids.append(ids[0])
+    else:
+        ids.append("extra-example")
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="sae artifact"):
         read_config(path)
 
 
