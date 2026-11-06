@@ -48,9 +48,14 @@ uses the smaller strength for an exact tie. New artifacts record protocol
 Run all configured strengths sequentially, then judge and select:
 
 ```bash
-export SOCLAAS_API_KEY=<api-key>
 uv run --locked python tuning.py --config configs/tuning.json \
   --run-id <run-id> --method <method>
+```
+
+Note that you need an API key from SoClaaS for this, which you can add as an environment variable:
+
+```bash
+export SOCLAAS_API_KEY=<api-key>
 ```
 
 The run stores all conditions in one `generations.jsonl` and one
