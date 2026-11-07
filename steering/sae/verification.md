@@ -168,6 +168,17 @@ rates remain findings about those earlier responses; they are not coherence
 scores for this rerun. The available artifacts do not establish why the outputs
 changed, and the changed scores cannot be attributed solely to judge variation.
 
+Follow-up reproduction checks found that the old tuning and coherence runs match
+on all 325 shared responses, while the two tuning runs match on only 1/325.
+The shared generator, SAE application, development data, and lockfile are
+identical at the two tuning source commits; baseline runs before steering is
+attached. The old tuning run's retained `nvidia-smi-after-run.txt` records driver
+`580.178.04`. The user reports `xgpi17`, H100 NVL, driver `580.173.02` from the new
+run's allocation. This establishes a reported environment difference, not its
+causal effect. The new allocation's MIG profile and actual package versions
+remain unchecked. [The baseline reproduction check](#baseline-reproduction-check)
+collects those details and tests repeatability; its live results remain pending.
+
 The four copied files have these SHA-256 hashes:
 
 | File | SHA-256 |
@@ -183,6 +194,41 @@ These hashes identify the downloaded copy; no separately supplied remote checksu
 manifest was available. Independent review reproduced the statistics and confirmed
 the distinction between the two generation runs. No new generation or judging
 was performed during verification.
+
+### Baseline reproduction check
+
+[check_generation.py](check_generation.py) repeats the original first baseline
+batch twice using the saved tuning settings and shared generator. It records
+the runtime, model and generation defaults, attention implementation, input token
+IDs, full output texts, and exact matches against both tuning runs. It makes no
+judge calls and produces diagnostic reports, not replacement tuning scores.
+No deterministic-computation settings or decoding hyperparameters are changed.
+
+From the repository root in the same allocated GPU shell as the new run:
+
+```bash
+git pull --ff-only origin sae-tuning
+CHECK_ID="$(date +%Y%m%d-%H%M%S)"
+for repeat in 1 2; do
+  uv run --locked python -m steering.sae.check_generation \
+    --run-dir results/tuning/sae-tuning-20261107-122025-917305022 \
+    --reference-run-dir results/tuning/sae-tuning-20261106-202053 \
+    --output "results/sae_checks/reproduction-$CHECK_ID/process-$repeat.json" || break
+done
+```
+
+This launches two fresh processes, each generating the same four prompts twice.
+`same_process_equal` checks the two repeats within one process; compare
+`output_sha256` across the reports for agreement between fresh processes.
+`matches_saved` reports matching responses out of four for each saved run and
+repeat. Agreement with the new run establishes repeatability on that allocation;
+it does not isolate the driver's effect. Disagreement within or between processes
+requires further generation investigation. Preserve the printed reports before
+leaving the allocation; final strength selection remains pending.
+
+Diagnostic validation: 12 focused diagnostic/runner tests pass, module CLI help
+and whitespace checks pass, and independent read-only review has no findings.
+These checks use mocked generation; live GPU reproduction remains pending.
 
 ## Development coherence diagnostic
 
