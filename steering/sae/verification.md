@@ -145,14 +145,91 @@ This decision was made after reviewing the newer
 [eight-condition tuning run](#eight-condition-tuning-rerun), which selected
 baseline. That run is excluded from the retained strength selection; its
 artifacts and findings remain recorded for the reproducibility investigation.
-The decision does not require a new MIG tuning or coherence run.
 
-The retained selection covers only the original five conditions: 0, 0.1, 0.25,
-0.5, and 1.0. The current eight-condition `configs/tuning.json` describes an
-optional future rerun; it is not the configuration that produced this selection.
+The original selection covered five conditions: 0, 0.1, 0.25, 0.5, and 1.0.
+The subsequent [eight-condition MIG rerun](#eight-condition-mig-tuning-rerun)
+also selects 0.25 and reproduces the original responses, as verified from the
+downloaded artifacts. The original MIG evidence remains retained, and the
+existing coherence review applies to the matching responses.
 The shared configuration freeze and held-out benchmark conclusions remain
 pending, including verification of matching GPU allocation profiles across
 methods under the [comparison settings](../../configs/README.md).
+
+### Eight-condition MIG tuning rerun
+
+Run `sae-tuning-mig-20261107-163819` completed on `xgpi12`, Slurm job `1090406`.
+Its [saved configuration](../../results/tuning/sae-tuning-mig-20261107-163819/config.json)
+records source `8ba0c958e70af726fc37d4fbc002288731caeda9`, no tracked diff,
+and the untracked earlier results directory `results/tuning/sae-tuning-20261107-121116/`;
+this was not a clean checkout. The downloaded environment log records H100 NVL
+MIG `3g.47gb`, 49,794,777,088 bytes of device memory, 60 SMs, and driver
+`580.173.02`, with Python `3.13.18`, PyTorch `2.14.1+cu126` (CUDA `12.6`),
+and Transformers `5.20.2`.
+
+Read-only verification of the downloaded files confirmed:
+
+- Exactly 520 unique generations and matching judgments, with the same 65
+  development IDs, prompts, and categories in all eight conditions. Review IDs
+  and judgment schemas validate; construction and development IDs are disjoint.
+- Every overall and category mean, paired count, seeded 95% bootstrap interval,
+  ranking, and selected strength reproduces the saved summary.
+- Recorded settings match the source configuration, and the cu126 intervention's
+  metadata and all four file hashes match the retained intervention.
+- The shared generator, development data, and lockfile match the original tuning
+  source. Its generation function, judge rubric, scoring, and selection code are
+  unchanged. The seven checked package versions in the environment log match
+  the lockfile: PyTorch, Transformers, tokenizers, huggingface-hub, SAELens,
+  scikit-learn, and requests.
+
+The [verified summary](../../results/tuning/sae-tuning-mig-20261107-163819/summary.json)
+contains these mean scores under the
+original [tuning rubric and selection rule](../README.md#strength-hyperparameter-tuning):
+
+| Strength | Bias avoidance | Response quality | Balanced score |
+| --- | ---: | ---: | ---: |
+| Baseline | 4.0154 | 4.2308 | 3.8769 |
+| 0.01 | 4.0923 | 4.2615 | 3.9385 |
+| 0.025 | 4.1385 | 4.3231 | 3.9846 |
+| 0.05 | 4.0462 | 4.2769 | 3.9231 |
+| 0.1 | 4.1231 | 4.2769 | 3.9385 |
+| 0.25 | 4.2154 | 4.3077 | 4.0462 |
+| 0.5 | 4.1231 | 4.2462 | 3.9692 |
+| 1.0 | 4.1846 | 4.0615 | 3.7692 |
+
+The selected strength is **0.25**, agreeing with the retained setting. Its
+balanced-score gain over baseline is +0.1692 (paired 95% interval
+[-0.0308, 0.4000]): 10 prompts improve, 49 tie, and 6 worsen. The interval
+includes zero; this is development selection evidence, not an established
+improvement or a held-out benchmark result.
+
+Comparison by strength and example ID confirms exact prompt and output matches
+for all 325 original tuning responses and all 520 original coherence responses,
+with complete reference coverage. This reproduces the original MIG texts across
+all eight conditions. The [retained coherence review](#development-coherence-diagnostic)
+therefore describes the same responses; no new coherence judging was performed.
+Of the 325 shared tuning responses, 15 received different bias-avoidance and/or
+response-quality scores under the unchanged rubric. The small aggregate score
+changes reflect these different judgments on identical responses.
+
+The downloaded files have these SHA-256 hashes:
+
+| File | SHA-256 |
+| --- | --- |
+| `config.json` | `8e17f79a63474567692937bc49ea5d7e189ab3141f1a5d59d67ebd598fe7f77b` |
+| `generations.jsonl` | `a2ba3b97aeb56df2c4503bb62a213d6720c7bec21c722969a449bcd5eba8688a` |
+| `judgments.jsonl` | `68f09a80042ba0bb64f65e0a3ea69d2b7adfa1b5e078882401bd7cc857fd15ad` |
+| `summary.json` | `9fac33f2313090d279bc30a5b1701ac0fa887870d4f02cc334dcb829b6781de4` |
+| Environment log | `47f8e6238c3fb7bd7b78910bd7e1b05f31a5f3c49293dedc7f57182f2eb31f92` |
+
+The run remains at `results/tuning/sae-tuning-mig-20261107-163819/` locally and
+under `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/`.
+The environment log is
+`results/sae_checks/sae-tuning-mig-20261107-163819-environment.txt`.
+These hashes identify the downloaded files; no separately supplied remote
+checksum manifest or raw judge API envelopes were available. Verification
+preserved the files and made no new generation or judge calls. The configuration
+and summary accompany this record; raw files remain Git-ignored under the
+[results convention](../../results/README.md#strength-tuning).
 
 ### Eight-condition tuning rerun
 
@@ -194,8 +271,9 @@ The shared generator, SAE application, development data, and lockfile are
 identical at the two tuning source commits; baseline runs before steering is
 attached. [The baseline reproduction check](#baseline-reproduction-check) below
 records the reported repeatability results and the GPU allocation comparison.
-The latest runtime comparison narrows the explanation; the exact numerical
-mechanism and verification across all conditions remain pending.
+The runtime comparison narrows the explanation; the exact numerical mechanism
+remains unresolved. The later [MIG rerun](#eight-condition-mig-tuning-rerun)
+reproduces the original responses across all conditions.
 
 The four copied files have these SHA-256 hashes:
 
@@ -324,11 +402,13 @@ over model defaults; the default shown in the report does not indicate sampling.
 
 For the MIG comparison, request the documented
 [`h100-47` resource](https://www.comp.nus.edu.sg/~cs3210/student-guide/soc-gpus/)
-from an `xlogin` shell, outside the current allocation. Exclude `xgpi17`, where
-the diagnostic observed full-device access, and verify what PyTorch actually sees:
+from an `xlogin` shell, outside the current allocation. The diagnostic observed
+full-device access on `xgpi17`; a later `h100-47` preflight on `xgpi15` also
+reported full-device access and stopped before generation. Exclude both observed
+mismatches and verify what PyTorch actually sees on every allocation:
 
 ```bash
-srun --gpus=h100-47 --exclude=xgpi17 --mem=32G --time=00:30:00 --propagate=NONE --pty bash
+srun --gpus=h100-47 --exclude=xgpi15,xgpi17 --mem=32G --time=00:30:00 --propagate=NONE --pty bash
 ```
 
 Then, in the allocated shell at the repository root:
@@ -382,14 +462,15 @@ version, while the old outputs are recovered on MIG under both recorded driver
 versions. Driver version alone cannot explain this four-prompt pattern. The GPU
 allocation profile is the leading explanation, with the host also changing;
 the particular numerical kernel or other node-specific effects have not been
-isolated. This does not establish batch-size independence or verify all 65
-baseline prompts and the steered conditions.
+isolated. These four-prompt diagnostics do not establish batch-size independence
+or cover all baseline prompts and steered conditions.
 
 The complete MIG report has not yet been copied locally. The supplied excerpts
 cover its environment and printed checks, but its source record, attention
 implementation, tokenized inputs, and full generated texts have not been directly
-inspected. Repeatability on MIG has been reported within one process, not yet
-across fresh processes; reproduction across all conditions remains unchecked.
+inspected. The later [eight-condition MIG rerun](#eight-condition-mig-tuning-rerun)
+has been independently checked against the original responses across the complete
+sweep and reproduces them exactly.
 
 ## Development coherence diagnostic
 

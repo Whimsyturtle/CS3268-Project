@@ -14,9 +14,10 @@ for the downloaded run and its separate supplementary model review.
 
 [The audit configuration](../../configs/sae_coherence.json) fixes the strength
 grid, model, intervention, decoding, and judge settings before the run. Generate
-every condition afresh on the same GPU type, including baseline; do not combine
-new low-strength generations with the earlier tuning run. All conditions use the
-same 65 development prompts. No construction or final evaluation prompts are added.
+every condition afresh on the same GPU type and allocation profile, including
+baseline; do not combine new low-strength generations with the earlier tuning
+run. All conditions use the same 65 development prompts. No construction or final
+evaluation prompts are added.
 
 The judge receives only a prompt and its generated response. It does not receive
 the strength, method, baseline identity, category, or another judgment. The exact
@@ -64,16 +65,19 @@ repetition screens are supplementary checks, not replacements for judgment.
 
 ## Full rerun of tuning and coherence
 
-These commands are optional; the [retained SAE result](verification.md#retained-sae-result)
-uses the original runs without requiring a new tuning or coherence run.
+The [latest MIG tuning rerun](verification.md#eight-condition-mig-tuning-rerun)
+has verified exact matches to every retained coherence response. The original
+coherence review remains retained; the commands below are optional instructions
+for a further fresh run.
 
 The [common tuning configuration](../../configs/tuning.json) and
 [coherence configuration](../../configs/sae_coherence.json) use the same eight
-SAE conditions, including baseline, and identical generation settings. The old
-tuning run used only five conditions; it never scored the three smaller strengths.
+SAE conditions, including baseline, and identical generation settings. The original
+tuning run covered five conditions; the linked MIG rerun has scores for all eight.
 
 Use these two separate commands for a fresh full rerun. Each generates all 520
-responses afresh on the same GPU type: 65 development prompts per condition.
+responses afresh on the same GPU type and allocation profile: 65 development
+prompts per condition.
 The tuner applies its original bias-avoidance and response-quality rubric to
 every response and selects a strength; coherence requests two judgments per
 response and retains its separate review queue. Neither run fills gaps in an old
