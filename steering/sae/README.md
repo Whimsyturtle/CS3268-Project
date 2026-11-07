@@ -96,14 +96,16 @@ application check accepts `--intervention-dir` and writes a new
 `results/sae_checks/<run_id>/checks.json`, including environment, settings, checks
 and raw outputs. Retain and link these files when updating #9.
 
-Run focused tests with:
+Run focused SAE tests from the repository root:
 
 ```bash
-uv run pytest tests/test_sae.py tests/test_sae_gemma.py
+uv run --locked pytest tests/test_sae.py tests/test_sae_gemma.py \
+  tests/test_sae_coherence.py tests/test_sae_check_generation.py
 ```
 
-These tests use small synthetic models and data. The pretrained application check
-above remains necessary before completing #9. Strength in `configs/main.json`
-stays `null` until separate development tuning is complete.
+These tests use synthetic models and data or mocked generation and judging. The
+pretrained application check above remains necessary before completing #9.
 
-See the [verified cluster run](verification.md) for retained artifacts and checks.
+For development work, see the [shared tuner](../README.md#strength-hyperparameter-tuning)
+and [SAE coherence audit](coherence.md). The [verification record](verification.md)
+contains retained artifacts, checks, and the [retained SAE result](verification.md#retained-sae-result).

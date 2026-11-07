@@ -46,7 +46,7 @@ A group of connected computers used to run computing work. See the [cluster guid
 ## Coherence
 
 Whether a response is understandable and consistent within itself and with
-explicit facts in its prompt. The [development audit](steering/sae/coherence.md)
+explicit facts in its prompt. The [SAE development audit](steering/sae/coherence.md)
 defines which errors count and how their severity is measured.
 
 ## CUDA

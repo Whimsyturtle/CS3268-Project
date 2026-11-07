@@ -1,4 +1,4 @@
-# Development coherence audit
+# SAE development coherence audit
 
 [audit_coherence.py](audit_coherence.py) measures coherence separately from
 the common tuner's combined response-quality score. This is a development-only

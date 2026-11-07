@@ -15,7 +15,7 @@ intervention, and candidate strengths. Strength zero is one shared unsteered
 baseline. Generator and intervention revisions must be immutable.
 
 [`sae_coherence.json`](sae_coherence.json) configures the separate
-[development coherence audit](../steering/sae/coherence.md). Its SAE strength grid,
+[SAE development coherence audit](../steering/sae/coherence.md). Its strength grid,
 model, intervention, development data, seed, and generation settings match the
 common tuner; regression tests check that they stay aligned. Only the selected
 method's intervention is required when running the common tuner.
