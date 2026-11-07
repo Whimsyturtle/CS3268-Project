@@ -8,6 +8,8 @@ __pycache__/
 /results/**
 !/results/**/
 !/results/**/.gitkeep
+!/results/tuning/**/config.json
+!/results/tuning/**/summary.json
 !/results/README.md
 .venv/
 .pytest_cache/

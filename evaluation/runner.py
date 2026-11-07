@@ -25,6 +25,8 @@ def load_model(config):
     if model.config.name_or_path != config["name"]:
         raise ValueError("Loaded model name does not match the configured model.")
     model.config.revision = config["revision"]
+    # Transformers does not consistently retain the requested revision on nested model configs.
+    model._cs3268_source_revision = config["revision"]
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     return model.to(device).eval(), tokenizer
 

@@ -2,6 +2,7 @@
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from huggingface_hub import hf_hub_download
@@ -52,43 +53,49 @@ def score(examples, predictions, config):
         }
         for example in examples
     ]
-    annotator = {
-        "soclaas_weighted": {
-            "prompt_template": str(PROMPT),
-            "fn_completions": "openai_completions",
-            "completions_kwargs": {
-                "model_name": judge["model"],
-                "requires_chatml": True,
-                "max_tokens": 1,
-                "temperature": 1,
-                "logprobs": True,
-                "top_logprobs": 5,
-                "reasoning_effort": judge["reasoning_effort"],
-                "openai_api_keys": [api_key],
-                "client_kwargs": {"base_url": judge["base_url"]},
-            },
-            "fn_completion_parser": "logprob_parser",
-            "completion_parser_kwargs": {
-                "numerator_token": "m",
-                "denominator_tokens": ["m", "M"],
-                "is_binarize": False,
-            },
-            "completion_key": "completions_all",
-            "batch_size": 1,
+    # AlpacaEval 0.6.6 loads named annotator and client configurations from files.
+    with tempfile.TemporaryDirectory(dir=config["output_dir"]) as directory:
+        client_path = Path(directory) / "clients.yaml"
+        client = {"default": [{"api_key": api_key, "base_url": judge["base_url"]}]}
+        client_path.write_text(json.dumps(client))
+        annotator = {
+            "soclaas_weighted": {
+                "prompt_template": str(PROMPT),
+                "fn_completions": "openai_completions",
+                "completions_kwargs": {
+                    "model_name": judge["model"],
+                    "requires_chatml": True,
+                    "max_tokens": 1,
+                    "temperature": 1,
+                    "logprobs": True,
+                    "top_logprobs": 5,
+                    "reasoning_effort": judge["reasoning_effort"],
+                    "client_config_path": str(client_path),
+                },
+                "fn_completion_parser": "logprob_parser",
+                "completion_parser_kwargs": {
+                    "numerator_token": "m",
+                    "denominator_tokens": ["m", "M"],
+                    "is_binarize": False,
+                },
+                "completion_key": "completions_all",
+                "batch_size": 1,
+            }
         }
-    }
-    leaderboard, _ = alpaca_eval.evaluate(
-        model_outputs=model_outputs,
-        reference_outputs=reference_outputs,
-        annotators_config=annotator,
-        name=config["generator"],
-        output_path=config["output_dir"],
-        precomputed_leaderboard=None,
-        is_cache_leaderboard=False,
-        is_return_instead_of_print=True,
-        fn_metric="get_winrate",
-        sort_by="win_rate",
-    )
+        annotator_path = Path(directory) / "configs.yaml"
+        annotator_path.write_text(json.dumps(annotator))
+        leaderboard, _ = alpaca_eval.evaluate(
+            model_outputs=model_outputs,
+            reference_outputs=reference_outputs,
+            annotators_config=annotator_path,
+            name=config["generator"],
+            output_path=config["output_dir"],
+            precomputed_leaderboard=None,
+            is_cache_leaderboard=False,
+            is_return_instead_of_print=True,
+            fn_metric="get_winrate",
+            sort_by="win_rate",
+        )
     row = leaderboard.loc[config["generator"]]
     names = ["win_rate", "standard_error", "avg_length"]
     return [metric("all", name, float(row[name]), int(row["n_total"])) for name in names]

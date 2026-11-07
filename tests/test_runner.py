@@ -25,7 +25,6 @@ def test_load_model_rejects_unexpected_model_name(monkeypatch):
     with pytest.raises(ValueError, match="model name"):
         runner.load_model({"name": "test/gemma", "revision": "a" * 40, "dtype": "float32"})
 
-
 def test_run_uses_shared_decoding_with_benchmark_max_new_tokens(tmp_path, monkeypatch):
     config = json.loads((runner.ROOT / "configs" / "main.json").read_text())
     config["benchmarks"]["bbq"]["limit"] = 1

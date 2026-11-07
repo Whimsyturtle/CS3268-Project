@@ -8,6 +8,12 @@ Store reviewed experiment configurations here. Each must record:
 - Saved intervention directory, strength, and other method settings.
 - Scorer/judge settings and whether the run uses development or test data.
 
+## Strength tuning
+
+[`tuning.json`](tuning.json) configures the development data, generator, judge,
+intervention, and candidate strengths. Strength zero is one shared unsteered
+baseline. Generator and intervention revisions must be immutable.
+
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay
 `null` until tuned on development data.

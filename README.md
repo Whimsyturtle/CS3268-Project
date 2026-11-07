@@ -62,6 +62,26 @@ uv run --locked python -c "import torch; print(torch.__version__, torch.version.
 Gemma 3 is gated on Hugging Face: accept its license, then run
 `uv run --locked hf auth login`. Run tests with `uv run --locked pytest`.
 
+## Tune steering strength
+
+The common tuner uses the full development split and tunes one method per run.
+The `--method` choices are `caa`, `icv`, `sae`, and `reft_r1`. The selected
+method must have an implementation, intervention, and candidate strengths in
+[`configs/tuning.json`](configs/tuning.json). The tuner generates every
+candidate sequentially, judges each response, and selects a strength with one
+command:
+
+```bash
+uv run --locked python tuning.py --config configs/tuning.json \
+  --run-id <unique-run-id> --method <method>
+```
+
+Note that you need an API key from SoClaaS for this, which you can add as an environment variable:
+
+```bash
+export SOCLAAS_API_KEY=<api-key>
+```
+
 ## Contributing
 
 - Track major tasks, experiments, and deliverables in [GitHub issues](https://github.com/Whimsyturtle/CS3268-Project/issues). Small fixes can stay within an existing task or PR.

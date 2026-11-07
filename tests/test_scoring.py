@@ -1,5 +1,7 @@
+import json
 import sys
 import types
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -83,6 +85,9 @@ def test_alpaca_eval_uses_configured_judge_and_reference_outputs(monkeypatch):
 
     def evaluate(**kwargs):
         captured.update(kwargs)
+        captured["annotator"] = json.loads(Path(kwargs["annotators_config"]).read_text())
+        completions = captured["annotator"]["soclaas_weighted"]["completions_kwargs"]
+        captured["client"] = json.loads(Path(completions["client_config_path"]).read_text())
         leaderboard = pd.DataFrame(
             {
                 "win_rate": [52.0],
@@ -121,12 +126,13 @@ def test_alpaca_eval_uses_configured_judge_and_reference_outputs(monkeypatch):
         {"instruction": "B", "output": "Candidate B", "generator": "icv"},
     ]
     assert captured["reference_outputs"][0]["output"] == "Reference A"
-    completions = captured["annotators_config"]["soclaas_weighted"]["completions_kwargs"]
+    assert Path(captured["annotators_config"]).name == "configs.yaml"
+    completions = captured["annotator"]["soclaas_weighted"]["completions_kwargs"]
     assert completions["model_name"] == "judge-model"
     assert completions["requires_chatml"] is True
     assert completions["reasoning_effort"] == "none"
-    assert completions["openai_api_keys"] == ["secret"]
-    assert completions["client_kwargs"] == {"base_url": "https://example.test/v1"}
+    assert "secret" not in json.dumps(captured["annotator"])
+    assert captured["client"] == {"default": [{"api_key": "secret", "base_url": "https://example.test/v1"}]}
     assert captured["fn_metric"] == "get_winrate"
     assert result == {
         "win_rate": 52.0,
