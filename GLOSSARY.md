@@ -107,6 +107,11 @@ Short for Large Language Model, a model trained on large amounts of text to proc
 
 A GitHub grouping of issues for a delivery stage.
 
+## MIG
+
+Short for Multi-Instance GPU, NVIDIA's division of a physical GPU into isolated
+partitions with assigned memory and compute resources.
+
 ## MMLU-Pro
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
@@ -132,6 +137,11 @@ decoder direction.
 
 The internal representation passed between transformer layers and updated by
 their attention and feed-forward computations.
+
+## SM
+
+Short for streaming multiprocessor, a GPU compute unit. A MIG partition can expose
+fewer SMs than the full GPU.
 
 ## Social bias
 

@@ -172,13 +172,9 @@ Follow-up reproduction checks found that the old tuning and coherence runs match
 on all 325 shared responses, while the two tuning runs match on only 1/325.
 The shared generator, SAE application, development data, and lockfile are
 identical at the two tuning source commits; baseline runs before steering is
-attached. The old tuning run's retained `nvidia-smi-after-run.txt` records driver
-`580.178.04`. The user reports `xgpi17`, H100 NVL, driver `580.173.02` from the new
-run's allocation. This establishes a reported environment difference, not its
-causal effect. The new allocation's MIG profile and actual package versions
-remain unchecked. [The baseline reproduction check](#baseline-reproduction-check)
-collects those details and tests repeatability; the reported batch result below
-supports repeatability in the current allocation, with runtime comparison pending.
+attached. [The baseline reproduction check](#baseline-reproduction-check) below
+records the reported repeatability result and the allocation mismatch found in
+the subsequent runtime comparison. The mismatch's causal effect remains pending.
 
 The four copied files have these SHA-256 hashes:
 
@@ -264,14 +260,79 @@ run on none. All four output hashes were
 `1b4d368e9174e14ac9be488b1e9169c14ffa72aaaa26e05f756270bff172e1d3`.
 Independent calculation from the locally retained new tuning responses, in the
 original first-batch order, reproduces this hash; the old batch has a different
-hash. The complete diagnostic reports have not yet been copied locally or
-inspected, so their runtime details remain unchecked.
+hash. The complete diagnostic reports have not yet been copied locally; the
+runtime extraction subsequently pasted by the user is compared below.
 
 The reported result supports repeatability for these four prompts in the current
 allocation, within and across fresh processes. It does not establish repeatability
 for all 520 responses or isolate the driver as the cause of the old/new difference.
-Runtime comparison, the cause of that difference, and final strength selection
-remain pending.
+The cause of that difference and final strength selection remain pending.
+
+The pasted runtime extractions from both reports are identical. Their PyTorch
+`2.14.1+cu126`, Transformers `5.20.2`, tokenizers `0.23.3`, and huggingface-hub
+`2.2.0` match the old tuning run's saved package list. Python `3.13.18` and CUDA
+build `12.6` also match the older coherence environment. The allocations differ:
+
+| Detail | Earlier run | Current allocation on `xgpi17` |
+| --- | --- | --- |
+| GPU profile | H100 NVL MIG `3g.47gb` | Full H100 NVL |
+| Visible SMs | 60 | 132 |
+| NVIDIA driver | `580.178.04` | `580.173.02` |
+
+The old GPU/driver evidence is its retained `nvidia-smi-after-run.txt`; the old
+coherence environment identifies the MIG profile. The current extraction reports
+99,949,674,496 bytes of device memory and 132 SMs, confirming full-device access;
+its driver version was reported separately by the user. Current inference uses
+BF16 and `sdpa`, with deterministic algorithms disabled. Those backend settings
+were not captured for the old run and cannot be compared retrospectively.
+
+This is a concrete allocation mismatch. [NVIDIA's cuBLAS reproducibility
+conditions](https://docs.nvidia.com/cuda/archive/12.6.0/cublas/index.html#results-reproducibility)
+include matching architecture and SM count; the observed 60-versus-132 mismatch
+falls outside that condition. GPU-dependent numerical differences are therefore
+a plausible explanation, not a demonstrated cause. Reproducing the old text on
+the old GPU profile would strengthen that explanation; separating profile and
+driver effects requires controlling them independently.
+
+The report's `model_generation_config` contains model defaults, including
+`do_sample: true`. The separate `generation` settings are passed explicitly by
+the [shared generator](../../evaluation/runner.py), overriding this with
+`do_sample: false` and `max_new_tokens: 2048` in both runs. Transformers gives
+[explicit generation arguments priority](https://huggingface.co/docs/transformers/main_classes/text_generation)
+over model defaults; the default shown in the report does not indicate sampling.
+
+For the next small comparison, request the documented
+[`h100-47` resource](https://www.comp.nus.edu.sg/~cs3210/student-guide/soc-gpus/)
+from an `xlogin` shell, outside the current allocation. Exclude `xgpi17`, where
+the diagnostic observed full-device access, and verify what PyTorch actually sees:
+
+```bash
+srun --gpus=h100-47 --exclude=xgpi17 --mem=32G --time=00:30:00 --propagate=NONE --pty bash
+```
+
+Then, in the allocated shell at the repository root:
+
+```bash
+(
+set -e
+uv run --locked python - <<'PY'
+import torch
+p = torch.cuda.get_device_properties(0)
+print(p.name, p.total_memory, p.multi_processor_count)
+assert 'MIG 3g.47gb' in p.name and p.multi_processor_count == 60, 'Unexpected GPU profile'
+PY
+uv run --locked python -m steering.sae.check_generation \
+  --run-dir results/tuning/sae-tuning-20261107-122025-917305022 \
+  --reference-run-dir results/tuning/sae-tuning-20261106-202053 \
+  --output "results/sae_checks/mig-reproduction-$(date +%Y%m%d-%H%M%S).json"
+)
+```
+
+This repeats only the original first batch twice, without changing generation
+settings or invoking the judge. The report captures the new allocation's driver
+as well. If both profile and driver change, any recovered match supports the
+combined environment explanation rather than isolating either variable. This
+MIG comparison has not yet been run.
 
 ## Development coherence diagnostic
 
