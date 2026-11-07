@@ -9,6 +9,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file
 
+from cluster_runtime import save_cluster_runtime
 from evaluation.runner import ROOT, load_model, source_commit
 from shared_examples.validate import validate_local
 
@@ -122,6 +123,7 @@ def build(config_path, sae_config_path, output_dir):
     settings = json.loads(sae_config_path.read_text(encoding="utf-8"))
     torch.manual_seed(config["seed"])
     model, tokenizer = load_model(config["model"])
+    save_cluster_runtime(model, output_dir)
     if (model.config.name_or_path != config["model"]["name"]
             or getattr(model.config, "revision", None) != config["model"]["revision"]):
         raise ValueError("Loaded model does not report the configured name and revision.")

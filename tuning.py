@@ -14,6 +14,7 @@ from pathlib import Path
 import requests
 import torch
 
+from cluster_runtime import save_cluster_runtime
 from evaluation.runner import generate, load_model, source_commit
 from shared_examples.prepare_mbtp import CATEGORY_NAMES
 
@@ -219,6 +220,7 @@ def generate_records(config: dict, method: str, run_dir: Path) -> list[dict]:
     model, tokenizer = load_model(config["model"])
     intervention = None
     try:
+        save_cluster_runtime(model, run_dir, resuming=bool(completed))
         steering = importlib.import_module(f"steering.{method}")
         for condition in pending:
             print(

@@ -5,8 +5,9 @@ import json
 from pathlib import Path
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from cluster_runtime import save_cluster_runtime
+from evaluation.runner import load_model
 from steering.icv import METHOD, UPSTREAM_REVISION, construct
 
 
@@ -43,10 +44,8 @@ def main():
     config = experiment["model"]
     records = _read_records(args.examples)
 
-    tokenizer = AutoTokenizer.from_pretrained(config["name"], revision=config["revision"])
-    model = AutoModelForCausalLM.from_pretrained(
-        config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
-    ).to("cuda" if torch.cuda.is_available() else "cpu").eval()
+    model, tokenizer = load_model(config)
+    save_cluster_runtime(model, args.output)
 
     vector = construct(model, tokenizer, [
         (record["biased_response"], record["unbiased_response"])
