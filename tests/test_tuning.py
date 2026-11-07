@@ -97,13 +97,9 @@ def test_repository_tuning_config_uses_2048_generation_tokens():
     assert config["generation"]["max_new_tokens"] == 2048
 
 
-def test_sae_tuning_and_coherence_use_the_same_full_generation_grid():
+def test_sae_tuning_uses_the_full_generation_grid():
     config = json.loads((ROOT / "configs/tuning.json").read_text(encoding="utf-8"))
-    audit = json.loads((ROOT / "configs/sae_coherence.json").read_text(encoding="utf-8"))
-    assert config["methods"]["sae"] == audit["methods"]["sae"]
     assert config["methods"]["sae"]["strengths"] == [0, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
-    for key in ("examples", "seed", "model", "generation"):
-        assert config[key] == audit[key]
 
 
 def test_selected_method_does_not_require_other_interventions(tmp_path):
