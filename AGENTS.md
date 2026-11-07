@@ -5,6 +5,7 @@
 - Start with [README.md](README.md), then read the source documents relevant to the task.
 - Follow the experiment design in the [proposal](CS3268_Project_Proposal_Group_6.md) exactly. Any deviation requires explicit user approval.
 - Follow the [course requirements](docs/CS3268_Project_Document.md) and use the [cluster guide](docs/SoC_Cluster_Guide.md) for cluster work.
+- All new cluster construction, tuning, and experiment runs must follow the [shared runtime requirements](docs/Cluster_Runtime.md), including new steering methods.
 
 ## Workflow and verification
 

@@ -47,6 +47,8 @@ uses the smaller strength for an exact tie. New artifacts record protocol
 
 Run all configured strengths sequentially, then judge and select:
 
+On the cluster, first follow the [shared runtime requirements](../docs/Cluster_Runtime.md).
+
 ```bash
 uv run --locked python tuning.py --config configs/tuning.json \
   --run-id <run-id> --method <method>

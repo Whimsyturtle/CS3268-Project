@@ -9,6 +9,7 @@ from transformers import BatchEncoding
 
 from steering.sae import apply, load_intervention
 from steering.sae import build as builder
+from steering.sae import check as checker
 
 
 class Layer(torch.nn.Module):
@@ -188,3 +189,27 @@ def test_build_uses_only_validated_construction_rows_and_refuses_overwrite(tmp_p
     monkeypatch.setattr(builder, "load_model", lambda config: pytest.fail("overwrite loaded model"))
     with pytest.raises(ValueError, match="already contains"):
         builder.build(config, settings, output)
+
+
+@pytest.mark.parametrize("override", [False, True])
+def test_application_check_uses_configured_intervention_unless_overridden(tmp_path, monkeypatch, override):
+    config_path = tmp_path / "main.json"
+    config_path.write_text(json.dumps({
+        "methods": {"sae": {"intervention_dir": "steering_vectors/sae/selected"}},
+        "model": {}, "decoding": {}, "benchmarks": {"bbq": {"max_new_tokens": 8}},
+    }))
+    candidate = tmp_path / "candidate" if override else None
+    expected = candidate if override else tmp_path / "steering_vectors/sae/selected"
+    model = object()
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+    monkeypatch.setattr(checker, "load_jsonl", lambda path: [{"prompt": "prompt"}])
+    monkeypatch.setattr(checker, "load_model", lambda config: (model, None))
+
+    def capture_intervention(directory, **kwargs):
+        assert directory == expected
+        assert kwargs["model"] is model
+        raise RuntimeError("intervention selected")
+
+    monkeypatch.setattr(checker, "load_intervention", capture_intervention)
+    with pytest.raises(RuntimeError, match="intervention selected"):
+        checker.check(config_path, candidate, "application-check", 1)

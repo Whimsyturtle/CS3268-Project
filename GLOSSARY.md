@@ -28,6 +28,12 @@ well scores rank positive examples above negative ones, with ties counting half;
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
 
+## Bootstrap confidence interval
+
+An estimate of uncertainty obtained by repeatedly sampling the observed examples
+with replacement and recomputing a statistic. Paired comparisons resample each
+prompt's baseline and steered result together.
+
 ## Checkpoint
 
 A saved set of trained model parameters, loaded to reuse a model without training
@@ -95,6 +101,11 @@ Short for Large Language Model, a model trained on large amounts of text to proc
 
 A GitHub grouping of issues for a delivery stage.
 
+## MIG
+
+Short for Multi-Instance GPU, NVIDIA's division of a physical GPU into isolated
+partitions with assigned memory and compute resources.
+
 ## MMLU-Pro
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
@@ -106,6 +117,12 @@ A numerical value in a model. A **trainable parameter** is one that the training
 ## ReFT-r1
 
 Short for Rank-1 Representation Finetuning, a method that learns a single hidden-state direction from supervised examples.
+
+## Runtime
+
+The software and hardware used to execute a run. The
+[cluster requirements](docs/Cluster_Runtime.md)
+define the shared setup and the evidence retained for new cluster runs.
 
 ## SAE
 
@@ -120,6 +137,11 @@ decoder direction.
 
 The internal representation passed between transformer layers and updated by
 their attention and feed-forward computations.
+
+## SM
+
+Short for streaming multiprocessor, a GPU compute unit. A MIG partition can expose
+fewer SMs than the full GPU.
 
 ## Social bias
 
