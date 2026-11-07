@@ -88,7 +88,8 @@ The bundle is
 `bennett@xlogin.comp.nus.edu.sg:~/sae-cu126-20261105-202310.tar.gz`, with SHA-256
 `6bd4911beee0aa764c22158ccebfd96050aef0f76469974c52a4599f82e82f4c`.
 The downloaded copy matches this hash. Its intervention, check, and log files
-were extracted locally into their Git-ignored repository paths:
+were extracted locally into the paths below. The retained intervention's
+`config.json` is committed; its generated files, checks, and logs remain Git-ignored.
 
 | Path | Contents |
 | --- | --- |
@@ -108,6 +109,14 @@ selects strength 0.25 under the
 [common tuning rule](../README.md#strength-hyperparameter-tuning).
 [The final configuration](../../configs/main.json) already records that strength
 and the cu126 intervention; neither setting changes.
+
+The tuning run loaded `steering_vectors/sae/cu126-20261105-202310`, constructed
+on 2026-11-05; it did not construct a new intervention. Its
+[saved configuration](../../results/tuning/sae-tuning-mig-20261107-163819/config.json)
+records that directory, embeds its metadata, and hashes all four intervention
+files. The [retained intervention metadata](../../steering_vectors/sae/cu126-20261105-202310/config.json)
+and local file hashes match that record. The date in `intervention_dir` therefore
+identifies construction, while the tuning run ID identifies strength selection.
 
 This run supersedes the two earlier SAE tuning runs, whose directories have
 been removed from this checkout. Their committed configurations, summaries, and

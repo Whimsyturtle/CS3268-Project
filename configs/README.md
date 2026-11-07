@@ -19,6 +19,11 @@ selected method's intervention is required when running the common tuner.
 and is identified by the source commit saved with every run. Method strengths stay
 `null` until tuned on development data.
 
+`intervention_dir` identifies the constructed intervention files loaded for
+steering; a tuning run selects a strength for those files and stores its results
+under `results/tuning/`. See the [retained SAE result](../steering/sae/verification.md#retained-sae-result)
+for the selected run and the intervention it used.
+
 `decoding` holds the decoding hyperparameters shared by every benchmark and method, and
 `do_sample: false` selects greedy decoding. `batch_size` and `use_cache` are fixed
 because changing either can change greedy outputs through small numerical differences;

@@ -1,3 +1,4 @@
-# Preserve result artifact hashes when checking out on Windows or Linux.
+# Preserve saved artifact hashes when checking out on Windows or Linux.
+/steering_vectors/**/config.json text eol=lf
 /results/tuning/**/config.json text eol=lf
 /results/tuning/**/summary.json text eol=lf

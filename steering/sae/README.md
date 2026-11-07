@@ -63,15 +63,18 @@ revision; the saved intervention records the exact base revision actually used.
 
 Follow the [shared runtime setup](../../docs/Cluster_Runtime.md)
 for new cluster runs and accept the Gemma model license on Hugging Face.
-Install dependencies and run these commands on the allocated compute node.
+Install dependencies and run these commands on the allocated compute node to
+construct and check a new candidate in an unused directory.
 Configure `HF_HOME` outside this repository if the default cache is unsuitable.
 
 ```bash
 uv sync --locked
 uv run --locked hf auth login
 uv run --locked python shared_examples/validate.py --check-evaluation-overlap
-uv run --locked python -m steering.sae.build
-uv run --locked python -m steering.sae.check --run-id sae-application-001
+SAE_BUILD_ID="sae-$(date +%Y%m%d-%H%M%S)"
+SAE_DIR="steering_vectors/sae/$SAE_BUILD_ID"
+uv run --locked python -m steering.sae.build --output-dir "$SAE_DIR"
+uv run --locked python -m steering.sae.check --intervention-dir "$SAE_DIR" --run-id "$SAE_BUILD_ID"
 ```
 
 Commit the implementation before producing reportable artifacts. Feature
@@ -82,7 +85,7 @@ finite and changed steered logits, and restoration after normal/exceptional exit
 Its outputs are implementation checks, not tuning or benchmark results.
 
 The build writes the [saved intervention metadata](../../steering_vectors/README.md)
-plus these generated, Git-ignored files under `steering_vectors/sae/`:
+plus these generated, Git-ignored files in the chosen output directory:
 
 - `direction.pt`: the selected pretrained decoder direction.
 - `activations.pt`: response-pooled scores for every feature, in construction ID order.
@@ -92,7 +95,8 @@ plus these generated, Git-ignored files under `steering_vectors/sae/`:
 hash, seed, and source state. Loading checks the base-model name, revision and
 precision, residual-stream location, and dimensions. Builds refuse to overwrite
 existing artifacts; use `--output-dir` to create a separate candidate. The
-application check accepts `--intervention-dir` and writes a new
+application check defaults to the SAE `intervention_dir` in `--config` (normally
+`configs/main.json`); `--intervention-dir` overrides it for a candidate. It writes a new
 `results/sae_checks/<run_id>/checks.json`, including environment, settings, checks
 and raw outputs. Retain and link these files when updating #9.
 

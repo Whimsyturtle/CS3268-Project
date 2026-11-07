@@ -23,6 +23,8 @@ def check(config_path, intervention_dir, run_id, strength):
     run_dir.mkdir(parents=True)
     start = time.perf_counter()
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    if intervention_dir is None:
+        intervention_dir = ROOT / config["methods"]["sae"]["intervention_dir"]
     rows = load_jsonl(ROOT / "shared_examples" / "development.jsonl")[:2]
     prompts = [row["prompt"] for row in rows]
     decoding = {**config["decoding"], "max_new_tokens": config["benchmarks"]["bbq"]["max_new_tokens"]}
@@ -79,7 +81,8 @@ def check(config_path, intervention_dir, run_id, strength):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=ROOT / "configs" / "main.json")
-    parser.add_argument("--intervention-dir", type=Path, default=ROOT / "steering_vectors" / "sae")
+    parser.add_argument("--intervention-dir", type=Path,
+                        help="Override the SAE intervention_dir in --config.")
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--strength", type=float, default=1.0)
     args = parser.parse_args()
