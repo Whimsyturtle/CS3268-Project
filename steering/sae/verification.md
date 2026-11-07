@@ -207,17 +207,42 @@ No deterministic-computation settings or decoding hyperparameters are changed.
 From the repository root in the same allocated GPU shell as the new run:
 
 ```bash
+(
+set -e
 git pull --ff-only origin sae-tuning
 CHECK_ID="$(date +%Y%m%d-%H%M%S)"
 for repeat in 1 2; do
   uv run --locked python -m steering.sae.check_generation \
     --run-dir results/tuning/sae-tuning-20261107-122025-917305022 \
     --reference-run-dir results/tuning/sae-tuning-20261106-202053 \
-    --output "results/sae_checks/reproduction-$CHECK_ID/process-$repeat.json" || break
+    --output "results/sae_checks/reproduction-$CHECK_ID/process-$repeat.json"
 done
+)
 ```
 
-This launches two fresh processes, each generating the same four prompts twice.
+If the pull reports that the new tuning run's untracked `config.json` and
+`summary.json` would be overwritten, preserve them before retrying. Run this
+recovery block only for that error, then rerun the diagnostic block above:
+
+```bash
+(
+set -e
+run_dir=results/tuning/sae-tuning-20261107-122025-917305022
+mkdir -p results/sae_checks
+backup_dir=$(mktemp -d "$PWD/results/sae_checks/pre-pull.XXXXXX")
+printf 'Backup directory: %s\n' "$backup_dir"
+mv -- "$run_dir/config.json" "$run_dir/summary.json" "$backup_dir/"
+git pull --ff-only origin sae-tuning
+cmp -- "$backup_dir/config.json" "$run_dir/config.json"
+cmp -- "$backup_dir/summary.json" "$run_dir/summary.json"
+)
+```
+
+The originals stay in the printed backup directory. The comparisons must pass
+before proceeding; report any mismatch. Generations and judgments remain in
+place. Each block stops on failure without closing the allocation's shell.
+
+The diagnostic launches two fresh processes, each generating the same four prompts twice.
 `same_process_equal` checks the two repeats within one process; compare
 `output_sha256` across the reports for agreement between fresh processes.
 `matches_saved` reports matching responses out of four for each saved run and
