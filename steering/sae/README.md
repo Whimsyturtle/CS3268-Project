@@ -100,7 +100,7 @@ Run focused SAE tests from the repository root:
 
 ```bash
 uv run --locked pytest tests/test_sae.py tests/test_sae_gemma.py \
-  tests/test_sae_coherence.py tests/test_sae_check_generation.py
+  tests/test_sae_coherence.py
 ```
 
 These tests use synthetic models and data or mocked generation and judging. The

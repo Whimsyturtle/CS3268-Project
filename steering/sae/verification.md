@@ -293,7 +293,7 @@ was performed during verification.
 
 ### Baseline reproduction check
 
-[check_generation.py](check_generation.py) repeats the original first baseline
+[check_generation.py](../../diagnostics/check_generation.py) repeats the original first baseline
 batch twice using the saved tuning settings and shared generator. It records
 the runtime, model and generation defaults, attention implementation, input token
 IDs, full output texts, and exact matches against both tuning runs. It makes no
@@ -308,7 +308,7 @@ set -e
 git pull --ff-only origin sae-tuning
 CHECK_ID="$(date +%Y%m%d-%H%M%S)"
 for repeat in 1 2; do
-  uv run --locked python -m steering.sae.check_generation \
+  uv run --locked python -m diagnostics.check_generation \
     --run-dir results/tuning/sae-tuning-20261107-122025-917305022 \
     --reference-run-dir results/tuning/sae-tuning-20261106-202053 \
     --output "results/sae_checks/reproduction-$CHECK_ID/process-$repeat.json"
@@ -422,7 +422,7 @@ p = torch.cuda.get_device_properties(0)
 print(p.name, p.total_memory, p.multi_processor_count)
 assert 'MIG 3g.47gb' in p.name and p.multi_processor_count == 60, 'Unexpected GPU profile'
 PY
-uv run --locked python -m steering.sae.check_generation \
+uv run --locked python -m diagnostics.check_generation \
   --run-dir results/tuning/sae-tuning-20261107-122025-917305022 \
   --reference-run-dir results/tuning/sae-tuning-20261106-202053 \
   --output "results/sae_checks/mig-reproduction-$(date +%Y%m%d-%H%M%S).json"

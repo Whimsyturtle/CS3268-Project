@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from steering.sae import check_generation as diagnostic
+from diagnostics import check_generation as diagnostic
 
 
 @pytest.fixture

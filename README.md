@@ -31,6 +31,7 @@ CS3268-Group-6/
 │   ├── mmlu_pro/
 │   └── alpaca_eval/
 ├── configs/        # Experiment configurations
+├── diagnostics/    # Optional generation diagnostics
 ├── results/        # <benchmark>/<method>/<run_id>/
 ├── tests/          # Focused implementation tests
 └── docs/           # Course and cluster documents
@@ -89,6 +90,9 @@ export SOCLAAS_API_KEY=<api-key>
 For the separate development diagnostic, see the
 [SAE coherence audit](steering/sae/coherence.md), including
 [full rerun commands for both scorers](steering/sae/coherence.md#full-rerun-of-tuning-and-coherence).
+
+For optional baseline reproduction checks, use
+[`diagnostics.check_generation`](diagnostics/check_generation.py).
 
 ## Contributing
 
