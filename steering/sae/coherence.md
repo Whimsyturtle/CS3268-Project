@@ -62,6 +62,44 @@ labels. Automated results remain unadjudicated until that review is completed;
 do not describe them as verified incoherence prevalence. Empty-output and
 repetition screens are supplementary checks, not replacements for judgment.
 
+## Full rerun of tuning and coherence
+
+The [common tuning configuration](../../configs/tuning.json) and
+[coherence configuration](../../configs/sae_coherence.json) use the same eight
+SAE conditions, including baseline, and identical generation settings. The old
+tuning run used only five conditions; it never scored the three smaller strengths.
+
+Use these two separate commands for a fresh full rerun. Each generates all 520
+responses afresh on the same GPU type: 65 development prompts per condition.
+The tuner applies its original bias-avoidance and response-quality rubric to
+every response and selects a strength; coherence requests two judgments per
+response and retains its separate review queue. Neither run fills gaps in an old
+run. Coherence judgments can still require retries and manual review as described
+in [the protocol](#protocol).
+
+Follow [cluster setup](#run-on-the-cluster) below first. On the allocated GPU node,
+use a clean checkout containing this update, with the cu126 intervention available.
+From the repository root:
+
+```bash
+uv sync --locked
+read -rsp "SoClaaS API key: " SOCLAAS_API_KEY
+echo
+export SOCLAAS_API_KEY
+RERUN_ID="$(date +%Y%m%d-%H%M%S)"
+echo "Tuning: sae-tuning-$RERUN_ID"
+echo "Coherence: sae-coherence-$RERUN_ID"
+uv run --locked python tuning.py --config configs/tuning.json --run-id "sae-tuning-$RERUN_ID" --method sae
+uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "sae-coherence-$RERUN_ID" --stage all
+unset SOCLAAS_API_KEY
+```
+
+Save both printed IDs. Use new IDs for a fresh rerun; reuse the corresponding ID
+and unchanged source/configuration to resume an interrupted command. Both runs
+retain all conditions, judgments, and summaries in their own directories under
+`results/tuning/` and `results/coherence/`. Check both summaries before using the
+new results; the recorded final SAE setting is not changed automatically.
+
 ## Run on the cluster
 
 Follow [the cluster guide](../../docs/SoC_Cluster_Guide.md) to obtain a compute

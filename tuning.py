@@ -74,8 +74,12 @@ def _require_positive(config, key):
         raise ValueError(f"{key} must be a positive integer")
 
 
-def read_config(path: Path) -> dict:
+def read_config(path: Path, *, method: str | None = None) -> dict:
     config = json.loads(path.read_text(encoding="utf-8"))
+    if method is not None:
+        if method not in config.get("methods", {}):
+            raise ValueError(f"unknown steering method: {method}")
+        config["methods"] = {method: config["methods"][method]}
     model = config.get("model", {})
     if not model.get("name") or not REVISION_RE.fullmatch(model.get("revision", "")):
         raise ValueError("model needs an immutable 40-character revision")
@@ -562,10 +566,7 @@ def run(config_path: Path, run_id: str, *, method: str) -> Path:
     if (run_id in {".", ".."} or Path(run_id).name != run_id
             or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", run_id)):
         raise ValueError("run_id must be a single directory name")
-    config = read_config(config_path)
-    if method not in config["methods"]:
-        raise ValueError(f"unknown steering method: {method}")
-    config = {**config, "methods": {method: config["methods"][method]}}
+    config = read_config(config_path, method=method)
     run_dir = ROOT / "results" / "tuning" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     resolved = _resolved_run_config(config_path, config, method)

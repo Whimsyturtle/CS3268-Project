@@ -17,7 +17,10 @@ judge is recorded by its service model ID because the service does not expose a
 model revision.
 
 [`sae_coherence.json`](sae_coherence.json) configures the separate
-[development coherence audit](../steering/sae/coherence.md).
+[development coherence audit](../steering/sae/coherence.md). Its SAE strength grid,
+model, intervention, development data, seed, and generation settings match the
+common tuner; regression tests check that they stay aligned. Only the selected
+method's intervention is required when running the common tuner.
 
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay

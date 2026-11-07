@@ -78,7 +78,8 @@ uv run --locked python tuning.py --config configs/tuning.json \
 ```
 
 For the separate development diagnostic, see the
-[SAE coherence audit](steering/sae/coherence.md).
+[SAE coherence audit](steering/sae/coherence.md), including
+[full rerun commands for both scorers](steering/sae/coherence.md#full-rerun-of-tuning-and-coherence).
 
 ## Contributing
 
