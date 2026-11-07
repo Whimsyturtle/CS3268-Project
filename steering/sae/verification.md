@@ -104,9 +104,8 @@ The [saved configuration](../../results/tuning/sae-tuning-20261106-202053/config
 records the development-only settings and intervention hashes. The
 [summary](../../results/tuning/sae-tuning-20261106-202053/summary.json) selects
 strength 0.25 under the [common tuning rule](../README.md#strength-hyperparameter-tuning).
-[The final configuration](../../configs/main.json) still records that earlier
-setting; the [eight-condition rerun](#eight-condition-tuning-rerun) below selected
-baseline, so the final configuration freeze remains pending.
+[The final configuration](../../configs/main.json) records that setting under
+the user's [decision to retain this run](#retained-sae-result).
 
 Inspection of the downloaded run confirmed:
 
@@ -133,6 +132,27 @@ The complete run is retained at
 and was copied locally to the same repository-relative path. Raw generations,
 judgments, logs, and environment snapshots remain Git-ignored under the
 [results convention](../../results/README.md#strength-tuning).
+
+### Retained SAE result
+
+On 2026-11-07, the user chose to keep the original H100 NVL MIG `3g.47gb`
+tuning run `sae-tuning-20261106-202053` as the SAE selection basis, retaining
+strength 0.25 and its cu126 intervention in `configs/main.json`. The earlier
+coherence run and supplementary review remain the separate
+[coherence evidence](#development-coherence-diagnostic).
+
+This decision was made after reviewing the newer
+[eight-condition tuning run](#eight-condition-tuning-rerun), which selected
+baseline. That run is excluded from the retained strength selection; its
+artifacts and findings remain recorded for the reproducibility investigation.
+The decision does not require a new MIG tuning or coherence run.
+
+The retained selection covers only the original five conditions: 0, 0.1, 0.25,
+0.5, and 1.0. The current eight-condition `configs/tuning.json` describes an
+optional future rerun; it is not the configuration that produced this selection.
+The shared configuration freeze and held-out benchmark conclusions remain
+pending, including verification of matching GPU allocation profiles across
+methods under the [comparison settings](../../configs/README.md).
 
 ### Eight-condition tuning rerun
 
@@ -247,7 +267,8 @@ The diagnostic launches two fresh processes, each generating the same four promp
 repeat. Agreement with the new run establishes repeatability on that allocation;
 it does not isolate the driver's effect. Disagreement within or between processes
 requires further generation investigation. Preserve the printed reports before
-leaving the allocation; final strength selection remains pending.
+leaving the allocation. These checks do not change the
+[retained SAE result](#retained-sae-result).
 
 Diagnostic validation: 12 focused diagnostic/runner tests pass, module CLI help
 and whitespace checks pass, and independent read-only review has no findings.
@@ -267,8 +288,7 @@ runtime extraction subsequently pasted by the user is compared below.
 The reported result supports repeatability for these four prompts in the full-GPU
 allocation, within and across fresh processes. It does not establish repeatability
 for all 520 responses or isolate the driver as the cause of the old/new difference.
-The MIG comparison below investigates that difference; final strength selection
-remains pending.
+The MIG comparison below investigates that difference.
 
 The pasted runtime extractions from both reports are identical. Their PyTorch
 `2.14.1+cu126`, Transformers `5.20.2`, tokenizers `0.23.3`, and huggingface-hub
@@ -369,7 +389,7 @@ The complete MIG report has not yet been copied locally. The supplied excerpts
 cover its environment and printed checks, but its source record, attention
 implementation, tokenized inputs, and full generated texts have not been directly
 inspected. Repeatability on MIG has been reported within one process, not yet
-across fresh processes. Final strength selection remains pending.
+across fresh processes; reproduction across all conditions remains unchecked.
 
 ## Development coherence diagnostic
 

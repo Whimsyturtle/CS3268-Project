@@ -64,6 +64,9 @@ repetition screens are supplementary checks, not replacements for judgment.
 
 ## Full rerun of tuning and coherence
 
+These commands are optional; the [retained SAE result](verification.md#retained-sae-result)
+uses the original runs without requiring a new tuning or coherence run.
+
 The [common tuning configuration](../../configs/tuning.json) and
 [coherence configuration](../../configs/sae_coherence.json) use the same eight
 SAE conditions, including baseline, and identical generation settings. The old
