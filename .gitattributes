@@ -1,7 +1,3 @@
 # Preserve result artifact hashes when checking out on Windows or Linux.
 /results/tuning/**/config.json text eol=lf
 /results/tuning/**/summary.json text eol=lf
-/results/coherence/**/config.json text eol=lf
-/results/coherence/**/judging_continuation*.json text eol=lf
-/results/coherence/**/review_protocol.json text eol=lf
-/results/coherence/**/summary.json text eol=lf
