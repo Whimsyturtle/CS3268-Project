@@ -104,8 +104,9 @@ The [saved configuration](../../results/tuning/sae-tuning-20261106-202053/config
 records the development-only settings and intervention hashes. The
 [summary](../../results/tuning/sae-tuning-20261106-202053/summary.json) selects
 strength 0.25 under the [common tuning rule](../README.md#strength-hyperparameter-tuning).
-[The final configuration](../../configs/main.json) uses that strength and the
-same intervention directory.
+[The final configuration](../../configs/main.json) still records that earlier
+setting; the [eight-condition rerun](#eight-condition-tuning-rerun) below selected
+baseline, so the final configuration freeze remains pending.
 
 Inspection of the downloaded run confirmed:
 
@@ -132,6 +133,56 @@ The complete run is retained at
 and was copied locally to the same repository-relative path. Raw generations,
 judgments, logs, and environment snapshots remain Git-ignored under the
 [results convention](../../results/README.md#strength-tuning).
+
+### Eight-condition tuning rerun
+
+Run `sae-tuning-20261107-122025-917305022` reran the common tuner across all eight
+conditions. Its [saved configuration](../../results/tuning/sae-tuning-20261107-122025-917305022/config.json)
+records source `1bfbc6d6c0112923da8a6c3016d5a932a02281ef`, no tracked diff, and one
+untracked earlier results directory, `results/tuning/sae-tuning-20261107-121116/`.
+This was not a clean checkout. The copied bundle contains configuration,
+generations, judgments, and summary; it has no runtime environment snapshot or
+raw API envelopes, so those aspects of provenance remain unchecked.
+
+Read-only verification confirmed:
+
+- Exactly 520 unique generations and matching judgments, with the same 65
+  development IDs, prompts, and categories in every condition. All review IDs
+  and judgment schemas validate.
+- Every overall and category mean, paired count, seeded 95% bootstrap interval,
+  ranking, and selected strength reproduces the [summary](../../results/tuning/sae-tuning-20261107-122025-917305022/summary.json).
+- Recorded settings match the source configuration. The cu126 intervention's
+  metadata and all four file hashes match the retained local intervention.
+
+The tuner selects **baseline (strength 0)**, with mean balanced score 4.0462.
+The highest nonzero score is 4.0000 at 0.5; its paired difference is -0.0462
+(95% interval [-0.2308, 0.1231]). Strength 0.25 scores 3.9231, a difference of
+-0.1231 ([-0.3385, 0.0923]). These are development results under the unchanged
+selection rule, not held-out benchmark findings.
+
+The user retained the earlier coherence review. Model, seed, generation settings,
+and intervention match its recorded configuration, but only 3 of 520 generated
+response texts match exactly: one each at 0.01, 0.05, and 0.5, and none at baseline.
+Whitespace normalization does not increase this count. The earlier coherence
+rates remain findings about those earlier responses; they are not coherence
+scores for this rerun. The available artifacts do not establish why the outputs
+changed, and the changed scores cannot be attributed solely to judge variation.
+
+The four copied files have these SHA-256 hashes:
+
+| File | SHA-256 |
+| --- | --- |
+| `config.json` | `ca8be96be700379214765cbadf7a0b9a4c846aa8258644a22d4901052ff69b11` |
+| `generations.jsonl` | `0159707657037ad0e7439f64d99a67bdb35b01b54e2736113d4d9146000c08c8` |
+| `judgments.jsonl` | `4255edc4478213245e51d7eaa1b1e6e50a3477672bdf96bb40afea09165ee0a9` |
+| `summary.json` | `7e7aa6135fa749e17048d772c32ec116f00e0562528b7bcd25226f62b64a5ed8` |
+
+The complete run remains at the same repository-relative path locally and under
+`bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/`.
+These hashes identify the downloaded copy; no separately supplied remote checksum
+manifest was available. Independent review reproduced the statistics and confirmed
+the distinction between the two generation runs. No new generation or judging
+was performed during verification.
 
 ## Development coherence diagnostic
 
