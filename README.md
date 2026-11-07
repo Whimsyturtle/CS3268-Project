@@ -72,9 +72,14 @@ candidate sequentially, judges each response, and selects a strength with one
 command:
 
 ```bash
-export SOCLAAS_API_KEY=<api-key>
 uv run --locked python tuning.py --config configs/tuning.json \
   --run-id <unique-run-id> --method <method>
+```
+
+Note that you need an API key from SoClaaS for this, which you can add as an environment variable:
+
+```bash
+export SOCLAAS_API_KEY=<api-key>
 ```
 
 For the separate development diagnostic, see the

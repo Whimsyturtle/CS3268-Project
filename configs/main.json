@@ -54,6 +54,13 @@
     "alpaca_eval": {
       "dataset": "tatsu-lab/alpaca_eval",
       "revision": "2edc6fad8be6b14ea7230aabfd08188da6b8b814",
+      "reference_file": "alpaca_eval_gpt4_baseline.json",
+      "judge": {
+        "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+        "model": "x-test-2",
+        "reasoning_effort": "none",
+        "api_key_env": "SOCLAAS_API_KEY"
+      },
       "limit": null,
       "max_new_tokens": 2048
     }
