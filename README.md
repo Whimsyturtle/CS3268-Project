@@ -50,7 +50,8 @@ Install [uv](https://docs.astral.sh/uv/), then run `uv sync --locked`.
 PyTorch [CUDA](GLOSSARY.md#cuda) 12.6 (`cu126`) builds on Linux and Windows;
 macOS uses PyPI builds. [uv.lock](uv.lock) pins the resolved package versions
 and download hashes. Keep it committed and use `--locked` to reject stale locks.
-Python is constrained to 3.12 or newer, without an exact interpreter pin.
+[.python-version](.python-version) selects the exact interpreter for `uv`;
+`requires-python` remains the compatibility range for local development.
 
 The CUDA build selection does not install or pin the host NVIDIA driver or system
 CUDA toolkit. On a GPU compute node, check the installed build and GPU access:
@@ -61,6 +62,9 @@ uv run --locked python -c "import torch; print(torch.__version__, torch.version.
 
 Gemma 3 is gated on Hugging Face: accept its license, then run
 `uv run --locked hf auth login`. Run tests with `uv run --locked pytest`.
+
+For all new construction, tuning, and benchmark runs on the school cluster,
+follow the [shared cluster runtime](docs/Cluster_Runtime.md).
 
 ## Tune steering strength
 

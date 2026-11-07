@@ -109,8 +109,8 @@ new results; the recorded final SAE setting is not changed automatically.
 
 ## Run on the cluster
 
-Follow [the cluster guide](../../docs/SoC_Cluster_Guide.md) to obtain a compute
-node. Run installation and generation on the compute node, never on `xlogin`.
+Follow the [shared cluster runtime](../../docs/Cluster_Runtime.md)
+to obtain and verify a compute allocation.
 Start from a clean checkout with the existing cu126 intervention available at
 the configured path; Git does not transfer its ignored tensor files. Its
 [verification record](verification.md#cu126-rebuild-and-verification) gives the
@@ -127,7 +127,7 @@ For a new audit, from the repository root on the allocated GPU node:
 git switch sae-tuning
 git pull --ff-only origin sae-tuning
 uv sync --locked
-uv run --locked python -c "import torch; print(torch.__version__, torch.version.cuda); assert torch.cuda.is_available()"
+uv run --locked python -m cluster_runtime
 AUDIT_RUN_ID="sae-coherence-$(date +%Y%m%d-%H%M%S)"
 echo "$AUDIT_RUN_ID"
 uv run --locked python -m steering.sae.audit_coherence --config configs/sae_coherence.json --run-id "$AUDIT_RUN_ID" --stage generate

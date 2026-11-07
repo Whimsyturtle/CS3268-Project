@@ -61,17 +61,17 @@ revision; the saved intervention records the exact base revision actually used.
 
 ## Build and check
 
-Use Python 3.12 or newer and accept the Gemma model license on Hugging Face. On the
-SoC cluster, follow the [cluster guide](../../docs/SoC_Cluster_Guide.md) to obtain an
-appropriate compute node; install dependencies and run these commands there.
+Follow the [shared runtime setup](../../docs/Cluster_Runtime.md)
+for new cluster runs and accept the Gemma model license on Hugging Face.
+Install dependencies and run these commands on the allocated compute node.
 Configure `HF_HOME` outside this repository if the default cache is unsuitable.
 
 ```bash
 uv sync --locked
-uv run hf auth login
-uv run python shared_examples/validate.py --check-evaluation-overlap
-uv run python -m steering.sae.build
-uv run python -m steering.sae.check --run-id sae-application-001
+uv run --locked hf auth login
+uv run --locked python shared_examples/validate.py --check-evaluation-overlap
+uv run --locked python -m steering.sae.build
+uv run --locked python -m steering.sae.check --run-id sae-application-001
 ```
 
 Commit the implementation before producing reportable artifacts. Feature

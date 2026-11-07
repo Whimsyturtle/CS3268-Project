@@ -124,6 +124,12 @@ A numerical value in a model. A **trainable parameter** is one that the training
 
 Short for Rank-1 Representation Finetuning, a method that learns a single hidden-state direction from supervised examples.
 
+## Runtime
+
+The software and hardware used to execute a run. The
+[cluster requirements](docs/Cluster_Runtime.md)
+define the shared setup and the evidence retained for new cluster runs.
+
 ## SAE
 
 Short for Sparse Autoencoder, a model that reconstructs activations using a small number of active features.

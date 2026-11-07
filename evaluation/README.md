@@ -40,8 +40,10 @@ win rate. The judge that we are using differs from the official judge, so result
 not comparable with the official AlpacaEval 2.0 leaderboard.
 
 Run a benchmark with
-`uv run python -m evaluation.runner --config configs/main.json --method baseline --benchmark bbq --run-id <run_id>`.
+`uv run --locked python -m evaluation.runner --config configs/main.json --method baseline --benchmark bbq --run-id <run_id>`.
 For a quick test, copy the config and set a benchmark's `limit`.
+
+All new cluster runs use the [shared runtime requirements](../docs/Cluster_Runtime.md).
 
 Use identical held-out prompts and decoding settings across methods for each
 benchmark. Tune settings on development data, then freeze them before final

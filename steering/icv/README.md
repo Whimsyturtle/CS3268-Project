@@ -1,9 +1,10 @@
 # ICV
 
+For cluster runs, first follow the [shared runtime setup](../../docs/Cluster_Runtime.md).
 Construct the ICV from the shared demonstration pairs with
 
 ```sh
-uv run python -m steering.icv.build
+uv run --locked python -m steering.icv.build
 ```
 
 The command uses the model in `configs/main.json` and writes `vector.pt` and

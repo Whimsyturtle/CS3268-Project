@@ -27,8 +27,8 @@ and is identified by the source commit saved with every run. Method strengths st
 `decoding` holds the decoding hyperparameters shared by every benchmark and method, and
 `do_sample: false` selects greedy decoding. `batch_size` and `use_cache` are fixed
 because changing either can change greedy outputs through small numerical differences;
-for the same reason, run every method for a benchmark on the same GPU type and
-allocation profile, including the same [MIG](../GLOSSARY.md#mig) partition profile. Each
+for the same reason, all new cluster runs follow the
+[shared runtime requirements](../docs/Cluster_Runtime.md). Each
 benchmark sets only `max_new_tokens`. Other generation settings come from the model's
 `generation_config.json` at the pinned revision (which sets the stop tokens `<eos>` and
 `<end_of_turn>`) and the transformers version in `uv.lock`; the model's sampling
