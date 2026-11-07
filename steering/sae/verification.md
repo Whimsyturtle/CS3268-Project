@@ -177,7 +177,8 @@ attached. The old tuning run's retained `nvidia-smi-after-run.txt` records drive
 run's allocation. This establishes a reported environment difference, not its
 causal effect. The new allocation's MIG profile and actual package versions
 remain unchecked. [The baseline reproduction check](#baseline-reproduction-check)
-collects those details and tests repeatability; its live results remain pending.
+collects those details and tests repeatability; the reported batch result below
+supports repeatability in the current allocation, with runtime comparison pending.
 
 The four copied files have these SHA-256 hashes:
 
@@ -253,7 +254,24 @@ leaving the allocation; final strength selection remains pending.
 
 Diagnostic validation: 12 focused diagnostic/runner tests pass, module CLI help
 and whitespace checks pass, and independent read-only review has no findings.
-These checks use mocked generation; live GPU reproduction remains pending.
+These unit checks use mocked generation.
+
+The user subsequently reported successful cluster execution at
+`results/sae_checks/reproduction-20261107-144842/`, with `process-1.json` and
+`process-2.json`. Both fresh processes reported identical text across their two
+repeats: every repeat matched the new tuning run on all four prompts and the old
+run on none. All four output hashes were
+`1b4d368e9174e14ac9be488b1e9169c14ffa72aaaa26e05f756270bff172e1d3`.
+Independent calculation from the locally retained new tuning responses, in the
+original first-batch order, reproduces this hash; the old batch has a different
+hash. The complete diagnostic reports have not yet been copied locally or
+inspected, so their runtime details remain unchecked.
+
+The reported result supports repeatability for these four prompts in the current
+allocation, within and across fresh processes. It does not establish repeatability
+for all 520 responses or isolate the driver as the cause of the old/new difference.
+Runtime comparison, the cause of that difference, and final strength selection
+remain pending.
 
 ## Development coherence diagnostic
 
