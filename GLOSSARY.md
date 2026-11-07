@@ -43,12 +43,6 @@ it again.
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
 
-## Coherence
-
-Whether a response is understandable and consistent within itself and with
-explicit facts in its prompt. The [SAE development audit](steering/sae/coherence.md)
-defines which errors count and how their severity is measured.
-
 ## CUDA
 
 NVIDIA's platform for running computations on its GPUs. PyTorch's `cu126` build
@@ -160,9 +154,3 @@ A direction in a model's activation space used to influence its behavior.
 ## Unsteered baseline
 
 The base model evaluated without activation steering or changes to the evaluation prompts.
-
-## Wilson confidence interval
-
-An interval estimating uncertainty in an observed proportion, such as the fraction
-of responses with coherence failures. It retains a positive upper bound when no
-failures are observed in a finite sample.

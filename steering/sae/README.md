@@ -99,13 +99,12 @@ and raw outputs. Retain and link these files when updating #9.
 Run focused SAE tests from the repository root:
 
 ```bash
-uv run --locked pytest tests/test_sae.py tests/test_sae_gemma.py \
-  tests/test_sae_coherence.py
+uv run --locked pytest tests/test_sae.py tests/test_sae_gemma.py
 ```
 
-These tests use synthetic models and data or mocked generation and judging. The
+These tests use synthetic models and data. The
 pretrained application check above remains necessary before completing #9.
 
-For development work, see the [shared tuner](../README.md#strength-hyperparameter-tuning)
-and [SAE coherence audit](coherence.md). The [verification record](verification.md)
+For development work, see the [shared tuner](../README.md#strength-hyperparameter-tuning).
+The [verification record](verification.md)
 contains retained artifacts, checks, and the [retained SAE result](verification.md#retained-sae-result).

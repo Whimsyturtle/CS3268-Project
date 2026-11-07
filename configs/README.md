@@ -12,13 +12,8 @@ Store reviewed experiment configurations here. Each must record:
 
 [`tuning.json`](tuning.json) configures the development data, generator, judge,
 intervention, and candidate strengths. Strength zero is one shared unsteered
-baseline. Generator and intervention revisions must be immutable.
-
-[`sae_coherence.json`](sae_coherence.json) configures the separate
-[SAE development coherence audit](../steering/sae/coherence.md). Its strength grid,
-model, intervention, development data, seed, and generation settings match the
-common tuner; regression tests check that they stay aligned. Only the selected
-method's intervention is required when running the common tuner.
+baseline. Generator and intervention revisions must be immutable. Only the
+selected method's intervention is required when running the common tuner.
 
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay

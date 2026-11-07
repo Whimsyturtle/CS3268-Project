@@ -7,7 +7,7 @@ for `run_id` and never overwrite an existing run.
 - `predictions.jsonl`: `example_id` and raw `output`, one record per line. Save before scoring.
 - `metrics.csv`: `subgroup`, `metric`, `value`, and `n`, one metric per row.
 - `cluster_runtime.json`: evidence for new cluster runs, defined by the
-  [shared runtime requirements](../docs/Cluster_Runtime.md); retain with raw artifacts, including tuning and coherence runs.
+  [shared runtime requirements](../docs/Cluster_Runtime.md); retain with raw artifacts, including tuning runs.
 
 Runs of AlpacaEval 2.0 with a custom judge also contain `annotations.json` and
 `leaderboard.csv` from its pairwise judge.
@@ -36,18 +36,3 @@ results/tuning/<run_id>/summary.json
 Interrupted judging resumes from the saved judgments. Completed summaries are
 not overwritten. Commit `config.json` and `summary.json` for selected tuning
 runs, and keep `generations.jsonl` and `judgments.jsonl` outside Git.
-
-## Coherence audit
-
-The [SAE development coherence audit](../steering/sae/coherence.md) retains its run
-under `results/coherence/<run_id>/`; commit checked `config.json`, `summary.json`,
-and all `judging_continuation*.json` records when present explicitly with `git add -f`.
-Retain the remaining raw files outside Git. The whole directory stays ignored
-during execution so stage transitions and resumes preserve a clean source checkout.
-
-Supplementary model reviews belong in a separate `<run_id>-review/` directory.
-Commit their checked `summary.json` and `review_protocol.json` explicitly; retain
-input pairs, individual labels, consistency reviews, and analysis code in the
-local review bundle. These summaries must identify model review as such and must
-not fill missing judgments or imply completion of the original audit's human
-adjudication. Link checked findings from the SAE verification record.

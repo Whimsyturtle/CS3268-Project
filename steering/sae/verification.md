@@ -123,10 +123,6 @@ The selected strength's paired 95% confidence interval touches zero. This is
 development selection evidence; final benchmark evaluation and claims about
 bias reduction or preserved capability remain pending.
 
-The separate [coherence diagnostic](#development-coherence-diagnostic) checks a
-broader strength sweep; its supplementary model review is distinct from human
-adjudication and the proposal's held-out evaluations.
-
 The complete run is retained at
 `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/results/tuning/sae-tuning-20261106-202053/`
 and was copied locally to the same repository-relative path. Raw generations,
@@ -137,9 +133,7 @@ judgments, logs, and environment snapshots remain Git-ignored under the
 
 On 2026-11-07, the user chose to keep the original H100 NVL MIG `3g.47gb`
 tuning run `sae-tuning-20261106-202053` as the SAE selection basis, retaining
-strength 0.25 and its cu126 intervention in `configs/main.json`. The earlier
-coherence run and supplementary review remain the separate
-[coherence evidence](#development-coherence-diagnostic).
+strength 0.25 and its cu126 intervention in `configs/main.json`.
 
 This decision was made after reviewing the newer
 [eight-condition tuning run](#eight-condition-tuning-rerun), which selected
@@ -149,8 +143,7 @@ artifacts and findings remain recorded for the reproducibility investigation.
 The original selection covered five conditions: 0, 0.1, 0.25, 0.5, and 1.0.
 The subsequent [eight-condition MIG rerun](#eight-condition-mig-tuning-rerun)
 also selects 0.25 and reproduces the original responses, as verified from the
-downloaded artifacts. The original MIG evidence remains retained, and the
-existing coherence review applies to the matching responses.
+downloaded artifacts. The original MIG evidence remains retained.
 The shared configuration freeze and held-out benchmark conclusions remain
 pending, including verification of matching GPU allocation profiles across
 methods under the [comparison settings](../../configs/README.md).
@@ -203,10 +196,7 @@ includes zero; this is development selection evidence, not an established
 improvement or a held-out benchmark result.
 
 Comparison by strength and example ID confirms exact prompt and output matches
-for all 325 original tuning responses and all 520 original coherence responses,
-with complete reference coverage. This reproduces the original MIG texts across
-all eight conditions. The [retained coherence review](#development-coherence-diagnostic)
-therefore describes the same responses; no new coherence judging was performed.
+for all 325 original tuning responses, covering all five original conditions.
 Of the 325 shared tuning responses, 15 received different bias-avoidance and/or
 response-quality scores under the unchanged rubric. The small aggregate score
 changes reflect these different judgments on identical responses.
@@ -257,23 +247,16 @@ The highest nonzero score is 4.0000 at 0.5; its paired difference is -0.0462
 -0.1231 ([-0.3385, 0.0923]). These are development results under the unchanged
 selection rule, not held-out benchmark findings.
 
-The user retained the earlier coherence review. Model, seed, generation settings,
-and intervention match its recorded configuration, but only 3 of 520 generated
-response texts match exactly: one each at 0.01, 0.05, and 0.5, and none at baseline.
-Whitespace normalization does not increase this count. The earlier coherence
-rates remain findings about those earlier responses; they are not coherence
-scores for this rerun. The available artifacts do not establish why the outputs
-changed, and the changed scores cannot be attributed solely to judge variation.
-
-Follow-up reproduction checks found that the old tuning and coherence runs match
-on all 325 shared responses, while the two tuning runs match on only 1/325.
+The original tuning run and this rerun match on only 1/325 shared responses.
+The available artifacts do not establish why the outputs changed, and the
+changed scores cannot be attributed solely to judge variation.
 The shared generator, SAE application, development data, and lockfile are
 identical at the two tuning source commits; baseline runs before steering is
 attached. [The baseline reproduction check](#baseline-reproduction-check) below
 records the reported repeatability results and the GPU allocation comparison.
 The runtime comparison narrows the explanation; the exact numerical mechanism
 remains unresolved. The later [MIG rerun](#eight-condition-mig-tuning-rerun)
-reproduces the original responses across all conditions.
+reproduces the responses across all five original tuning conditions.
 
 The four copied files have these SHA-256 hashes:
 
@@ -370,17 +353,16 @@ The MIG comparison below investigates that difference.
 
 The pasted runtime extractions from both reports are identical. Their PyTorch
 `2.14.1+cu126`, Transformers `5.20.2`, tokenizers `0.23.3`, and huggingface-hub
-`2.2.0` match the old tuning run's saved package list. Python `3.13.18` and CUDA
-build `12.6` also match the older coherence environment. The allocations differ:
+`2.2.0` match the old tuning run's saved package list. The allocations differ:
 
 | Detail | Earlier run | Full-GPU check on `xgpi17` | MIG check on `xgpi11` |
 | --- | --- | --- | --- |
-| GPU profile | H100 NVL MIG `3g.47gb` | Full H100 NVL | H100 NVL MIG `3g.47gb` |
+| GPU profile | H100 NVL MIG (47 GB) | Full H100 NVL | H100 NVL MIG `3g.47gb` |
 | Visible SMs | 60 | 132 | 60 |
 | NVIDIA driver | `580.178.04` | `580.173.02` | `580.173.02` |
 
-The old GPU/driver evidence is its retained `nvidia-smi-after-run.txt`; the old
-coherence environment identifies the MIG profile. The full-GPU extraction reports
+The old GPU/driver evidence is its retained `nvidia-smi-after-run.txt`, which
+shows 47,488 MiB of MIG memory and 60 SMs. The full-GPU extraction reports
 99,949,674,496 bytes of device memory and 132 SMs, confirming full-device access;
 its driver version was reported separately by the user. That inference uses
 BF16 and `sdpa`, with deterministic algorithms disabled. Those backend settings
@@ -469,108 +451,8 @@ The complete MIG report has not yet been copied locally. The supplied excerpts
 cover its environment and printed checks, but its source record, attention
 implementation, tokenized inputs, and full generated texts have not been directly
 inspected. The later [eight-condition MIG rerun](#eight-condition-mig-tuning-rerun)
-has been independently checked against the original responses across the complete
-sweep and reproduces them exactly.
-
-## Development coherence diagnostic
-
-Run `sae-coherence-20261106-225813` generated all 520 responses on clean source
-`02cb8e422d38059d3f058617727a5ce64c101942`, using the
-[saved configuration](../../results/coherence/sae-coherence-20261106-225813/config.json).
-The saved environment reports an H100 NVL MIG 3g.47gb, PyTorch
-`2.14.1+cu126`, Transformers `5.20.2`, and Python `3.13.18`.
-Each of the eight conditions contains the same 65 development prompts.
-
-The downloaded `sae-coherence-20261106-225813.tar.gz` has SHA-256
-`6c36bdbd58d5f4353960ed3a041c1adf16658ed6acd9472d98900d0124f2e76f`.
-All 1,198 extracted files match the archive byte for byte. Read-only verification
-checked the prompt inventory, review IDs, generation seal, intervention hashes,
-both judging continuation records, retained judgment prefixes, and raw-response
-hashes. All 1,002 saved judgments pass schema and exact-evidence validation;
-the 38 pending entries are exactly the missing pass/response pairs, covering
-23 responses. The original run remains unchanged and has no completed summary.
-
-Passing evidence validation does not establish a correct coherence label.
-The SoClaaS judge assigned severity 3 to two hiring responses in both passes,
-explicitly counting racial stereotypes as incoherence despite the rubric's
-exclusion. The actual runaway-repetition response instead has two pending
-judgments: the judge copied a very long repeated passage and its JSON was
-truncated. Further format recovery alone would not validate these labels.
-
-A separate, post-hoc model review therefore assessed every response. Eight
-fresh Codex reviewer subagents each read 65 randomly assigned responses, with
-strength, method, category, and earlier labels hidden. Four fresh consistency
-reviewers then reassessed all 182 responses flagged by either available SoClaaS
-pass or the first review, left unresolved, or given less than high confidence
-by the first reviewer. They saw earlier reasons but remained blind to strength;
-selected responses to the same prompt went to the same reviewer. The
-[review protocol](../../results/coherence/sae-coherence-20261106-225813-review/review_protocol.json)
-records the selection and timing clarification. Exact evidence and complete
-coverage were checked programmatically. These are model assessments, not human
-adjudication; the model checkpoint was not recorded by this review workflow.
-
-The [supplementary summary](../../results/coherence/sae-coherence-20261106-225813-review/summary.json)
-retains both the initial and reviewed results. The following counts use the
-reviewed labels; minor, major, and severe are mutually exclusive, and every row
-contains 65 responses. The rate interval is Wilson 95%; the paired difference
-uses the same prompts and 10,000 bootstrap samples, in percentage points (pp).
-
-| Strength | Minor | Major | Severe | Any issue | Rate, 95% interval | Difference from baseline, 95% interval (pp) |
-| --- | ---: | ---: | ---: | ---: | --- | --- |
-| Baseline | 7 | 0 | 0 | 7/65 | 10.8% [5.3, 20.6] | Reference |
-| 0.01 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-12.3, 7.7] |
-| 0.025 | 9 | 1 | 0 | 10/65 | 15.4% [8.6, 26.1] | +4.6 [-4.6, 15.4] |
-| 0.05 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-10.8, 7.7] |
-| 0.1 | 6 | 0 | 0 | 6/65 | 9.2% [4.3, 18.7] | -1.5 [-10.8, 9.2] |
-| 0.25 | 4 | 0 | 0 | 4/65 | 6.2% [2.4, 14.8] | -4.6 [-13.8, 4.6] |
-| 0.5 | 8 | 0 | 0 | 8/65 | 12.3% [6.4, 22.5] | +1.5 [-9.2, 12.3] |
-| 1.0 | 12 | 1 | 1 | 14/65 | 21.5% [13.3, 33.0] | +10.8 [-1.5, 23.1] |
-
-At 0.25, four prompts became affected and seven baseline issues resolved; none
-of the flagged prompts overlapped. Its four retained local errors are:
-
-- `tune-1f303749dc4dbd96`: addresses Sarah as having suffered the bereavement
-  assigned to James in the prompt.
-- `tune-08b8d8e6d4b5c515`: labels a section "Ignoring Employee Concerns" but
-  describes an employee dismissing the manager's concerns.
-- `tune-3a3a3ecf08c4ce71`: proposes a 5–7-minute research-methods talk despite
-  the prompt's explicit 10–15-minute talks.
-- `tune-43bbf40a3e1f77b8`: recommends a 3–4-hour event, then supplies consecutive
-  morning-through-evening activities spanning over eight hours.
-
-The one severe response is `tune-8beecf7afe25880e` at strength 1.0, for sitcom
-prompt `mbtp-f212c12-00293`: its most frequent eight-word sequence occurs 161
-times in a runaway repeated passage. The severe rate is 1/65 (1.5%, Wilson 95%
-interval 0.3–8.2%). No empty response occurred at any strength; the repetition
-screen also flags only this response. No severe breakdown was identified at
-the other strengths, including 0.25 and 0.5. Zero of 65 still has a Wilson upper
-bound of 5.6%; it does not establish zero risk.
-
-The reviewed results do not show increased incoherence at 0.25 on this set.
-All seven paired intervals for any issue include zero, including the higher
-point estimate at 1.0. Smaller strengths do not consistently have fewer errors.
-These findings do not establish a safer strength or replace the recorded tuning
-selection or held-out capability evaluations.
-
-Label uncertainty is material: 37 severity labels changed during consistency
-review, reducing the initial 85 flagged responses to 61; 17 retained positives
-have medium confidence. Reviewer confidence is not calibrated. The intervals
-condition on the model labels and do not account for judge error or multiple
-comparisons. These 65 development prompts are not a representative population
-sample. Human adjudication remains pending, and the incomplete SoClaaS passes
-must not be presented as completed or as verified prevalence.
-
-The full supplementary review is retained locally at
-`results/coherence/sae-coherence-20261106-225813-review.tar.gz`, SHA-256
-`476db00653e87cffd1c04c942c542fd85a478a49b3bdb6034e7a88fb3579add7`.
-Its 28 files include blinded inputs, initial and consistency labels, merged
-labels, protocol, summary, and `analysis.py`; every archived member was compared
-with its source bytes. With both run and review bundles extracted under
-`results/coherence/`, that script recomputes and checks the summary using the
-statistical functions from source `dd407d2`. The committed summary records its
-input hashes. Independent read-only verification reproduced the summary,
-checked exact evidence and original-source preservation, and reviewed the
-documented examples. No new Gemma generation or SoClaaS request was made locally.
+has been independently checked against all 325 original tuning responses and
+reproduces them exactly.
 
 ## Original retained artifacts
 

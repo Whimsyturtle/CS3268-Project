@@ -87,10 +87,6 @@ Note that you need an API key from SoClaaS for this, which you can add as an env
 export SOCLAAS_API_KEY=<api-key>
 ```
 
-For the separate development diagnostic, see the
-[SAE coherence audit](steering/sae/coherence.md), including
-[full rerun commands for both scorers](steering/sae/coherence.md#full-rerun-of-tuning-and-coherence).
-
 For optional baseline reproduction checks, use
 [`diagnostics.check_generation`](diagnostics/check_generation.py).
 

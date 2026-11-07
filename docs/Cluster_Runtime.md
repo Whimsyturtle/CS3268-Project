@@ -66,7 +66,7 @@ use that loader and save its runtime evidence as existing ICV and SAE builders
 do. Local development remains available outside the cluster; CPU-only judging
 or summarizing saved generations does not require a GPU allocation.
 
-New cluster tuning, coherence generation, benchmark runs, and construction
+New cluster tuning, benchmark runs, and construction
 artifacts retain `cluster_runtime.json`: interpreter, installed package versions,
 lockfile hash, CUDA build, GPU profile, memory and SM count, plus host, job and
 driver evidence for each generation allocation. Keep it with the raw artifacts.
