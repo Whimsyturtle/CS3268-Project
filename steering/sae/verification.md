@@ -174,7 +174,8 @@ The shared generator, SAE application, development data, and lockfile are
 identical at the two tuning source commits; baseline runs before steering is
 attached. [The baseline reproduction check](#baseline-reproduction-check) below
 records the reported repeatability results and the GPU allocation comparison.
-Separating the allocation profile's effect from the driver's remains pending.
+The latest runtime comparison narrows the explanation; the exact numerical
+mechanism and verification across all conditions remain pending.
 
 The four copied files have these SHA-256 hashes:
 
@@ -274,16 +275,16 @@ The pasted runtime extractions from both reports are identical. Their PyTorch
 `2.2.0` match the old tuning run's saved package list. Python `3.13.18` and CUDA
 build `12.6` also match the older coherence environment. The allocations differ:
 
-| Detail | Earlier run | Full-GPU check on `xgpi17` |
-| --- | --- | --- |
-| GPU profile | H100 NVL MIG `3g.47gb` | Full H100 NVL |
-| Visible SMs | 60 | 132 |
-| NVIDIA driver | `580.178.04` | `580.173.02` |
+| Detail | Earlier run | Full-GPU check on `xgpi17` | MIG check on `xgpi11` |
+| --- | --- | --- | --- |
+| GPU profile | H100 NVL MIG `3g.47gb` | Full H100 NVL | H100 NVL MIG `3g.47gb` |
+| Visible SMs | 60 | 132 | 60 |
+| NVIDIA driver | `580.178.04` | `580.173.02` | `580.173.02` |
 
 The old GPU/driver evidence is its retained `nvidia-smi-after-run.txt`; the old
-coherence environment identifies the MIG profile. The current extraction reports
+coherence environment identifies the MIG profile. The full-GPU extraction reports
 99,949,674,496 bytes of device memory and 132 SMs, confirming full-device access;
-its driver version was reported separately by the user. Current inference uses
+its driver version was reported separately by the user. That inference uses
 BF16 and `sdpa`, with deterministic algorithms disabled. Those backend settings
 were not captured for the old run and cannot be compared retrospectively.
 
@@ -346,17 +347,29 @@ original first-batch order, reproduces this hash.
 The reported checks therefore recover the new batch on the full GPU and the old
 batch on MIG, while retaining batch size 4, prompt order, greedy decoding, and
 the shared generator. This strongly supports an environment-dependent difference
-for these four baseline prompts. It does not isolate the GPU profile, driver, or
-particular numerical kernel, establish batch-size independence, or verify all 65
-baseline prompts and the steered conditions. Judge variation cannot explain the
-different generated texts; these checks make no judge calls.
+for these four baseline prompts. Judge variation cannot explain the different
+generated texts; these checks make no judge calls.
 
-The complete MIG report has not yet been copied locally. Its hostname, driver,
-source record, and remaining runtime fields have not been inspected; only the
-user-supplied GPU line and printed summary are available. Repeatability on MIG
-has been reported within one process, not yet across fresh processes. Inspect
-the full report before attributing the result to a particular environment
-component; final strength selection remains pending.
+The user then supplied the MIG report's environment and `nvidia-smi` output. It
+identifies `xgpi11`, job `1089706`, and driver `580.173.02`, matching the driver
+reported for the full-GPU check. Python, all four listed package versions, and
+the CUDA build match that check as well. Deterministic algorithms are disabled
+in both; the recorded CUDA visibility and numerical environment variables also
+match. The MIG memory and SM count agree with the preceding GPU check.
+
+Different outputs are therefore reproduced under the same reported driver
+version, while the old outputs are recovered on MIG under both recorded driver
+versions. Driver version alone cannot explain this four-prompt pattern. The GPU
+allocation profile is the leading explanation, with the host also changing;
+the particular numerical kernel or other node-specific effects have not been
+isolated. This does not establish batch-size independence or verify all 65
+baseline prompts and the steered conditions.
+
+The complete MIG report has not yet been copied locally. The supplied excerpts
+cover its environment and printed checks, but its source record, attention
+implementation, tokenized inputs, and full generated texts have not been directly
+inspected. Repeatability on MIG has been reported within one process, not yet
+across fresh processes. Final strength selection remains pending.
 
 ## Development coherence diagnostic
 
