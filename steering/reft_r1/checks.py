@@ -17,7 +17,7 @@ from transformers import PreTrainedModel, PreTrainedTokenizerBase
 from evaluation import bbq, runner
 from evaluation.common import parse_choice
 from steering.reft_r1 import SavedVector, apply, load_intervention
-from steering.reft_r1.main import Example, config, make_batch
+from steering.reft_r1.main import Example, TrainingExample, config, make_batch
 
 CHECKS_DIR = runner.ROOT / "results" / "reft_r1_checks"
 RANDOM_DIR = "steering_vectors/reft_r1_random_control"
@@ -134,9 +134,10 @@ def log_prob_per_token(
     Returns:
         The mean log-probability of the response tokens.
     """
-    batch = make_batch(
-        tokenizer, [{**example, "unbiased_response": response}], model.device
+    measured = TrainingExample(
+        id=example["id"], prompt=example["prompt"], response=response, complete=True
     )
+    batch = make_batch(tokenizer, [measured], model.device)
     hidden = model.model(
         input_ids=batch["input_ids"],
         attention_mask=batch["attention_mask"],
