@@ -118,6 +118,12 @@ partitions with assigned memory and compute resources.
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
 
+## Neutral example
+
+An ordinary prompt unrelated to bias, paired with the unsteered model's own reply.
+ReFT-r1 trains on these alongside the construction examples, so its vector learns to
+leave ordinary text unchanged. AxBench calls them negative examples.
+
 ## Parameter
 
 A numerical value in a model. A **trainable parameter** is one that the training process can adjust.

@@ -65,11 +65,20 @@ class Example(TypedDict):
     unbiased_response: str  # The text the vector learns to make likely.
 
 
+class TrainingExample(TypedDict):
+    """One prompt and the response the vector is trained to make likely."""
+
+    id: str
+    prompt: str
+    response: str
+    complete: bool  # False if the response was cut off, so its end-of-turn is not graded.
+
+
 @dataclass(frozen=True)
 class TokenizedExample:
     """One example as token IDs, ready to be batched."""
 
-    input_ids: list[int]  # Chat-formatted prompt followed by the unbiased response.
+    input_ids: list[int]  # Chat-formatted prompt followed by the response.
     labels: list[int]  # Same length as input_ids, with -100 on the prompt tokens.
 
 
@@ -92,7 +101,7 @@ class HookOutputs(TypedDict, total=False):
 class StepResult:
     """What one steered forward pass produced. All values are scalars."""
 
-    language_loss: torch.Tensor  # How unlikely the unbiased responses were.
+    language_loss: torch.Tensor  # How unlikely the responses were.
     l1_penalty: torch.Tensor  # Mean score outside the top k tokens.
     amount: torch.Tensor  # Mean amount of the vector added, for logging.
 
@@ -112,13 +121,15 @@ class InterventionSettings(TypedDict):
     epochs: int
     batch_size: int
     max_act: float
-    training_target: str  # The response field trained on. AxBench also uses negatives.
+    training_target: str  # The construction examples' response field trained on.
     source: dict[str, str]  # Commit, status and uncommitted diff of the training code.
     source_example_ids: list[str]
+    neutral_example_ids: list[str]  # Also trained on, from neutral_examples.jsonl.
 
 
 config: Config = json.loads((ROOT / "configs" / "main.json").read_text())
 INTERVENTION_DIR = ROOT / config["methods"]["reft_r1"]["intervention_dir"]
+NEUTRAL_EXAMPLES = ROOT / "steering" / "reft_r1" / "neutral_examples.jsonl"
 
 
 def validate_config(config: Config) -> None:
@@ -189,10 +200,37 @@ def run_steered(
         return run_unsteered(model, tokenizer, prompts, max_new_tokens)
 
 
+def load_training_examples() -> tuple[list[TrainingExample], list[TrainingExample]]:
+    """Load the positive and neutral training examples.
+
+    Returns:
+        The construction prompts with their unbiased responses, then the neutral
+        prompts from `steering.reft_r1.neutral` with Gemma's own replies.
+    """
+    lines = (ROOT / "shared_examples" / "construction.jsonl").read_text().splitlines()
+    construction: list[Example] = [json.loads(line) for line in lines]
+    positives = [
+        TrainingExample(
+            id=example["id"],
+            prompt=example["prompt"],
+            response=example["unbiased_response"],
+            complete=True,
+        )
+        for example in construction
+    ]
+    neutrals = [
+        TrainingExample(
+            id=row["id"], prompt=row["prompt"], response=row["response"], complete=row["complete"]
+        )
+        for row in map(json.loads, NEUTRAL_EXAMPLES.read_text().splitlines())
+    ]
+    return positives, neutrals
+
+
 def tokenize_example(
-    tokenizer: PreTrainedTokenizerBase, example: Example
+    tokenizer: PreTrainedTokenizerBase, example: TrainingExample
 ) -> TokenizedExample:
-    """Tokenize prompt + unbiased response so that only the response is graded.
+    """Tokenize prompt + response so that only the response is graded.
 
     Args:
         tokenizer: The model's tokenizer.
@@ -206,11 +244,14 @@ def tokenize_example(
             would grade the wrong tokens.
     """
     chat = [{"role": "user", "content": example["prompt"]}]
-    reply = {"role": "assistant", "content": example["unbiased_response"]}
+    reply = {"role": "assistant", "content": example["response"]}
     prompt = tokenizer.apply_chat_template(
         chat, add_generation_prompt=True, tokenize=False
     )
-    full = tokenizer.apply_chat_template(chat + [reply], tokenize=False)
+    # A cut-off response stays open, so the model is not taught to stop mid-sentence.
+    full = tokenizer.apply_chat_template(
+        chat + [reply], tokenize=False, continue_final_message=not example["complete"]
+    )
     prompt_ids = tokenizer(prompt, add_special_tokens=False).input_ids
     input_ids = tokenizer(full, add_special_tokens=False).input_ids
     if input_ids[: len(prompt_ids)] != prompt_ids:
@@ -221,7 +262,7 @@ def tokenize_example(
 
 def make_batch(
     tokenizer: PreTrainedTokenizerBase,
-    examples: list[Example],
+    examples: list[TrainingExample],
     device: torch.device,
 ) -> Batch:
     """Tokenize examples and pad them on the right into model inputs.
@@ -356,15 +397,15 @@ def training_loss(
 def train_vector(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
-    examples: list[Example],
+    examples: list[TrainingExample],
     layer: int = LAYER,
 ) -> torch.Tensor:
-    """Learn a unit-length steering vector that makes the unbiased responses more likely.
+    """Learn a unit-length steering vector that makes the responses more likely.
 
     Args:
         model: The model, whose weights get frozen.
         tokenizer: The model's tokenizer.
-        examples: The construction examples.
+        examples: The positive and neutral examples, shuffled together each epoch.
         layer: Index of the layer whose output is steered.
 
     Returns:
@@ -419,7 +460,7 @@ def train_vector(
 def measure_max_act(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
-    examples: list[Example],
+    examples: list[TrainingExample],
     vector: torch.Tensor,
     layer: int = LAYER,
 ) -> float:
@@ -456,7 +497,8 @@ def measure_max_act(
 def save_intervention(
     vector: torch.Tensor,
     max_act: float,
-    examples: list[Example],
+    positives: list[TrainingExample],
+    neutrals: list[TrainingExample],
     layer: int = LAYER,
 ) -> None:
     """Save the vector and record how it was produced, as steering_vectors/README.md asks.
@@ -464,7 +506,8 @@ def save_intervention(
     Args:
         vector: The trained vector, shape (hidden_size,).
         max_act: The largest token score on the construction examples.
-        examples: The examples the vector was trained on.
+        positives: The construction examples the vector was trained on.
+        neutrals: The neutral examples the vector was trained on.
         layer: Index of the layer the vector steers.
     """
     saved_vector = SavedVector(vector=vector.cpu(), max_act=max_act, layer=layer)
@@ -484,7 +527,8 @@ def save_intervention(
         max_act=max_act,
         training_target="unbiased_response",
         source=source_commit(),
-        source_example_ids=[example["id"] for example in examples],
+        source_example_ids=[example["id"] for example in positives],
+        neutral_example_ids=[example["id"] for example in neutrals],
     )
     (INTERVENTION_DIR / "config.json").write_text(json.dumps(settings, indent=2) + "\n")
 
@@ -492,12 +536,12 @@ def save_intervention(
 if __name__ == "__main__":
     validate_config(config)
     model, tokenizer = load_model(config["model"])
-    lines = (ROOT / "shared_examples" / "construction.jsonl").read_text().splitlines()
-    examples: list[Example] = [json.loads(line) for line in lines]
+    positives, neutrals = load_training_examples()
 
-    vector = train_vector(model, tokenizer, examples)
-    max_act = measure_max_act(model, tokenizer, examples, vector)
-    save_intervention(vector, max_act, examples)
+    vector = train_vector(model, tokenizer, positives + neutrals)
+    # Strength stays a multiple of the largest score on the bias examples.
+    max_act = measure_max_act(model, tokenizer, positives, vector)
+    save_intervention(vector, max_act, positives, neutrals)
 
     intervention = SavedVector(vector=vector, max_act=max_act, layer=LAYER)
     prompts = ["Who makes a better nurse, a man or a woman?"]
