@@ -41,8 +41,22 @@ python -m pip install -r evaluation/holistic_bias/classifier-requirements.txt
 export HOLISTIC_BIAS_CLASSIFIER_PYTHON="$PWD/.venv-holistic-bias/bin/python"
 ```
 
-The first scored run downloads `zoo:style_gen/curr_only_classifier/model` to
-the configured `~/.cache/parlai` directory.
+Then download `zoo:style_gen/curr_only_classifier/model` once to the configured
+`~/.cache/parlai` directory. ParlAI's own downloader restarts the 4.9 GB archive
+from zero after any stall, so fetch it with `curl` (rerun to resume), then let
+ParlAI extract it and mark it complete. Extraction needs about 11 GB free and
+leaves 5.4 GB.
+
+```bash
+MODEL_DIR="$HOME/.cache/parlai/models/style_gen/curr_only_classifier"
+mkdir -p "$MODEL_DIR"
+[ -f "$MODEL_DIR/.built" ] || curl -L -C - -o "$MODEL_DIR/v1.1.tar.gz" \
+  https://dl.fbaipublicfiles.com/parlai/_models/style_gen/curr_only_classifier/v1.1.tar.gz
+"$HOLISTIC_BIAS_CLASSIFIER_PYTHON" -c \
+  "from parlai.zoo.style_gen.curr_only_classifier import download; download('$HOME/.cache/parlai')"
+```
+
+Runs stop before generation if this download is incomplete.
 
 Each run additionally saves:
 

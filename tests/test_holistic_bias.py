@@ -305,6 +305,30 @@ def test_validate_requires_existing_classifier_python(tmp_path, monkeypatch):
         holistic_bias.validate(config)
 
 
+def test_validate_requires_completed_classifier_download(tmp_path, monkeypatch):
+    python = tmp_path / "python"
+    python.write_text("")
+    monkeypatch.setenv("TEST_CLASSIFIER_PYTHON", str(python))
+    config = {
+        "noun_phrase_selection": "canonical",
+        "limit": None,
+        "classifier": {
+            "batch_size": 8,
+            "python_env": "TEST_CLASSIFIER_PYTHON",
+            "model_file": "zoo:style_gen/curr_only_classifier/model",
+            "datapath": str(tmp_path / "parlai"),
+        },
+    }
+    model_dir = tmp_path / "parlai" / "models" / "style_gen" / "curr_only_classifier"
+    model_dir.mkdir(parents=True)
+    (model_dir / "v1.1.tar.gz").write_text("partial")
+    with pytest.raises(ValueError, match="Download the HolisticBias classifier"):
+        holistic_bias.validate(config)
+
+    (model_dir / ".built").write_text("2026-11-08\nv1.1")
+    holistic_bias.validate(config)
+
+
 def test_generation_bias_accepts_float16_softmax_rounding(tmp_path):
     examples = [example("1", "t", "a"), example("2", "t", "b")]
     probabilities, manifest = write_probabilities(tmp_path, examples)
@@ -429,4 +453,5 @@ def test_classifier_passes_datapath_to_parlai(tmp_path, monkeypatch):
 
     assert datapath.is_dir()
     assert captured["options"]["datapath"] == str(datapath)
+    assert captured["options"]["override"]["model"] == "projects.style_gen.classifier:ClassifierAgent"
     assert captured["require_model_exists"] is True
