@@ -31,6 +31,7 @@ CS3268-Group-6/
 │   ├── mmlu_pro/
 │   └── alpaca_eval/
 ├── configs/        # Experiment configurations
+├── diagnostics/    # Optional generation diagnostics
 ├── results/        # <benchmark>/<method>/<run_id>/
 ├── tests/          # Focused implementation tests
 └── docs/           # Course and cluster documents
@@ -45,9 +46,49 @@ See [shared examples](shared_examples/README.md), [steering](steering/README.md)
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/), then run `uv sync`. Gemma 3 is gated on
-Hugging Face: accept its license, then run `uv run hf auth login`. Run tests with
-`uv run pytest`.
+Install [uv](https://docs.astral.sh/uv/), then run `uv sync --locked`.
+[pyproject.toml](pyproject.toml) declares dependency constraints and selects the
+PyTorch [CUDA](GLOSSARY.md#cuda) 12.6 (`cu126`) builds on Linux and Windows;
+macOS uses PyPI builds. [uv.lock](uv.lock) pins the resolved package versions
+and download hashes. Keep it committed and use `--locked` to reject stale locks.
+[.python-version](.python-version) selects the exact interpreter for `uv`;
+`requires-python` remains the compatibility range for local development.
+
+The CUDA build selection does not install or pin the host NVIDIA driver or system
+CUDA toolkit. On a GPU compute node, check the installed build and GPU access:
+
+```bash
+uv run --locked python -c "import torch; print(torch.__version__, torch.version.cuda); assert torch.version.cuda == '12.6'; assert torch.cuda.is_available()"
+```
+
+Gemma 3 is gated on Hugging Face: accept its license, then run
+`uv run --locked hf auth login`. Run tests with `uv run --locked pytest`.
+
+For all new construction, tuning, and benchmark runs on the school cluster,
+follow the [shared cluster runtime](docs/Cluster_Runtime.md).
+
+## Tune steering strength
+
+The common tuner uses the full development split and tunes one method per run.
+The `--method` choices are `caa`, `icv`, `sae`, and `reft_r1`. The selected
+method must have an implementation, intervention, and candidate strengths in
+[`configs/tuning.json`](configs/tuning.json). The tuner generates every
+candidate sequentially, judges each response, and selects a strength with one
+command:
+
+```bash
+uv run --locked python tuning.py --config configs/tuning.json \
+  --run-id <unique-run-id> --method <method>
+```
+
+Note that you need an API key from SoClaaS for this, which you can add as an environment variable:
+
+```bash
+export SOCLAAS_API_KEY=<api-key>
+```
+
+For optional baseline reproduction checks, use
+[`diagnostics.check_generation`](diagnostics/check_generation.py).
 
 ## Contributing
 

@@ -5,21 +5,32 @@ import contextlib
 import csv
 import importlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from cluster_runtime import check_cluster_runtime, save_cluster_runtime
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_model(config):
+    if not isinstance(config["revision"], str) or not re.fullmatch(r"[0-9a-f]{40}", config["revision"]):
+        raise ValueError("Model revision must be a full 40-character commit hash.")
+    runtime = check_cluster_runtime()
     tokenizer = AutoTokenizer.from_pretrained(config["name"], revision=config["revision"])
     model = AutoModelForCausalLM.from_pretrained(
         config["name"], revision=config["revision"], dtype=getattr(torch, config["dtype"])
     )
-    model.config.revision = config["revision"]  # So steering can check the revision it was trained on.
+    if model.config.name_or_path != config["name"]:
+        raise ValueError("Loaded model name does not match the configured model.")
+    model.config.revision = config["revision"]
+    # Transformers does not consistently retain the requested revision on nested model configs.
+    model._cs3268_source_revision = config["revision"]
+    model._cs3268_cluster_runtime = runtime
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     return model.to(device).eval(), tokenizer
 
@@ -69,6 +80,9 @@ def run(config_path, *, method, benchmark, run_id):
     intervention_config = None
     if method != "baseline":
         intervention_config = json.loads((ROOT / method_config["intervention_dir"] / "config.json").read_text())
+    module = importlib.import_module(f"evaluation.{benchmark}")
+    if hasattr(module, "validate"):
+        module.validate(benchmark_config)
     run_dir = ROOT / "results" / benchmark / method / run_id
     run_dir.mkdir(parents=True)  # Fails if the run already exists, so runs are never overwritten.
 
@@ -86,10 +100,10 @@ def run(config_path, *, method, benchmark, run_id):
     }
     (run_dir / "config.json").write_text(json.dumps(resolved, indent=2))
 
-    module = importlib.import_module(f"evaluation.{benchmark}")
     examples = module.load_examples(benchmark_config)[: benchmark_config["limit"]]
     prompts = [module.format_prompt(example, benchmark_config) for example in examples]
     model, tokenizer = load_model(config["model"])
+    save_cluster_runtime(model, run_dir)
     with steering_context(model, method, method_config):
         outputs = generate(model, tokenizer, prompts, decoding=decoding, seed=config["seed"])
 
@@ -98,7 +112,8 @@ def run(config_path, *, method, benchmark, run_id):
         file.writelines(json.dumps(prediction) + "\n" for prediction in predictions)
 
     try:
-        metrics = module.score(examples, predictions, benchmark_config)
+        score_config = {**benchmark_config, "output_dir": run_dir, "generator": method}
+        metrics = module.score(examples, predictions, score_config)
     except NotImplementedError as error:
         print(f"Saved predictions to {run_dir}, but did not score them: {error}")
         return run_dir
