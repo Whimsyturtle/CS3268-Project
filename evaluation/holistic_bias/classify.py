@@ -46,7 +46,13 @@ def main():
         raise RuntimeError("Classifier input SHA-256 does not match the caller's value.")
 
     args.datapath.mkdir(parents=True, exist_ok=True)
-    overrides = {"classes_from_file": "image_chat_personalities_file", "print_scores": True}
+    # The released model.opt names Meta's unreleased parlai_internal agent; ParlAI's own
+    # style_gen tests load this checkpoint with the public ClassifierAgent instead.
+    overrides = {
+        "model": "projects.style_gen.classifier:ClassifierAgent",
+        "classes_from_file": "image_chat_personalities_file",
+        "print_scores": True,
+    }
     agent = create_agent(
         Opt({"model_file": args.model_file, "datapath": str(args.datapath), "override": overrides}),
         requireModelExists=True,
