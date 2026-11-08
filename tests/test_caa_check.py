@@ -17,14 +17,28 @@ def check_setup(tmp_path, monkeypatch, caa_model, caa_tokenizer, caa_artifact, c
               "seed": 0, "decoding": {"batch_size": 16, "do_sample": False, "use_cache": True}}
     config_path = tmp_path / "check.json"
     config_path.write_text(json.dumps(config))
+
+    def load_model(model_config):
+        assert model_config == config["model"]
+        return caa_model, caa_tokenizer
+
     monkeypatch.setattr(checker, "ROOT", tmp_path)
-    monkeypatch.setattr(checker, "load_model", lambda config: (caa_model, caa_tokenizer))
+    monkeypatch.setattr(checker, "load_model", load_model)
     monkeypatch.setattr(checker, "validate_local", lambda *args: {"development": caa_pairs})
     monkeypatch.setattr(checker, "source_commit", lambda: {"commit": "fixture"})
     return config_path, caa_artifact
 
 
-def test_check_records_identity_restoration_provenance_and_raw_outputs(check_setup, caa_model):
+@pytest.mark.parametrize("cluster", [False, True])
+def test_check_records_identity_restoration_provenance_and_raw_outputs(check_setup, caa_model, cluster):
+    if cluster:
+        caa_model._cs3268_cluster_runtime = {
+            "runtime": {"python": "3.13.18", "torch": "2.11.0+cu126", "cuda": "12.6",
+                        "gpu": "NVIDIA H100 NVL MIG 3g.47gb", "gpu_multiprocessors": 60,
+                        "gpu_total_memory": 47_000_000_000, "uv_lock_sha256": "b" * 64,
+                        "packages": {"torch": "2.11.0+cu126", "transformers": "5.5.4"}},
+            "allocation": {"host": "xgpi16", "slurm_job_id": "1234", "driver": "580.126.09"},
+        }
     parameters = {name: value.detach().clone() for name, value in caa_model.named_parameters()}
     run_dir = checker.run(*check_setup, "verified", max_new_tokens=2)
     report = json.loads((run_dir / "checks.json").read_text())
@@ -36,6 +50,14 @@ def test_check_records_identity_restoration_provenance_and_raw_outputs(check_set
     assert report["outputs"]["baseline"]["token_ids"]
     assert len(report["outputs"]["baseline"]["texts"]) == 2
     assert report["nonzero_max_abs_logit_change"] > 0
+    runtime_path = run_dir / "cluster_runtime.json"
+    if cluster:
+        assert json.loads(runtime_path.read_text()) == {
+            "runtime": caa_model._cs3268_cluster_runtime["runtime"],
+            "allocations": [caa_model._cs3268_cluster_runtime["allocation"]],
+        }
+    else:
+        assert not runtime_path.exists()
     assert all(torch.equal(value, parameters[name]) for name, value in caa_model.named_parameters())
     with pytest.raises(FileExistsError):
         checker.run(*check_setup, "verified", max_new_tokens=2)
@@ -83,10 +105,8 @@ def test_check_rejects_invalid_smoke_settings(check_setup, options):
         checker.run(*check_setup, "invalid", **options)
 
 
-def test_caa_tuning_grid_preserves_shared_tuning_conditions():
+def test_caa_strength_grid_uses_the_shared_tuning_config():
     root = Path(__file__).resolve().parents[1]
     shared = json.loads((root / "configs/tuning.json").read_text())
-    caa = json.loads((root / "configs/tuning_caa.json").read_text())
-    assert {key: value for key, value in caa.items() if key != "methods"} == {
-        key: value for key, value in shared.items() if key != "methods"}
-    assert caa["methods"] == {"caa": {"intervention_dir": "steering_vectors/caa", "strengths": [0, 0.5, 1, 2]}}
+    assert shared["methods"]["caa"] == {
+        "intervention_dir": "steering_vectors/caa", "strengths": [0, 0.5, 1, 2]}

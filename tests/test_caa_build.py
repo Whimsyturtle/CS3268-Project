@@ -60,7 +60,8 @@ def test_construction_rejects_invalid_inputs_and_removes_hook(caa_model, caa_tok
     assert not caa_model.model.layers[0]._forward_hooks
 
 
-def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypatch, caa_model, caa_tokenizer, caa_pairs):
+@pytest.mark.parametrize("cluster", [False, True])
+def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypatch, caa_model, caa_tokenizer, caa_pairs, cluster):
     (tmp_path / "shared_examples").mkdir()
     source = tmp_path / "shared_examples/construction.jsonl"
     source.write_text("source data", encoding="utf-8")
@@ -68,9 +69,22 @@ def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypa
     config_path, settings_path = tmp_path / "experiment.json", tmp_path / "caa.json"
     config_path.write_text(json.dumps(config))
     settings_path.write_text(json.dumps({"layer": 0}))
+    if cluster:
+        caa_model._cs3268_cluster_runtime = {
+            "runtime": {"python": "3.13.18", "torch": "2.11.0+cu126", "cuda": "12.6",
+                        "gpu": "NVIDIA H100 NVL MIG 3g.47gb", "gpu_multiprocessors": 60,
+                        "gpu_total_memory": 47_000_000_000, "uv_lock_sha256": "b" * 64,
+                        "packages": {"torch": "2.11.0+cu126", "transformers": "5.5.4"}},
+            "allocation": {"host": "xgpi16", "slurm_job_id": "1234", "driver": "580.126.09"},
+        }
+
+    def load_model(model_config):
+        assert model_config == config["model"]
+        return caa_model, caa_tokenizer
+
     monkeypatch.setattr(builder, "ROOT", tmp_path)
     monkeypatch.setattr(builder, "validate_local", lambda *args: {"construction": caa_pairs})
-    monkeypatch.setattr(builder, "load_model", lambda config: (caa_model, caa_tokenizer))
+    monkeypatch.setattr(builder, "load_model", load_model)
     monkeypatch.setattr(builder, "source_commit", lambda: {"commit": "fixture"})
     output = builder.build(config_path, settings_path, tmp_path / "artifact")
     metadata = json.loads((output / "config.json").read_text())
@@ -80,9 +94,27 @@ def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypa
     assert metadata["sign"] == "unbiased_minus_biased" and metadata["normalization"] == "none"
     assert len(metadata["vector_sha256"]) == len(metadata["construction"]["sha256"]) == 64
     assert torch.load(output / "vector.pt", weights_only=True).shape == (16,)
+    runtime_path = output / "cluster_runtime.json"
+    if cluster:
+        assert json.loads(runtime_path.read_text()) == {
+            "runtime": caa_model._cs3268_cluster_runtime["runtime"],
+            "allocations": [caa_model._cs3268_cluster_runtime["allocation"]],
+        }
+    else:
+        assert not runtime_path.exists()
     with pytest.raises(FileExistsError):
         builder.build(config_path, settings_path, output)
     config["model"]["revision"] = "main"
     config_path.write_text(json.dumps(config))
     with pytest.raises(ValueError, match="40-character"):
         builder.build(config_path, settings_path, tmp_path / "unpinned")
+
+
+def test_build_rejects_unverified_runtime_before_construction(tmp_path, monkeypatch, caa_artifact):
+    output = tmp_path / "unverified"
+    output.mkdir()
+    (output / "cluster_runtime.json").write_text(json.dumps({"runtime": {}, "allocations": []}))
+    monkeypatch.setattr(builder, "construct", lambda *args, **kwargs: pytest.fail("construction started"))
+    with pytest.raises(ValueError, match="verified cluster runtime"):
+        builder.build(tmp_path / "experiment.json", tmp_path / "settings.json", output)
+    assert not (output / "vector.pt").exists()

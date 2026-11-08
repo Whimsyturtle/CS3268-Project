@@ -8,6 +8,7 @@ import re
 
 import torch
 
+from cluster_runtime import save_cluster_runtime
 from evaluation.runner import ROOT, load_model, source_commit
 from shared_examples.validate import validate_local
 from steering.caa import METHOD, model_layer
@@ -90,6 +91,7 @@ def build(config_path, caa_config_path, output_dir):
         raise ValueError("CAA construction requires a full 40-character model revision")
     torch.manual_seed(config["seed"])
     model, tokenizer = load_model(config["model"])
+    save_cluster_runtime(model, output_dir)
     if (model.config.name_or_path != config["model"]["name"]
             or getattr(model.config, "revision", None) != config["model"]["revision"]
             or model.dtype != getattr(torch, config["model"]["dtype"])):

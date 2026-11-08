@@ -20,8 +20,8 @@
       "strength": null
     },
     "sae": {
-      "intervention_dir": "steering_vectors/sae",
-      "strength": null
+      "intervention_dir": "steering_vectors/sae/cu126-20261105-202310",
+      "strength": 0.25
     },
     "reft_r1": {
       "intervention_dir": "steering_vectors/reft_r1",
@@ -48,12 +48,26 @@
       "dataset": "fairnlp/holistic-bias",
       "revision": "c168bbff3d4014c1ed8abe976d259b5c599f775e",
       "split": "test",
+      "noun_phrase_selection": "canonical",
+      "classifier": {
+        "model_file": "zoo:style_gen/curr_only_classifier/model",
+        "parlai_version": "1.7.2",
+        "python_env": "HOLISTIC_BIAS_CLASSIFIER_PYTHON",
+        "batch_size": 8
+      },
       "limit": null,
       "max_new_tokens": 512
     },
     "alpaca_eval": {
       "dataset": "tatsu-lab/alpaca_eval",
       "revision": "2edc6fad8be6b14ea7230aabfd08188da6b8b814",
+      "reference_file": "alpaca_eval_gpt4_baseline.json",
+      "judge": {
+        "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+        "model": "x-test-2",
+        "reasoning_effort": "none",
+        "api_key_env": "SOCLAAS_API_KEY"
+      },
       "limit": null,
       "max_new_tokens": 2048
     }

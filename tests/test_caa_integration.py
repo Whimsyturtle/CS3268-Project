@@ -42,7 +42,7 @@ def test_real_caa_artifact_runs_through_shared_runner(tmp_path, monkeypatch, caa
     assert not caa_model._forward_pre_hooks and not caa_model.model.layers[0]._forward_hooks
 
 
-def test_real_caa_artifact_runs_in_pr24_development_generation(tmp_path, monkeypatch, caa_artifact, caa_model, caa_tokenizer):
+def test_real_caa_artifact_runs_in_shared_development_generation(tmp_path, monkeypatch, caa_artifact, caa_model, caa_tokenizer):
     development = tuning.read_development(tuning.ROOT / "shared_examples/development.jsonl")
     records = [{**row, "prompt": "Question?"} for row in development]
     monkeypatch.setattr(tuning, "read_development", lambda path: records)
@@ -51,10 +51,10 @@ def test_real_caa_artifact_runs_in_pr24_development_generation(tmp_path, monkeyp
         "examples": "fixture", "seed": 0,
         "model": {"name": caa_model.config.name_or_path, "revision": caa_model.config.revision, "dtype": "float32"},
         "generation": {"batch_size": 4, "do_sample": False, "max_new_tokens": 2},
-        "methods": {"caa": {"intervention_dir": str(caa_artifact)}},
+        "methods": {"caa": {"intervention_dir": str(caa_artifact), "strengths": [0, 0.5]}},
     }
-    conditions = [{"method": "baseline", "strength": 0.0}, {"method": "caa", "strength": 0.5}]
-    generated = tuning.generate_records(config, conditions, tmp_path / "tuning-run")
+    run_dir = tmp_path / "tuning-run"
+    generated = tuning.generate_records(config, "caa", run_dir)
     assert len(generated) == 130
     expected = {row["id"] for row in development}
     for method in ("baseline", "caa"):
@@ -62,4 +62,5 @@ def test_real_caa_artifact_runs_in_pr24_development_generation(tmp_path, monkeyp
         assert len(subset) == 65 and {row["example_id"] for row in subset} == expected
     assert len({row["review_id"] for row in generated}) == 130
     assert (tmp_path / "tuning-run/generations.jsonl").exists()
+    assert tuning.generate_records(config, "caa", run_dir) == generated
     assert not caa_model._forward_pre_hooks and not caa_model.model.layers[0]._forward_hooks

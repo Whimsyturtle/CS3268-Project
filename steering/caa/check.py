@@ -12,6 +12,7 @@ from unittest.mock import patch
 import torch
 import transformers
 
+from cluster_runtime import save_cluster_runtime
 from evaluation.runner import ROOT, generate, load_model, source_commit
 from shared_examples.validate import validate_local
 from steering.caa import apply, load_intervention
@@ -85,6 +86,7 @@ def run(config_path, intervention_dir, run_id, *, strength=1.0, max_new_tokens=8
                           "sha256": hashlib.sha256(development.read_bytes()).hexdigest(),
                           "examples": [{"id": row["id"], "prompt": row["prompt"]} for row in rows]}
         model, tokenizer = load_model(config["model"])
+        save_cluster_runtime(model, run_dir)
         intervention = load_intervention(intervention_dir, model=model)
         report["intervention"] = intervention["metadata"]
         report["checks"]["tokenizer_chat_template_matches"] = (

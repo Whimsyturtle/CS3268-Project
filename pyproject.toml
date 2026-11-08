@@ -3,9 +3,15 @@ name = "cs3268-project"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alpaca-eval==0.6.6",
     "datasets>=5.1.0",
     "huggingface-hub>=2.2.0",
     "pandas>=3.0.6",
+    "requests>=2.34.2",
+    "sae-lens==6.54.14",
+    "safetensors>=0.8.0",
+    "scikit-learn>=1.9.1",
+    "setuptools<82",
     "torch>=2.14.1",
     "transformers>=5.20.2",
 ]
@@ -14,6 +20,16 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
