@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intervention Explorer</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">Gemma 3 · Bias mitigation</p>
+      <h1>Intervention Explorer</h1>
+    </div>
+    <div id="status" class="status">Loading saved experiments…</div>
+  </header>
+  <nav aria-label="Explorer views">
+    <button class="nav active" data-view="overview">Overview</button>
+    <button class="nav" data-view="strength">Strength</button>
+    <button class="nav" data-view="generations">Generations</button>
+    <button class="nav" data-view="controls">Controls</button>
+    <button class="nav" data-view="representation">Representation</button>
+  </nav>
+  <main>
+    <section id="overview" class="view active" aria-labelledby="overview-title">
+      <div class="title-row"><div><p class="eyebrow">Behavioural evidence</p><h2 id="overview-title">Results overview</h2></div></div>
+      <div class="filters">
+        <label>Experiment group<select id="group-filter"></select></label>
+        <label>Benchmark<select id="benchmark-filter"></select></label>
+        <label>Metric<select id="metric-filter"></select></label>
+        <label>Subgroup<select id="subgroup-filter"></select></label>
+      </div>
+      <div id="overview-message" class="notice"></div>
+      <div class="chart-wrap"><svg id="tradeoff-chart" role="img" aria-label="Bias versus capability by method"></svg></div>
+      <div class="chart-wrap"><svg id="metric-chart" role="img" aria-label="Selected metric by method"></svg></div>
+      <div class="table-wrap"><table><thead><tr><th>Method</th><th>Strength</th><th>Metric</th><th>Value</th><th>n</th><th>Run</th></tr></thead><tbody id="metrics-body"></tbody></table></div>
+    </section>
+    <section id="strength" class="view" aria-labelledby="strength-title">
+      <p class="eyebrow">Development selection</p><h2 id="strength-title">Strength and trade-offs</h2>
+      <p class="lede">Saved tuning summaries show the bias–quality trade-off used to choose strength. Test results never change that choice.</p>
+      <div id="strength-content" class="cards"></div>
+    </section>
+    <section id="generations" class="view" aria-labelledby="generations-title">
+      <p class="eyebrow">Example-level comparison</p><h2 id="generations-title">Paired generations</h2>
+      <p class="lede">Choose comparable saved runs. Pairing is rejected if model, dataset, formatter source, decoding, or example IDs disagree.</p>
+      <div class="filters"><label>Baseline run<select id="run-a"></select></label><label>Comparison run<select id="run-b"></select></label><button id="compare-runs">Compare</button></div>
+      <div id="generation-message" class="notice"></div><div id="generation-content"></div>
+    </section>
+    <section id="controls" class="view" aria-labelledby="controls-title">
+      <p class="eyebrow">Specificity check</p><h2 id="controls-title">Matched controls</h2>
+      <p class="lede">Observed effects are compared only with method-appropriate, provenance-tracked controls.</p>
+      <div id="controls-content"></div>
+    </section>
+    <section id="representation" class="view" aria-labelledby="representation-title">
+      <p class="eyebrow">Descriptive internal evidence</p><h2 id="representation-title">Shared representation projection</h2>
+      <p class="lede">One PCA is fitted on a fixed development baseline and reused for every compatible intervention. Separation is not causal evidence.</p>
+      <div id="representation-content"></div>
+    </section>
+  </main>
+</body>
+</html>
+
