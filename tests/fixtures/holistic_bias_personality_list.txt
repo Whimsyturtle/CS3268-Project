@@ -1,0 +1,217 @@
+Abrasive (Annoying, Irritating)
+Absentminded
+Adventurous
+Aggressive
+Airy (Casual, Not Serious)
+Aloof (Detached, Distant)
+Amusing
+Angry
+Anxious
+Apathetic (Uncaring, Disinterested)
+Appreciative (Grateful)
+Argumentative
+Arrogant
+Artful
+Articulate (Well-spoken, Expressive)
+Artificial
+Assertive
+Attractive
+Barbaric
+Bewildered (Astonished, Confused)
+Bizarre
+Bland
+Blunt
+Boisterous (Rowdy, Loud)
+Boyish
+Breezy (Relaxed, Informal)
+Brilliant
+Businesslike
+Calm
+Captivating
+Caring
+Casual
+Cerebral (Intellectual, Logical)
+Charming
+Cheerful
+Childish
+Clever
+Coarse (Not Fine, Crass)
+Cold
+Colorful (Full of Life, Interesting)
+Compassionate (Sympathetic, Warm)
+Complex
+Conceited (Arrogant, Egotistical)
+Confident
+Confused
+Conservative (Traditional, Conventional)
+Considerate
+Contemplative (Reflective, Thoughtful)
+Contemptible (Despicable, Vile)
+Contradictory
+Courageous
+Cowardly
+Crazy
+Creative
+Critical
+Crude
+Cruel
+Cultured (Refined, Educated)
+Curious
+Cute
+Cynical (Doubtful, Skeptical)
+Daring
+Deep
+Destructive
+Devious
+Discouraging
+Disturbing
+Dramatic
+Dreamy
+Dry
+Dull
+Earnest
+Earnest (Enthusiastic)
+Egocentric (Self-centered)
+Elegant
+Eloquent (Well-spoken, Expressive)
+Emotional
+Empathetic
+Energetic
+Enigmatic (Cryptic, Obscure)
+Enthusiastic
+Envious
+Erratic
+Escapist (Dreamer, Seeks Distraction)
+Excitable
+Exciting
+Extraordinary
+Extravagant
+Extreme
+Fanatical
+Fanciful
+Fatalistic (Bleak, Gloomy)
+Fawning (Flattering, Deferential)
+Fearful
+Fickle (Changeable, Temperamental)
+Fiery
+Foolish
+Formal
+Freethinking
+Frightening
+Frivolous (Trivial, Silly)
+Fun-loving
+Gentle
+Glamorous
+Gloomy
+Grand
+Grim
+Happy
+Hateful
+Haughty (Arrogant, Snobbish)
+High-spirited
+Honest
+Hostile
+Humble
+Humorous
+Idealistic
+Imaginative
+Impersonal
+Insightful
+Intelligent
+Intense
+Irrational
+Irritable
+Kind
+Knowledgeable
+Lazy
+Logical
+Malicious
+Maternal (Mother-like)
+Melancholic
+Mellow (Soothing, Sweet)
+Meticulous (Precise, Thorough)
+Miserable
+Money-minded
+Monstrous
+Moody
+Morbid
+Mystical
+Narcissistic (Self-centered, Egotistical)
+Neurotic (Manic, Obsessive)
+Neutral
+Nihilistic
+Objective (Detached, Impartial)
+Obnoxious
+Observant
+Obsessive
+Odd
+Offhand
+Old-fashioned
+Open
+Opinionated
+Optimistic
+Ordinary
+Outrageous
+Overimaginative
+Paranoid
+Passionate
+Passive
+Patriotic
+Peaceful
+Perceptive
+Playful
+Pompous (Self-important, Arrogant)
+Practical
+Pretentious (Snobbish, Showy)
+Profound
+Provocative
+Questioning
+Quirky
+Rational
+Realistic
+Reflective
+Relaxed
+Resentful
+Respectful
+Ridiculous
+Rigid
+Romantic
+Rowdy
+Rustic (Rural)
+Sarcastic
+Scholarly
+Scornful
+Sensitive
+Sensual
+Sentimental
+Serious
+Shy
+Silly
+Simple
+Skeptical
+Solemn
+Sophisticated
+Spirited
+Spontaneous
+Stiff
+Stoic (Unemotional, Matter-of-fact)
+Stupid
+Stylish
+Suave (Charming, Smooth)
+Sweet
+Sympathetic
+Tense
+Tough
+Uncreative
+Unimaginative
+Unrealistic
+Vacuous (Empty, Unintelligent)
+Vague
+Vivacious (Lively, Animated)
+Warm
+Whimsical (Playful, Fanciful)
+Wise
+Wishful
+Witty
+Youthful
+Zany
