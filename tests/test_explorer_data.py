@@ -1,10 +1,12 @@
 import csv
 import json
+import sys
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from explorer.analysis import control_summary, load_capture_bundle, load_control_file
+from explorer.analysis import control_summary, load_capture_bundle, load_capture_bundles, load_control_file
 from explorer.results import ExplorerDataError, discover_runs, join_generations, load_run
 
 
@@ -46,11 +48,53 @@ def test_duplicate_prediction_ids_are_rejected(tmp_path):
         load_run(path)
 
 
+def test_reference_file_identifies_alpaca_eval_partition(tmp_path):
+    path = write_run(tmp_path, benchmark="alpaca_eval")
+    config_path = path / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    del config["benchmark_config"]["split"]
+    config["benchmark_config"]["reference_file"] = "alpaca_eval_gpt4_baseline.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    assert load_run(path).identity.split == "reference_file:alpaca_eval_gpt4_baseline.json"
+
+
 def test_mismatched_example_sets_are_rejected(tmp_path):
     baseline = load_run(write_run(tmp_path, method="baseline", run_id="base"))
     steered = load_run(write_run(tmp_path, method="icv", run_id="steered", ids=("a", "c")))
     with pytest.raises(ExplorerDataError, match="example-ID sets"):
         join_generations([baseline, steered])
+
+
+def test_holistic_bias_seed_difference_is_not_prompt_comparable(tmp_path):
+    baseline = load_run(write_run(tmp_path, benchmark="holistic_bias", method="baseline", run_id="base", seed=0))
+    steered = load_run(write_run(tmp_path, benchmark="holistic_bias", method="icv", run_id="steered", seed=1))
+    with pytest.raises(ExplorerDataError, match="change prompt wording"):
+        join_generations([baseline, steered])
+
+
+def test_prompt_reconstruction_requires_matching_clean_source(tmp_path):
+    baseline = load_run(write_run(tmp_path, method="baseline", run_id="base"))
+    steered = load_run(write_run(tmp_path, method="icv", run_id="steered"))
+    comparison = join_generations([baseline, steered], formatter_source_commit="d" * 40)
+    assert comparison["prompt_status"] == "unavailable"
+    assert "does not match" in comparison["prompt_reason"]
+
+
+def test_prompt_reconstruction_checks_exact_coverage(tmp_path, monkeypatch):
+    baseline = load_run(write_run(tmp_path, method="baseline", run_id="base"))
+    steered = load_run(write_run(tmp_path, method="icv", run_id="steered"))
+    module = SimpleNamespace(
+        load_examples=lambda _config: [
+            {"example_id": "a", "data": {"category": "age"}},
+            {"example_id": "b", "data": {"category": "gender"}},
+        ],
+        format_prompt=lambda example, _config: f"Prompt {example['example_id']}",
+    )
+    monkeypatch.setitem(sys.modules, "evaluation.bbq", module)
+    comparison = join_generations([baseline, steered], formatter_source_commit="a" * 40)
+    assert comparison["prompt_status"] == "available"
+    assert comparison["examples"][0]["prompt"] == "Prompt a"
+    assert comparison["examples"][0]["metadata"] == {"category": "age"}
 
 
 def test_run_child_file_symlink_cannot_escape_results_root(tmp_path):
@@ -111,6 +155,35 @@ def test_capture_bundle_fits_shared_pca(tmp_path):
     result = load_capture_bundle(bundle, capture_root=tmp_path / "captures")
     assert len(result["records"]) == 3
     assert len(result["explained_variance_ratio"]) == 2
+
+    second = tmp_path / "captures" / "two"
+    second.mkdir()
+    (second / "capture_config.json").write_text((bundle / "capture_config.json").read_text(encoding="utf-8"), encoding="utf-8")
+    intervention = {"run_id": "icv-2", "example_id": "a", "method": "icv", "strength": 0.2, "state": "intervention", "category": "x", "layer": 4, "hook": "residual", "token_selection": "last", "source_split": "dev"}
+    (second / "capture_index.jsonl").write_text(json.dumps(intervention) + "\n", encoding="utf-8")
+    np.save(second / "activations.npy", np.array([[10.0, 10.0, 10.0]]))
+    combined = load_capture_bundles([bundle, second], capture_root=tmp_path / "captures")
+    assert combined[1]["records"][0]["baseline_x"] == combined[0]["records"][0]["x"]
+    assert combined[1]["records"][0]["activation_displacement"] > 1
+
+
+def test_capture_displacement_uses_full_activation_space(tmp_path):
+    bundle = tmp_path / "captures" / "reference"
+    bundle.mkdir(parents=True)
+    config = {"model": {"name": "gemma", "revision": "abc"}, "split_role": "development", "source_split": "dev", "baseline_run_id": "base"}
+    (bundle / "capture_config.json").write_text(json.dumps(config), encoding="utf-8")
+    base = {"method": "baseline", "strength": None, "state": "baseline", "category": "x", "layer": 4, "hook": "residual", "token_selection": "last", "source_split": "dev", "run_id": "base"}
+    rows = [{**base, "example_id": "a"}, {**base, "example_id": "b"}, {**base, "example_id": "c"}]
+    (bundle / "capture_index.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    np.save(bundle / "activations.npy", np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]))
+    steered = tmp_path / "captures" / "steered"
+    steered.mkdir()
+    (steered / "capture_config.json").write_text(json.dumps(config), encoding="utf-8")
+    row = {**base, "run_id": "icv", "method": "icv", "strength": 0.1, "state": "intervention", "example_id": "a"}
+    (steered / "capture_index.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    np.save(steered / "activations.npy", np.array([[0.0, 0.0, 5.0]]))
+    record = load_capture_bundles([bundle, steered], capture_root=tmp_path / "captures")[1]["records"][0]
+    assert record["activation_displacement"] == 5.0
 
 
 def test_capture_path_must_stay_under_root(tmp_path):

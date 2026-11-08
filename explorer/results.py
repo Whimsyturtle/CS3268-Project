@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import importlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -85,6 +86,12 @@ def _identity(config: dict[str, Any], path: Path) -> RunIdentity:
     seed = benchmark_config.get("seed")
     if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)):
         raise ExplorerDataError(f"Invalid seed in {path}")
+    split = benchmark_config.get("split")
+    if not isinstance(split, str) or not split:
+        reference_file = benchmark_config.get("reference_file")
+        if not isinstance(reference_file, str) or not reference_file:
+            raise ExplorerDataError(f"Expected a dataset split or reference_file identity in {path}")
+        split = f"reference_file:{reference_file}"
     return RunIdentity(
         benchmark=benchmark,
         method=method,
@@ -93,7 +100,7 @@ def _identity(config: dict[str, Any], path: Path) -> RunIdentity:
         model_revision=_required_string(model, "revision", path),
         dataset=_required_string(benchmark_config, "dataset", path),
         dataset_revision=_required_string(benchmark_config, "revision", path),
-        split=_required_string(benchmark_config, "split", path),
+        split=split,
         source_commit=_required_string(source, "commit", path),
         decoding=dict(decoding),
         seed=seed,
@@ -194,24 +201,62 @@ def validate_generation_comparable(runs: Iterable[LoadedRun]) -> list[str]:
     for run in selected[1:]:
         if {row["example_id"] for row in run.predictions} != expected_ids:
             raise ExplorerDataError("Runs have different example-ID sets")
+    seeds_differ = len({run.identity.seed for run in selected}) > 1
+    if seeds_differ and first.identity.benchmark == "holistic_bias":
+        raise ExplorerDataError("HolisticBias seeds change prompt wording, so these runs are not prompt-comparable")
     warnings = []
-    if len({run.identity.seed for run in selected}) > 1:
+    if seeds_differ:
         warnings.append("Seeds differ, so this is not a paired stochastic-generation comparison.")
     return warnings
 
 
-def join_generations(runs: Iterable[LoadedRun]) -> dict[str, Any]:
+def join_generations(runs: Iterable[LoadedRun], *, formatter_source_commit: str | None = None) -> dict[str, Any]:
     selected = list(runs)
     warnings = validate_generation_comparable(selected)
     outputs = {run.identity.method: {row["example_id"]: row["output"] for row in run.predictions} for run in selected}
     if len(outputs) != len(selected):
         raise ExplorerDataError("Select at most one run per method")
     ids = [row["example_id"] for row in selected[0].predictions]
-    return {
+    result = {
         "warnings": warnings,
         "prompt_status": "unavailable",
+        "benchmark": selected[0].identity.benchmark,
+        "split": selected[0].identity.split,
+        "lanes": [{"method": run.identity.method, "strength": run.identity.strength, "run_id": run.identity.run_id} for run in selected],
         "examples": [{"example_id": example_id, "outputs": {method: values[example_id] for method, values in outputs.items()}} for example_id in ids],
     }
+    if formatter_source_commit is None:
+        result["prompt_reason"] = "Formatter source revision was not supplied."
+        return result
+    source_records = [run.config["source"] for run in selected]
+    if any(record.get("commit") != formatter_source_commit or record.get("status") for record in source_records):
+        result["prompt_reason"] = "Saved source state does not match the current clean formatter revision."
+        return result
+    first = selected[0]
+    try:
+        module = importlib.import_module(f"evaluation.{first.identity.benchmark}")
+        benchmark_config = first.config["benchmark_config"]
+        examples = module.load_examples(benchmark_config)
+        limit = benchmark_config.get("limit")
+        if limit is not None:
+            examples = examples[:limit]
+        example_by_id = {example["example_id"]: example for example in examples}
+        if len(example_by_id) != len(examples) or set(example_by_id) != set(ids):
+            raise ExplorerDataError("Saved predictions do not exactly cover the reconstructed benchmark examples")
+        metadata_fields = ("category", "context_condition", "axis", "descriptor", "domain", "subject")
+        for row in result["examples"]:
+            example = example_by_id[row["example_id"]]
+            row["prompt"] = module.format_prompt(example, benchmark_config)
+            data = example.get("data", {})
+            row["metadata"] = {key: data[key] for key in metadata_fields if key in data}
+    except ExplorerDataError:
+        raise
+    except Exception as error:
+        result["prompt_reason"] = f"Prompt reconstruction failed: {type(error).__name__}"
+        return result
+    result["prompt_status"] = "available"
+    result.pop("prompt_reason", None)
+    return result
 
 
 def load_tuning_summaries(results_root: Path) -> list[dict[str, Any]]:

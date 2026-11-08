@@ -32,6 +32,7 @@ CS3268-Group-6/
 │   └── alpaca_eval/
 ├── configs/        # Experiment configurations
 ├── diagnostics/    # Optional generation diagnostics
+├── explorer/       # Read-only results explorer
 ├── results/        # <benchmark>/<method>/<run_id>/
 ├── tests/          # Focused implementation tests
 └── docs/           # Course and cluster documents
@@ -43,6 +44,9 @@ Shared interfaces are defined once in [steering/api.pyi](steering/api.pyi) and
 See [shared examples](shared_examples/README.md), [steering](steering/README.md),
 [saved interventions](steering_vectors/README.md), [evaluation](evaluation/README.md),
 [configurations](configs/README.md), and [results](results/README.md) for details.
+
+The [Intervention Explorer](explorer/README.md) compares completed runs in a
+local CPU-only browser interface.
 
 ## Setup
 

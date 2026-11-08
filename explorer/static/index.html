@@ -30,11 +30,12 @@
         <label>Benchmark<select id="benchmark-filter"></select></label>
         <label>Metric<select id="metric-filter"></select></label>
         <label>Subgroup<select id="subgroup-filter"></select></label>
+        <label>Method<select id="method-filter"></select></label>
       </div>
       <div id="overview-message" class="notice"></div>
       <div class="chart-wrap"><svg id="tradeoff-chart" role="img" aria-label="Bias versus capability by method"></svg></div>
       <div class="chart-wrap"><svg id="metric-chart" role="img" aria-label="Selected metric by method"></svg></div>
-      <div class="table-wrap"><table><thead><tr><th>Method</th><th>Strength</th><th>Metric</th><th>Value</th><th>n</th><th>Run</th></tr></thead><tbody id="metrics-body"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Method</th><th>Strength</th><th>Metric</th><th>Value</th><th>Δ baseline</th><th>n</th><th>Run</th></tr></thead><tbody id="metrics-body"></tbody></table></div>
     </section>
     <section id="strength" class="view" aria-labelledby="strength-title">
       <p class="eyebrow">Development selection</p><h2 id="strength-title">Strength and trade-offs</h2>

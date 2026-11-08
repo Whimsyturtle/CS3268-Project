@@ -1,9 +1,10 @@
 import csv
 import json
+import subprocess
 
 from fastapi.testclient import TestClient
 
-from explorer.app import ExplorerSettings, create_app
+from explorer.app import ExplorerSettings, create_app, formatter_source_commit
 
 
 def write_run(root, method, run_id, benchmark="bbq", max_new_tokens=4):
@@ -66,6 +67,21 @@ def test_local_access_headers_are_enforced(tmp_path):
     api = client(tmp_path)
     assert api.get("/api/status", headers={"host": "example.com"}).status_code == 403
     assert api.get("/api/status", headers={"origin": "https://example.com"}).status_code == 403
+
+
+def test_formatter_revision_requires_clean_relevant_files(tmp_path):
+    (tmp_path / "evaluation" / "bbq").mkdir(parents=True)
+    common = tmp_path / "evaluation" / "common.py"
+    common.write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "evaluation" / "bbq" / "__init__.py").write_text("", encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "evaluation"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "fixture"], cwd=tmp_path, check=True)
+    assert formatter_source_commit(tmp_path, "bbq") is not None
+    common.write_text("VALUE = 2\n", encoding="utf-8")
+    assert formatter_source_commit(tmp_path, "bbq") is None
 
 
 def test_explicit_experiment_group_pairs_bias_and_capability(tmp_path):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
-from explorer.analysis import load_capture_bundle, load_control_file
+from explorer.analysis import load_capture_bundles, load_control_file
 from explorer.results import ExplorerDataError, discover_runs, join_generations, load_tuning_summaries
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,6 +80,15 @@ def _run_key(run: Any) -> str:
 def _run_record(run: Any) -> dict[str, Any]:
     identity = asdict(run.identity)
     return {"key": _run_key(run), "path": _run_key(run), **identity, "metric_count": len(run.metrics), "prediction_count": len(run.predictions)}
+
+
+def formatter_source_commit(root: Path, benchmark: str) -> str | None:
+    relevant = ["evaluation/common.py", f"evaluation/{benchmark}"]
+    status = subprocess.run(["git", "status", "--porcelain", "--", *relevant], cwd=root, capture_output=True, text=True, check=True)
+    if status.stdout.strip():
+        return None
+    process = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True)
+    return process.stdout.strip()
 
 
 def _selected_metric(run: Any, selector: dict[str, Any]) -> dict[str, Any]:
@@ -147,6 +157,7 @@ def _experiment_group(group: dict[str, Any], by_key: dict[str, Any]) -> dict[str
         records.append({
             "method": bias_identity.method,
             "strength": bias_identity.strength,
+            "seed": bias_identity.seed,
             "bias": {**bias_metric, "benchmark": bias_identity.benchmark, "run_key": _run_key(bias_run)},
             "capability": {**capability_metric, "benchmark": capability_identity.benchmark, "run_key": _run_key(capability_run)},
         })
@@ -239,7 +250,8 @@ def create_app(settings: ExplorerSettings | None = None) -> FastAPI:
         unknown = [key for key in request.run_keys if key not in by_key]
         if unknown:
             raise HTTPException(status_code=404, detail=f"Unknown run: {unknown[0]}")
-        return join_generations([by_key[key] for key in request.run_keys])
+        selected = [by_key[key] for key in request.run_keys]
+        return join_generations(selected, formatter_source_commit=formatter_source_commit(ROOT, selected[0].identity.benchmark))
 
     @app.get("/api/controls")
     def controls():
@@ -252,7 +264,7 @@ def create_app(settings: ExplorerSettings | None = None) -> FastAPI:
     def representation():
         if settings.capture_root is None or not settings.capture_bundles:
             return {"status": "unavailable", "reason": "No compatible activation captures are configured.", "bundles": []}
-        bundles = [load_capture_bundle(path, capture_root=settings.capture_root) for path in settings.capture_bundles]
+        bundles = load_capture_bundles(settings.capture_bundles, capture_root=settings.capture_root)
         return {"status": "available", "bundles": bundles}
 
     return app

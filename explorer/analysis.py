@@ -73,7 +73,7 @@ def load_control_file(path: Path) -> dict[str, Any]:
     return {**record, "summary": summary}
 
 
-def load_capture_bundle(path: Path, *, capture_root: Path) -> dict[str, Any]:
+def _load_capture_raw(path: Path, *, capture_root: Path) -> tuple[dict[str, Any], list[dict[str, Any]], np.ndarray]:
     root = capture_root.resolve()
     bundle = path.resolve()
     if not bundle.is_relative_to(root):
@@ -100,8 +100,8 @@ def load_capture_bundle(path: Path, *, capture_root: Path) -> dict[str, Any]:
         raise ExplorerDataError("Capture baseline_run_id is required")
     if activations.ndim != 2 or len(index) != activations.shape[0]:
         raise ExplorerDataError("Capture index and activation shape disagree")
-    if activations.shape[0] < 2 or activations.shape[1] < 2 or not np.isfinite(activations).all():
-        raise ExplorerDataError("Captures must be finite with at least two rows and dimensions")
+    if activations.shape[0] < 1 or activations.shape[1] < 2 or not np.isfinite(activations).all():
+        raise ExplorerDataError("Captures must be finite with at least one row and two dimensions")
     required = {"run_id", "example_id", "method", "strength", "state", "category", "layer", "hook", "token_selection", "source_split"}
     if any(not required.issubset(row) for row in index):
         raise ExplorerDataError("Capture index is missing required fields")
@@ -112,16 +112,55 @@ def load_capture_bundle(path: Path, *, capture_root: Path) -> dict[str, Any]:
     if any(row["source_split"] != config["source_split"] for row in index):
         raise ExplorerDataError("Capture rows disagree with the declared source split")
     baseline_rows = [position for position, row in enumerate(index) if row["state"] == "baseline"]
-    if len(baseline_rows) < 2:
-        raise ExplorerDataError("At least two baseline rows are required for shared PCA")
     if any(index[position]["run_id"] != baseline_run_id for position in baseline_rows):
         raise ExplorerDataError("Baseline rows must use the declared development baseline run")
-    projector = PCA(n_components=2).fit(np.asarray(activations[baseline_rows]))
-    coordinates = projector.transform(activations)
-    records = [{**row, "x": float(coordinates[position, 0]), "y": float(coordinates[position, 1])} for position, row in enumerate(index)]
-    return {
-        "config": config,
-        "records": records,
-        "explained_variance_ratio": projector.explained_variance_ratio_.tolist(),
+    return config, index, activations
+
+
+def load_capture_bundles(paths: Sequence[Path], *, capture_root: Path) -> list[dict[str, Any]]:
+    """Fit one reference PCA and transform every compatible bundle through it."""
+    if not paths:
+        return []
+    raw = [_load_capture_raw(path, capture_root=capture_root) for path in paths]
+    reference_config, reference_index, reference_activations = raw[0]
+    baseline_rows = [position for position, row in enumerate(reference_index) if row["state"] == "baseline"]
+    if len(baseline_rows) < 2:
+        raise ExplorerDataError("The reference bundle needs at least two development baseline rows")
+    site = (reference_index[0]["layer"], reference_index[0]["hook"], reference_index[0]["token_selection"])
+    model = reference_config["model"]
+    identity = (reference_config["source_split"], reference_config["baseline_run_id"])
+    width = reference_activations.shape[1]
+    projector = PCA(n_components=2).fit(np.asarray(reference_activations[baseline_rows]))
+    reference_coordinates = projector.transform(reference_activations)
+    baseline_coordinates = {
+        reference_index[position]["example_id"]: reference_coordinates[position]
+        for position in baseline_rows
     }
+    baseline_activations = {
+        reference_index[position]["example_id"]: np.asarray(reference_activations[position])
+        for position in baseline_rows
+    }
+    bundles = []
+    for config, index, activations in raw:
+        current_site = (index[0]["layer"], index[0]["hook"], index[0]["token_selection"])
+        if config["model"] != model or (config["source_split"], config["baseline_run_id"]) != identity:
+            raise ExplorerDataError("Capture bundles have incompatible model or development identities")
+        if current_site != site or activations.shape[1] != width:
+            raise ExplorerDataError("Capture bundles have incompatible activation sites or hidden widths")
+        coordinates = projector.transform(activations)
+        records = []
+        for position, row in enumerate(index):
+            record = {**row, "x": float(coordinates[position, 0]), "y": float(coordinates[position, 1])}
+            baseline = baseline_coordinates.get(row["example_id"])
+            if baseline is not None:
+                record["baseline_x"] = float(baseline[0])
+                record["baseline_y"] = float(baseline[1])
+                record["activation_displacement"] = float(np.linalg.norm(np.asarray(activations[position]) - baseline_activations[row["example_id"]]))
+            records.append(record)
+        bundles.append({"config": config, "records": records, "explained_variance_ratio": projector.explained_variance_ratio_.tolist()})
+    return bundles
+
+
+def load_capture_bundle(path: Path, *, capture_root: Path) -> dict[str, Any]:
+    return load_capture_bundles([path], capture_root=capture_root)[0]
 

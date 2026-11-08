@@ -103,6 +103,12 @@ Running a model on an input to produce an output.
 
 The vectors, SAE feature selections, or learned ReFT-r1 parameters applied to steer the model. See the [directory structure](README.md#directory-structure) for storage locations.
 
+## Intervention Explorer
+
+The local, read-only browser interface for comparing completed intervention
+results, strengths, generations, matched controls, and representation
+projections.
+
 ## Issue
 
 A GitHub record for a task's outcome, dependencies, progress, and completion checks. See the [contribution workflow](README.md#contributing).
@@ -124,9 +130,21 @@ partitions with assigned memory and compute resources.
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
 
+## Matched control
+
+A null intervention selected using method-appropriate criteria, such as a
+norm-matched random direction, and evaluated with the same metric as the
+observed intervention.
+
 ## Parameter
 
 A numerical value in a model. A **trainable parameter** is one that the training process can adjust.
+
+## PCA
+
+Short for Principal Component Analysis, a linear projection that represents
+variation using orthogonal directions. In the explorer, one PCA is fitted on
+development baseline activations and reused for compatible captures.
 
 ## ReFT-r1
 
