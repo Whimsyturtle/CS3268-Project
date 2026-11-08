@@ -56,3 +56,14 @@ def test_run_uses_shared_decoding_with_benchmark_max_new_tokens(tmp_path, monkey
     assert validated == [{**config["benchmarks"]["bbq"], "seed": config["seed"]}]
     assert calls == [expected]
     assert json.loads((run_dir / "config.json").read_text())["decoding"] == expected
+
+
+def test_holistic_bias_uses_shared_greedy_decoding():
+    config = json.loads((runner.ROOT / "configs" / "main.json").read_text())
+
+    benchmark = config["benchmarks"]["holistic_bias"]
+    decoding = {**config["decoding"], "max_new_tokens": benchmark["max_new_tokens"]}
+
+    assert benchmark["noun_phrase_selection"] == "canonical"
+    assert decoding["do_sample"] is False
+    assert "top_p" not in decoding

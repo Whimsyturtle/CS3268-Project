@@ -81,6 +81,20 @@ Prompts reserved for evaluating model behavior, separate from the data used to c
 
 A benchmark for measuring demographic bias in open-ended text generation.
 
+## Full Gen Bias
+
+A HolisticBias metric that measures how much the complete distribution of predicted
+conversational styles varies across demographic descriptors.
+
+## Partial Gen Bias
+
+The contribution of the individual styles in one style cluster to Full Gen Bias.
+
+## Summed-Cluster Gen Bias
+
+A HolisticBias metric that first combines probabilities for related conversational
+styles, then measures how that combined probability varies across descriptors.
+
 ## ICV
 
 Short for In-Context Vector, a method that extracts a reusable activation vector from demonstration pairs.
