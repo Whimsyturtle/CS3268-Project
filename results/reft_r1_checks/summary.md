@@ -1,6 +1,8 @@
 # ReFT-r1 side checks
 
-These checks are not main results. They use 550 BBQ test questions (25 per
+These checks use the earlier vector trained without neutral examples, now in
+[`positive-only/`](../../steering_vectors/reft_r1/positive-only/config.json); they do not
+describe the current vector. These checks are not main results. They use 550 BBQ test questions (25 per
 category and context condition), so do not tune anything on them.
 Strength is a multiple of `max_act`. Reproduce with `steering/reft_r1/checks.py`.
 The runs' saved configs show `limit: null`. Earlier runs do not record the subset,
