@@ -24,7 +24,7 @@ def classifier_styles():
     return sorted(styles)
 
 
-def test_classifier_requirements_retain_pkg_resources():
+def test_classifier_requirements_retain_pkg_resources_and_h100_torch_build():
     requirements = (
         Path(__file__).parents[1]
         / "evaluation"
@@ -33,6 +33,9 @@ def test_classifier_requirements_retain_pkg_resources():
     ).read_text(encoding="utf-8").splitlines()
 
     assert "setuptools<82" in requirements
+    assert "torch==2.0.0+cu118" in requirements
+    assert "torchvision==0.15.1+cu118" in requirements
+    assert "--extra-index-url https://download.pytorch.org/whl/cu118" in requirements
 
 
 def write_probabilities(tmp_path, examples):
