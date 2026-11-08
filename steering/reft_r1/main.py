@@ -7,6 +7,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from transformers import PreTrainedModel, PreTrainedTokenizerBase, get_scheduler
 
+from cluster_runtime import save_cluster_runtime
 from evaluation.runner import ROOT, generate, load_model, source_commit
 from steering.reft_r1 import SavedVector, apply
 
@@ -536,6 +537,7 @@ def save_intervention(
 if __name__ == "__main__":
     validate_config(config)
     model, tokenizer = load_model(config["model"])
+    save_cluster_runtime(model, INTERVENTION_DIR)
     positives, neutrals = load_training_examples()
 
     vector = train_vector(model, tokenizer, positives + neutrals)
