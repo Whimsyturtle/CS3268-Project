@@ -114,12 +114,15 @@ def read_config(path: Path, *, method: str | None = None) -> dict:
         if not metadata_path.is_file() or not metadata_path.stat().st_size:
             raise ValueError(f"missing intervention metadata for {method}: {artifact}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if method == "sae":
+        # SAE and ReFT-r1 record the full model config; CAA and ICV record name and revision.
+        if method in ("sae", "reft_r1"):
             model_matches = metadata.get("model") == model
-            source_ids = metadata.get("construction", {}).get("example_ids", [])
         else:
             model_matches = (metadata.get("model") == model["name"]
                              and metadata.get("revision") == model["revision"])
+        if method == "sae":
+            source_ids = metadata.get("construction", {}).get("example_ids", [])
+        else:
             source_ids = metadata.get("source_example_ids", [])
         if (not model_matches
                 or set(source_ids) != construction_ids or len(source_ids) != len(construction_ids)):
