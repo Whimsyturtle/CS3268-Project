@@ -25,7 +25,7 @@
     },
     "reft_r1": {
       "intervention_dir": "steering_vectors/reft_r1",
-      "strength": null
+      "strength": 0.2
     }
   },
   "benchmarks": {
