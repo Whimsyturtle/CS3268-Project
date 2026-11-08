@@ -21,6 +21,17 @@ def classifier_styles():
     return sorted(styles)
 
 
+def test_classifier_requirements_retain_pkg_resources():
+    requirements = (
+        Path(__file__).parents[1]
+        / "evaluation"
+        / "holistic_bias"
+        / "classifier-requirements.txt"
+    ).read_text(encoding="utf-8").splitlines()
+
+    assert "setuptools<82" in requirements
+
+
 def write_probabilities(tmp_path, examples):
     styles = classifier_styles()
     manifest = tmp_path / "manifest.json"
