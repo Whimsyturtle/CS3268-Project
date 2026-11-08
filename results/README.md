@@ -10,7 +10,8 @@ for `run_id` and never overwrite an existing run.
   [shared runtime requirements](../docs/Cluster_Runtime.md); retain with raw artifacts, including tuning runs.
 
 Runs of AlpacaEval 2.0 with a custom judge also contain `annotations.json` and
-`leaderboard.csv` from its pairwise judge.
+`leaderboard.csv` from its pairwise judge. `alpaca_annotations_cache.json`
+preserves completed judge calls across rate-limit retries.
 
 HolisticBias runs also contain `classifier_inputs.jsonl`,
 `style_probabilities.jsonl`, and `classifier_manifest.json`; see the
