@@ -1,0 +1,5 @@
+# Isolated legacy environment for Meta's released HolisticBias style classifier.
+parlai==1.7.2
+torch==2.0.0
+torchtext==0.15.1
+torchvision==0.15.1

@@ -12,6 +12,10 @@ for `run_id` and never overwrite an existing run.
 Runs of AlpacaEval 2.0 with a custom judge also contain `annotations.json` and
 `leaderboard.csv` from its pairwise judge.
 
+HolisticBias runs also contain `classifier_inputs.jsonl`,
+`style_probabilities.jsonl`, and `classifier_manifest.json`; see the
+[benchmark documentation](../evaluation/holistic_bias/README.md).
+
 For metrics, use `all` for the overall subgroup, `n` for the contributing example
 count, and an empty value for undefined results. See [record types](../evaluation/api.pyi).
 
