@@ -1,10 +1,13 @@
 import hashlib
 import json
+import sys
+import types
 from pathlib import Path
 
 import pytest
 
 from evaluation import holistic_bias
+from evaluation.holistic_bias import classify
 from evaluation.holistic_bias import scoring
 
 
@@ -21,7 +24,7 @@ def classifier_styles():
     return sorted(styles)
 
 
-def test_classifier_requirements_retain_pkg_resources():
+def test_classifier_requirements_retain_pkg_resources_and_h100_torch_build():
     requirements = (
         Path(__file__).parents[1]
         / "evaluation"
@@ -30,6 +33,9 @@ def test_classifier_requirements_retain_pkg_resources():
     ).read_text(encoding="utf-8").splitlines()
 
     assert "setuptools<82" in requirements
+    assert "torch==2.0.0+cu118" in requirements
+    assert "torchvision==0.15.1+cu118" in requirements
+    assert "--extra-index-url https://download.pytorch.org/whl/cu118" in requirements
 
 
 def write_probabilities(tmp_path, examples):
@@ -302,6 +308,30 @@ def test_validate_requires_existing_classifier_python(tmp_path, monkeypatch):
         holistic_bias.validate(config)
 
 
+def test_validate_requires_completed_classifier_download(tmp_path, monkeypatch):
+    python = tmp_path / "python"
+    python.write_text("")
+    monkeypatch.setenv("TEST_CLASSIFIER_PYTHON", str(python))
+    config = {
+        "noun_phrase_selection": "canonical",
+        "limit": None,
+        "classifier": {
+            "batch_size": 8,
+            "python_env": "TEST_CLASSIFIER_PYTHON",
+            "model_file": "zoo:style_gen/curr_only_classifier/model",
+            "datapath": str(tmp_path / "parlai"),
+        },
+    }
+    model_dir = tmp_path / "parlai" / "models" / "style_gen" / "curr_only_classifier"
+    model_dir.mkdir(parents=True)
+    (model_dir / "v1.1.tar.gz").write_text("partial")
+    with pytest.raises(ValueError, match="Download the HolisticBias classifier"):
+        holistic_bias.validate(config)
+
+    (model_dir / ".built").write_text("2026-11-08\nv1.1")
+    holistic_bias.validate(config)
+
+
 def test_generation_bias_accepts_float16_softmax_rounding(tmp_path):
     examples = [example("1", "t", "a"), example("2", "t", "b")]
     probabilities, manifest = write_probabilities(tmp_path, examples)
@@ -342,6 +372,7 @@ def test_classifier_subprocess_receives_censored_inputs(tmp_path, monkeypatch):
         "classifier": {
             "python_env": "TEST_CLASSIFIER_PYTHON",
             "model_file": "zoo:test/model",
+            "datapath": "~/.cache/parlai",
             "parlai_version": "1.7.2",
             "batch_size": 4,
         },
@@ -355,6 +386,75 @@ def test_classifier_subprocess_receives_censored_inputs(tmp_path, monkeypatch):
     input_hash = captured["command"][captured["command"].index("--input-sha256") + 1]
     assert input_hash == hashlib.sha256(input_bytes).hexdigest()
     assert captured["command"][0] == "/classifier/python"
+    datapath = captured["command"][captured["command"].index("--datapath") + 1]
+    assert datapath == str(Path("~/.cache/parlai").expanduser().resolve())
     assert captured["check"] is True
     assert probabilities == tmp_path / "style_probabilities.jsonl"
     assert manifest == tmp_path / "classifier_manifest.json"
+
+
+def test_classifier_passes_datapath_to_parlai(tmp_path, monkeypatch):
+    input_path = tmp_path / "inputs.jsonl"
+    input_path.write_text("")
+    datapath = tmp_path / "parlai-data"
+    artifacts = {
+        "model_file": tmp_path / "model",
+        "dict_file": tmp_path / "model.dict",
+        "classes_from_file": tmp_path / "classes.txt",
+    }
+    for path in [*artifacts.values(), tmp_path / "model.opt"]:
+        path.write_text("test")
+
+    captured = {}
+
+    def create_agent(options, requireModelExists):
+        captured["options"] = options
+        captured["require_model_exists"] = requireModelExists
+        return types.SimpleNamespace(opt=artifacts, class_list=[])
+
+    modules = {
+        "parlai": types.ModuleType("parlai"),
+        "parlai.core": types.ModuleType("parlai.core"),
+        "parlai.core.agents": types.ModuleType("parlai.core.agents"),
+        "parlai.core.message": types.ModuleType("parlai.core.message"),
+        "parlai.core.opt": types.ModuleType("parlai.core.opt"),
+        "torch": types.ModuleType("torch"),
+    }
+    modules["parlai"].__version__ = "1.7.2"
+    modules["parlai.core.agents"].create_agent = create_agent
+    modules["parlai.core.message"].Message = dict
+    modules["parlai.core.opt"].Opt = dict
+    modules["torch"].__version__ = "test"
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "classify.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(tmp_path / "probabilities.jsonl"),
+            "--manifest",
+            str(tmp_path / "manifest.json"),
+            "--model-file",
+            "zoo:test/model",
+            "--datapath",
+            str(datapath),
+            "--expected-parlai-version",
+            "1.7.2",
+            "--batch-size",
+            "4",
+            "--input-sha256",
+            hashlib.sha256(b"").hexdigest(),
+        ],
+    )
+
+    classify.main()
+
+    assert datapath.is_dir()
+    assert captured["options"]["datapath"] == str(datapath)
+    assert captured["options"]["override"]["model"] == "projects.style_gen.classifier:ClassifierAgent"
+    assert captured["require_model_exists"] is True
