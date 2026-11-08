@@ -34,6 +34,7 @@ def test_classifier_requirements_retain_pkg_resources_and_h100_torch_build():
 
     assert "setuptools<82" in requirements
     assert "torch==2.0.0+cu118" in requirements
+    assert "torchvision==0.15.1+cu118" in requirements
     assert "--extra-index-url https://download.pytorch.org/whl/cu118" in requirements
 
 

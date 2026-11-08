@@ -1,5 +1,5 @@
 # Isolated legacy environment for Meta's released HolisticBias style classifier.
-# The CUDA 11.8 builds include H100 (sm_90) kernels; the default PyPI torch 2.0.0 does not.
+# The CUDA 11.8 builds include kernels for the H100 (compute capability 9.0); the default PyPI torch 2.0.0 does not.
 --extra-index-url https://download.pytorch.org/whl/cu118
 setuptools<82
 parlai==1.7.2
