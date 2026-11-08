@@ -14,11 +14,11 @@
   "scheduler": "linear",
   "epochs": 3,
   "batch_size": 6,
-  "max_act": 198.24554443359375,
+  "max_act": 202.8735809326172,
   "training_target": "unbiased_response",
   "source": {
-    "commit": "5814f4aed931254503919a228fdbf3960dfa9e32",
-    "status": "?? .claude/",
+    "commit": "269dfaa302adfc6eeaa90a009918f076760a21d6",
+    "status": "",
     "uncommitted_diff": ""
   },
   "source_example_ids": [
