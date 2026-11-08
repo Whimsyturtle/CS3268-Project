@@ -97,6 +97,8 @@ def run_style_classifier(examples, outputs, config):
             str(manifest_path),
             "--model-file",
             classifier["model_file"],
+            "--datapath",
+            str(Path(classifier["datapath"]).expanduser().resolve()),
             "--expected-parlai-version",
             classifier["parlai_version"],
             "--batch-size",

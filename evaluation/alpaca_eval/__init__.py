@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 from huggingface_hub import hf_hub_download
@@ -10,6 +11,21 @@ from huggingface_hub import hf_hub_download
 from evaluation.common import metric, outputs_by_id
 
 PROMPT = Path(__file__).with_name("prompt.txt")
+
+
+def _rate_limit_delay(error, attempt):
+    retry_after = getattr(getattr(error, "response", None), "headers", {}).get("retry-after")
+    try:
+        return max(float(retry_after), 1.0)
+    except (TypeError, ValueError):
+        return min(30 * 2**attempt, 300)
+
+
+def _is_rate_limit(error):
+    return (
+        getattr(error, "status_code", None) == 429
+        or getattr(getattr(error, "response", None), "status_code", None) == 429
+    )
 
 
 def load_examples(config):
@@ -84,18 +100,30 @@ def score(examples, predictions, config):
         }
         annotator_path = Path(directory) / "configs.yaml"
         annotator_path.write_text(json.dumps(annotator))
-        leaderboard, _ = alpaca_eval.evaluate(
-            model_outputs=model_outputs,
-            reference_outputs=reference_outputs,
-            annotators_config=annotator_path,
-            name=config["generator"],
-            output_path=config["output_dir"],
-            precomputed_leaderboard=None,
-            is_cache_leaderboard=False,
-            is_return_instead_of_print=True,
-            fn_metric="get_winrate",
-            sort_by="win_rate",
-        )
+        attempt = 0
+        while True:
+            try:
+                leaderboard, _ = alpaca_eval.evaluate(
+                    model_outputs=model_outputs,
+                    reference_outputs=reference_outputs,
+                    annotators_config=annotator_path,
+                    caching_path=Path(config["output_dir"]) / "alpaca_annotations_cache.json",
+                    name=config["generator"],
+                    output_path=config["output_dir"],
+                    precomputed_leaderboard=None,
+                    is_cache_leaderboard=False,
+                    is_return_instead_of_print=True,
+                    fn_metric="get_winrate",
+                    sort_by="win_rate",
+                )
+                break
+            except Exception as error:
+                if not _is_rate_limit(error):
+                    raise
+                delay = _rate_limit_delay(error, attempt)
+                attempt += 1
+                print(f"SoClaaS rate limit reached; retrying in {delay:g} seconds", flush=True)
+                time.sleep(delay)
     row = leaderboard.loc[config["generator"]]
     names = ["win_rate", "standard_error", "avg_length"]
     return [metric("all", name, float(row[name]), int(row["n_total"])) for name in names]

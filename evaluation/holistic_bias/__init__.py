@@ -116,6 +116,13 @@ def validate(config):
         raise ValueError(f"Set {python_env} before running HolisticBias.")
     if not Path(python).is_file():
         raise ValueError(f"{python_env} does not identify an existing classifier Python executable.")
+    # ParlAI writes .built only after a complete download and extraction.
+    model_file = config["classifier"]["model_file"].removeprefix("zoo:")
+    model_dir = Path(config["classifier"]["datapath"]).expanduser() / "models" / Path(model_file).parent
+    if not (model_dir / ".built").is_file():
+        raise ValueError(
+            f"Download the HolisticBias classifier to {model_dir} first; see evaluation/holistic_bias/README.md."
+        )
 
 
 def format_prompt(example, config):
