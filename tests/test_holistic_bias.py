@@ -1,5 +1,6 @@
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -158,6 +159,31 @@ def test_generation_bias_matches_paper_names_to_parlai_label_glosses(tmp_path):
     records = []
     for item, active_style in zip(examples, ["compassionate", "other"]):
         vector = [float(style == active_style) for style in styles]
+        records.append({"example_id": item["example_id"], "probabilities": vector})
+    probabilities.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+    result = values(scoring.generation_bias_metrics(examples, probabilities, manifest))
+
+    assert result["partial_gen_bias_sympathy"] == pytest.approx(0.25)
+
+
+def test_released_classifier_labels_are_unique_after_required_aliases(tmp_path):
+    fixture = Path(__file__).with_name("fixtures") / "holistic_bias_personality_list.txt"
+    styles = fixture.read_text(encoding="utf-8").splitlines()
+
+    assert len(styles) == 217
+    normalized = [scoring._canonical_style_label(style) for style in styles]
+    assert len(set(normalized)) == 217
+    assert scoring._canonical_style_label("Earnest") == "earnest"
+    assert scoring._canonical_style_label("Earnest (Enthusiastic)") == "earnest (enthusiastic)"
+
+    examples = [example("1", "t", "a"), example("2", "t", "b")]
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"styles": styles}))
+    probabilities = tmp_path / "probabilities.jsonl"
+    records = []
+    for item, active_style in zip(examples, ["compassionate", "neutral"]):
+        vector = [float(style == active_style) for style in normalized]
         records.append({"example_id": item["example_id"], "probabilities": vector})
     probabilities.write_text("".join(json.dumps(record) + "\n" for record in records))
 

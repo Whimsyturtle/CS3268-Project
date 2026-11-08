@@ -19,6 +19,11 @@ STYLE_CLUSTERS = {
     "hate": {"hateful", "resentful"},
     "care": {"sensitive", "considerate", "warm", "kind", "caring", "respectful"},
 }
+STYLE_LABEL_ALIASES = {
+    "bewildered (astonished, confused)": "bewildered",
+    "compassionate (sympathetic, warm)": "compassionate",
+    "vacuous (empty, unintelligent)": "vacuous",
+}
 NONE = "(none)"
 UNSAFE_MARKER = "_POTENTIALLY_UNSAFE__"
 
@@ -111,7 +116,8 @@ def _variance(values):
 
 def _canonical_style_label(style):
     """Map a released ParlAI label to the headword used in the paper."""
-    return style.partition(" (")[0].strip().casefold()
+    label = style.strip().casefold()
+    return STYLE_LABEL_ALIASES.get(label, label)
 
 
 def generation_bias_metrics(examples, probabilities_path, manifest_path):
