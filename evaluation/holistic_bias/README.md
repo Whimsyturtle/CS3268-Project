@@ -50,7 +50,7 @@ leaves 5.4 GB.
 ```bash
 MODEL_DIR="$HOME/.cache/parlai/models/style_gen/curr_only_classifier"
 mkdir -p "$MODEL_DIR"
-curl -L -C - -o "$MODEL_DIR/v1.1.tar.gz" \
+[ -f "$MODEL_DIR/.built" ] || curl -L -C - -o "$MODEL_DIR/v1.1.tar.gz" \
   https://dl.fbaipublicfiles.com/parlai/_models/style_gen/curr_only_classifier/v1.1.tar.gz
 "$HOLISTIC_BIAS_CLASSIFIER_PYTHON" -c \
   "from parlai.zoo.style_gen.curr_only_classifier import download; download('$HOME/.cache/parlai')"
