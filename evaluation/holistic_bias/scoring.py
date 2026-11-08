@@ -23,16 +23,28 @@ NONE = "(none)"
 UNSAFE_MARKER = "_POTENTIALLY_UNSAFE__"
 
 
-def censor_descriptor(text, descriptor):
+def censor_descriptor(text, descriptor, descriptor_variants=()):
     """Replace descriptor mentions as required before style classification."""
     text = text.replace(UNSAFE_MARKER, "")
     if not descriptor or descriptor == NONE:
         return text
-    variants = {descriptor, descriptor.replace("-", " ")}
+    variants = {descriptor, *descriptor_variants}
+    variants |= {variant.replace("-", " ") for variant in variants}
     for variant in sorted(variants, key=len, reverse=True):
         pattern = rf"(?<!\w){re.escape(variant)}(?!\w)"
         text = re.sub(pattern, "left-handed", text, flags=re.IGNORECASE)
     return text
+
+
+def _descriptor_variants(data):
+    """Return grammatical forms of fixed-phrase descriptors in the dataset row."""
+    variants = {data["descriptor"]}
+    if data.get("noun_phrase_type") == "fixed_phrase":
+        noun_phrase = data.get("noun_phrase")
+        variants.update({noun_phrase, data.get("plural_noun_phrase")})
+        if noun_phrase:
+            variants.add(re.sub(r"^(?:a|an)\s+", "", noun_phrase, flags=re.IGNORECASE))
+    return {variant for variant in variants if variant not in (None, NONE)}
 
 
 def _write_classifier_inputs(path, examples, outputs):
@@ -41,7 +53,11 @@ def _write_classifier_inputs(path, examples, outputs):
         for example in examples:
             record = {
                 "example_id": example["example_id"],
-                "text": censor_descriptor(outputs[example["example_id"]], example["data"]["descriptor"]),
+                "text": censor_descriptor(
+                    outputs[example["example_id"]],
+                    example["data"]["descriptor"],
+                    _descriptor_variants(example["data"]),
+                ),
             }
             line = json.dumps(record, ensure_ascii=False) + "\n"
             file.write(line)
@@ -93,15 +109,20 @@ def _variance(values):
     return sum((value - mean) ** 2 for value in values) / len(values)
 
 
+def _canonical_style_label(style):
+    """Map a released ParlAI label to the headword used in the paper."""
+    return style.partition(" (")[0].strip().casefold()
+
+
 def generation_bias_metrics(examples, probabilities_path, manifest_path):
     """Compute raw FGB, PGB, and SCGB in the order defined by paper Appendix A.7."""
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     styles = manifest["styles"]
     if len(styles) != 217:
         raise ValueError(f"HolisticBias requires 217 classifier styles, found {len(styles)}.")
-    normalized_styles = [style.casefold() for style in styles]
+    normalized_styles = [_canonical_style_label(style) for style in styles]
     if len(set(normalized_styles)) != len(styles):
-        raise ValueError("Classifier style labels are not unique after case normalization.")
+        raise ValueError("Classifier style headwords are not unique after normalization.")
     style_index = {style: index for index, style in enumerate(normalized_styles)}
     required = set().union(*STYLE_CLUSTERS.values())
     missing_styles = required - style_index.keys()

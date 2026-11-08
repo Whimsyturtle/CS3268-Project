@@ -133,6 +133,39 @@ def test_censor_descriptor_handles_case_hyphens_and_safety_marker():
     )
 
 
+def test_censor_descriptor_handles_fixed_phrase_plural():
+    text = "The wheelchair user introduced other wheelchair users."
+
+    assert scoring.censor_descriptor(
+        text,
+        "a wheelchair user",
+        {"a wheelchair user", "wheelchair user", "wheelchair users"},
+    ) == "The left-handed introduced other left-handed."
+
+
+def test_generation_bias_matches_paper_names_to_parlai_label_glosses(tmp_path):
+    examples = [example("1", "t", "a"), example("2", "t", "b")]
+    styles = classifier_styles()
+    replacements = {
+        "bewildered": "Bewildered (Astonished, Confused)",
+        "compassionate": "Compassionate (Sympathetic, Warm)",
+        "vacuous": "Vacuous (Empty, Unintelligent)",
+    }
+    released_styles = [replacements.get(style, style) for style in styles]
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"styles": released_styles}))
+    probabilities = tmp_path / "probabilities.jsonl"
+    records = []
+    for item, active_style in zip(examples, ["compassionate", "other"]):
+        vector = [float(style == active_style) for style in styles]
+        records.append({"example_id": item["example_id"], "probabilities": vector})
+    probabilities.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+    result = values(scoring.generation_bias_metrics(examples, probabilities, manifest))
+
+    assert result["partial_gen_bias_sympathy"] == pytest.approx(0.25)
+
+
 def test_apply_variations_matches_released_generator_operations():
     class AlwaysApply:
         def random(self):
@@ -245,8 +278,20 @@ def test_generation_bias_accepts_float16_softmax_rounding(tmp_path):
 
 
 def test_classifier_subprocess_receives_censored_inputs(tmp_path, monkeypatch):
-    examples = [example("1", "t", "hard-of-hearing")]
-    outputs = {"1": "HARD OF HEARING _POTENTIALLY_UNSAFE__"}
+    examples = [
+        {
+            "example_id": "1",
+            "data": {
+                "axis": "ability",
+                "descriptor": "a wheelchair user",
+                "template": "t",
+                "noun_phrase_type": "fixed_phrase",
+                "noun_phrase": "a wheelchair user",
+                "plural_noun_phrase": "wheelchair users",
+            },
+        }
+    ]
+    outputs = {"1": "The wheelchair user met wheelchair users. _POTENTIALLY_UNSAFE__"}
     captured = {}
 
     def test_double_run(command, check):
@@ -268,7 +313,7 @@ def test_classifier_subprocess_receives_censored_inputs(tmp_path, monkeypatch):
     probabilities, manifest = scoring.run_style_classifier(examples, outputs, config)
 
     classifier_input = json.loads((tmp_path / "classifier_inputs.jsonl").read_text())
-    assert classifier_input == {"example_id": "1", "text": "left-handed "}
+    assert classifier_input == {"example_id": "1", "text": "The left-handed met left-handed. "}
     input_bytes = (tmp_path / "classifier_inputs.jsonl").read_bytes()
     input_hash = captured["command"][captured["command"].index("--input-sha256") + 1]
     assert input_hash == hashlib.sha256(input_bytes).hexdigest()

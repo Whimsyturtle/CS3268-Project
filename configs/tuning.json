@@ -22,7 +22,7 @@
   "methods": {
     "icv": {
       "intervention_dir": "steering_vectors/icv",
-      "strengths": [0, 0.05, 0.1, 0.15, 0.2]
+      "strengths": [0, 0.02, 0.04, 0.06, 0.08, 0.1]
     },
     "sae": {
       "intervention_dir": "steering_vectors/sae/cu126-20261105-202310",
