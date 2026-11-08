@@ -41,7 +41,8 @@ python -m pip install -r evaluation/holistic_bias/classifier-requirements.txt
 export HOLISTIC_BIAS_CLASSIFIER_PYTHON="$PWD/.venv-holistic-bias/bin/python"
 ```
 
-The first scored run downloads `zoo:style_gen/curr_only_classifier/model`.
+The first scored run downloads `zoo:style_gen/curr_only_classifier/model` to
+the configured `~/.cache/parlai` directory.
 
 Each run additionally saves:
 

@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--model-file", required=True)
+    parser.add_argument("--datapath", type=Path, required=True)
     parser.add_argument("--expected-parlai-version", required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--input-sha256", required=True)
@@ -44,8 +45,12 @@ def main():
     if actual_input_sha256 != args.input_sha256:
         raise RuntimeError("Classifier input SHA-256 does not match the caller's value.")
 
+    args.datapath.mkdir(parents=True, exist_ok=True)
     overrides = {"classes_from_file": "image_chat_personalities_file", "print_scores": True}
-    agent = create_agent(Opt({"model_file": args.model_file, "override": overrides}), requireModelExists=True)
+    agent = create_agent(
+        Opt({"model_file": args.model_file, "datapath": str(args.datapath), "override": overrides}),
+        requireModelExists=True,
+    )
     styles = list(agent.class_list)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.input, encoding="utf-8") as source, open(
