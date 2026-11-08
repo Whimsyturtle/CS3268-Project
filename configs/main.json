@@ -17,7 +17,7 @@
     },
     "icv": {
       "intervention_dir": "steering_vectors/icv",
-      "strength": 0.04
+      "strength": null
     },
     "sae": {
       "intervention_dir": "steering_vectors/sae/cu126-20261105-202310",

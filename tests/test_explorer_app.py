@@ -2,9 +2,11 @@ import csv
 import json
 import subprocess
 
+import pytest
 from fastapi.testclient import TestClient
 
-from explorer.app import ExplorerSettings, create_app, formatter_source_commit
+from explorer.app import ExplorerSettings, create_app, formatter_source_commit, load_settings
+from explorer.results import ExplorerDataError
 
 
 def write_run(root, method, run_id, benchmark="bbq", max_new_tokens=4):
@@ -55,6 +57,23 @@ def test_frontend_renders_outputs_with_text_content(tmp_path):
     assert "innerHTML" not in source
     assert "Math.abs(row.value)" not in source
     assert "Development-selected" in source
+    assert "const baseline = selectedGroup ? axisRows.find" in source
+
+
+@pytest.mark.parametrize(
+    ("config", "message"),
+    [
+        ({"results_root": []}, "results_root"),
+        ({"control_files": "controls.json"}, "control_files"),
+        ({"capture_bundles": ["capture"]}, "capture_root is required"),
+        ({"host": []}, "bind only to localhost"),
+    ],
+)
+def test_settings_reject_malformed_paths(tmp_path, config, message):
+    path = tmp_path / "explorer.json"
+    path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ExplorerDataError, match=message):
+        load_settings(path)
 
 
 def test_unconfigured_optional_views_are_explicit(tmp_path):

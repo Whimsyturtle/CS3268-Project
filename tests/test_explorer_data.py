@@ -48,6 +48,21 @@ def test_duplicate_prediction_ids_are_rejected(tmp_path):
         load_run(path)
 
 
+@pytest.mark.parametrize(("field", "value"), [("strength", float("nan")), ("strength", 10**1000), ("metric", "inf")])
+def test_non_finite_run_values_are_rejected(tmp_path, field, value):
+    path = write_run(tmp_path, method="icv")
+    if field == "strength":
+        config_path = path / "config.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["method_config"]["strength"] = value
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+    else:
+        metrics_path = path / "metrics.csv"
+        metrics_path.write_text("subgroup,metric,value,n\nall,accuracy,inf,2\n", encoding="utf-8")
+    with pytest.raises(ExplorerDataError, match="Invalid (strength|metric)"):
+        load_run(path)
+
+
 def test_reference_file_identifies_alpaca_eval_partition(tmp_path):
     path = write_run(tmp_path, benchmark="alpaca_eval")
     config_path = path / "config.json"
@@ -118,6 +133,13 @@ def test_control_summary_uses_midrank_percentile():
     assert summary["percentile"] == 60.0
 
 
+def test_control_summary_rejects_non_numeric_effects():
+    with pytest.raises(ExplorerDataError, match="must be numbers"):
+        control_summary("invalid", [0, 1, 2, 3, 4], family="norm-matched random directions")
+    with pytest.raises(ExplorerDataError, match="must be finite"):
+        control_summary(10**1000, [0, 1, 2, 3, 4], family="norm-matched random directions")
+
+
 def test_control_file_requires_provenance(tmp_path):
     path = tmp_path / "controls.json"
     path.write_text(json.dumps({"family": "norm-matched random directions", "matching": {}, "metric": {}, "observed": 2, "controls": [0, 1, 2, 2, 3]}), encoding="utf-8")
@@ -165,6 +187,25 @@ def test_capture_bundle_fits_shared_pca(tmp_path):
     combined = load_capture_bundles([bundle, second], capture_root=tmp_path / "captures")
     assert combined[1]["records"][0]["baseline_x"] == combined[0]["records"][0]["x"]
     assert combined[1]["records"][0]["activation_displacement"] > 1
+
+
+def test_capture_rejects_duplicate_records_and_degenerate_baseline(tmp_path):
+    bundle = tmp_path / "captures" / "one"
+    bundle.mkdir(parents=True)
+    config = {"model": {"name": "gemma", "revision": "abc"}, "split_role": "development", "source_split": "dev", "baseline_run_id": "base"}
+    (bundle / "capture_config.json").write_text(json.dumps(config), encoding="utf-8")
+    base = {"run_id": "base", "method": "baseline", "strength": None, "state": "baseline", "category": "x", "layer": 4, "hook": "residual", "token_selection": "last", "source_split": "dev"}
+    rows = [{**base, "example_id": "a"}, {**base, "example_id": "b"}]
+    index_path = bundle / "capture_index.jsonl"
+    index_path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    np.save(bundle / "activations.npy", np.zeros((2, 3)))
+    with pytest.raises(ExplorerDataError, match="non-zero variation"):
+        load_capture_bundle(bundle, capture_root=tmp_path / "captures")
+
+    index_path.write_text("".join(json.dumps(row) + "\n" for row in [rows[0], rows[0]]), encoding="utf-8")
+    np.save(bundle / "activations.npy", np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 0.0]]))
+    with pytest.raises(ExplorerDataError, match="duplicate run/example/state"):
+        load_capture_bundle(bundle, capture_root=tmp_path / "captures")
 
 
 def test_capture_displacement_uses_full_activation_space(tmp_path):

@@ -41,6 +41,13 @@ def _resolve(base: Path, value: str) -> Path:
     return (base / path).resolve() if not path.is_absolute() else path.resolve()
 
 
+def _path_list(config: dict[str, Any], key: str, base: Path) -> tuple[Path, ...]:
+    values = config.get(key, [])
+    if not isinstance(values, list) or not all(isinstance(value, str) and value for value in values):
+        raise ExplorerDataError(f"{key} must be a list of non-empty paths")
+    return tuple(_resolve(base, value) for value in values)
+
+
 def load_settings(path: Path | None = None) -> ExplorerSettings:
     if path is None:
         return ExplorerSettings(results_root=ROOT / "results")
@@ -52,11 +59,19 @@ def load_settings(path: Path | None = None) -> ExplorerSettings:
     if not isinstance(config, dict):
         raise ExplorerDataError("Explorer configuration must be a JSON object")
     base = config_path.parent
-    results_root = _resolve(base, config.get("results_root", "results"))
+    results_value = config.get("results_root", "results")
+    if not isinstance(results_value, str) or not results_value:
+        raise ExplorerDataError("results_root must be a non-empty path")
+    results_root = _resolve(base, results_value)
     capture_value = config.get("capture_root")
-    capture_root = _resolve(base, capture_value) if isinstance(capture_value, str) else None
-    capture_bundles = tuple(_resolve(capture_root, item) for item in config.get("capture_bundles", [])) if capture_root else ()
-    control_files = tuple(_resolve(base, item) for item in config.get("control_files", []))
+    if capture_value is not None and (not isinstance(capture_value, str) or not capture_value):
+        raise ExplorerDataError("capture_root must be a non-empty path")
+    capture_root = _resolve(base, capture_value) if capture_value else None
+    bundle_values = config.get("capture_bundles", [])
+    if bundle_values and capture_root is None:
+        raise ExplorerDataError("capture_root is required when capture_bundles are configured")
+    capture_bundles = _path_list(config, "capture_bundles", capture_root or base)
+    control_files = _path_list(config, "control_files", base)
     experiment_groups = config.get("experiment_groups", [])
     if not isinstance(experiment_groups, list) or not all(isinstance(group, dict) for group in experiment_groups):
         raise ExplorerDataError("experiment_groups must be a list of objects")
@@ -65,7 +80,7 @@ def load_settings(path: Path | None = None) -> ExplorerSettings:
         raise ExplorerDataError("Experiment-group names must be non-empty and unique")
     host = config.get("host", "127.0.0.1")
     port = config.get("port", 8000)
-    if host not in {"127.0.0.1", "localhost"}:
+    if not isinstance(host, str) or host not in {"127.0.0.1", "localhost"}:
         raise ExplorerDataError("The explorer may bind only to localhost")
     if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
         raise ExplorerDataError("Explorer port must be an integer from 1 to 65535")
@@ -79,7 +94,7 @@ def _run_key(run: Any) -> str:
 
 def _run_record(run: Any) -> dict[str, Any]:
     identity = asdict(run.identity)
-    return {"key": _run_key(run), "path": _run_key(run), **identity, "metric_count": len(run.metrics), "prediction_count": len(run.predictions)}
+    return {"key": _run_key(run), **identity, "metric_count": len(run.metrics), "prediction_count": len(run.predictions)}
 
 
 def formatter_source_commit(root: Path, benchmark: str) -> str | None:

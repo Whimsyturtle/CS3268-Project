@@ -58,8 +58,9 @@ function renderOverview() {
   const selectedGroup = state.groups.find(group => group.name === byId("group-filter").value);
   const allowedRuns = selectedGroup ? new Set(selectedGroup.points.flatMap(point => [point.bias.run_key, point.capability.run_key])) : null;
   const selectedMethod = byId("method-filter").value;
-  const selected = state.metrics.filter(row => (!allowedRuns || allowedRuns.has(row.run_key)) && (!selectedMethod || row.method === selectedMethod) && row.benchmark === byId("benchmark-filter").value && row.metric === byId("metric-filter").value && row.subgroup === byId("subgroup-filter").value);
-  const baseline = selectedGroup ? selected.find(row => row.method === "baseline" && row.value !== null) : null;
+  const axisRows = state.metrics.filter(row => (!allowedRuns || allowedRuns.has(row.run_key)) && row.benchmark === byId("benchmark-filter").value && row.metric === byId("metric-filter").value && row.subgroup === byId("subgroup-filter").value);
+  const selected = axisRows.filter(row => !selectedMethod || row.method === selectedMethod);
+  const baseline = selectedGroup ? axisRows.find(row => row.method === "baseline" && row.value !== null) : null;
   const body = byId("metrics-body"); clear(body);
   selected.forEach(row => {
     const tr = document.createElement("tr");

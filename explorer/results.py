@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import importlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -81,8 +82,18 @@ def _identity(config: dict[str, Any], path: Path) -> RunIdentity:
     if not all(isinstance(item, dict) for item in (model, benchmark_config, method_config, source, decoding)):
         raise ExplorerDataError(f"Incomplete resolved configuration in {path}")
     strength = None if method == "baseline" else method_config.get("strength")
-    if strength is not None and (not isinstance(strength, (int, float)) or isinstance(strength, bool)):
+    if strength is not None and (
+        not isinstance(strength, (int, float))
+        or isinstance(strength, bool)
+    ):
         raise ExplorerDataError(f"Invalid strength in {path}")
+    if strength is not None:
+        try:
+            strength = float(strength)
+        except OverflowError as error:
+            raise ExplorerDataError(f"Invalid strength in {path}") from error
+        if not math.isfinite(strength):
+            raise ExplorerDataError(f"Invalid strength in {path}")
     seed = benchmark_config.get("seed")
     if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)):
         raise ExplorerDataError(f"Invalid seed in {path}")
@@ -104,7 +115,7 @@ def _identity(config: dict[str, Any], path: Path) -> RunIdentity:
         source_commit=_required_string(source, "commit", path),
         decoding=dict(decoding),
         seed=seed,
-        strength=None if strength is None else float(strength),
+        strength=strength,
     )
 
 
@@ -146,7 +157,7 @@ def _load_metrics(path: Path) -> tuple[dict[str, Any], ...]:
                     count = int(row["n"])
                 except (TypeError, ValueError) as error:
                     raise ExplorerDataError(f"Invalid metric on {path}:{row_number}") from error
-                if count < 0 or not row["subgroup"] or not row["metric"]:
+                if count < 0 or (value is not None and not math.isfinite(value)) or not row["subgroup"] or not row["metric"]:
                     raise ExplorerDataError(f"Invalid metric on {path}:{row_number}")
                 metrics.append({"subgroup": row["subgroup"], "metric": row["metric"], "value": value, "n": count})
     except OSError as error:

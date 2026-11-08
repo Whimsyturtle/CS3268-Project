@@ -30,15 +30,21 @@ def _contained_file(root: Path, path: Path) -> Path:
 def control_summary(observed: float, controls: Sequence[float], *, family: str, minimum: int = 5) -> dict[str, Any]:
     if not family:
         raise ExplorerDataError("Control family is required")
-    values = [float(value) for value in controls]
-    if not math.isfinite(observed) or not all(math.isfinite(value) for value in values):
+    try:
+        observed_value = float(observed)
+        values = [float(value) for value in controls]
+    except OverflowError as error:
+        raise ExplorerDataError("Control effects must be finite") from error
+    except (TypeError, ValueError) as error:
+        raise ExplorerDataError("Control effects must be numbers") from error
+    if not math.isfinite(observed_value) or not all(math.isfinite(value) for value in values):
         raise ExplorerDataError("Control effects must be finite")
     if len(values) < minimum:
-        return {"status": "insufficient", "family": family, "observed": observed, "controls": values, "count": len(values)}
-    lower = sum(value < observed for value in values)
-    equal = sum(value == observed for value in values)
+        return {"status": "insufficient", "family": family, "observed": observed_value, "controls": values, "count": len(values)}
+    lower = sum(value < observed_value for value in values)
+    equal = sum(value == observed_value for value in values)
     percentile = 100 * (lower + 0.5 * equal) / len(values)
-    return {"status": "available", "family": family, "observed": observed, "controls": values, "count": len(values), "percentile": percentile}
+    return {"status": "available", "family": family, "observed": observed_value, "controls": values, "count": len(values), "percentile": percentile}
 
 
 def load_control_file(path: Path) -> dict[str, Any]:
@@ -105,6 +111,9 @@ def _load_capture_raw(path: Path, *, capture_root: Path) -> tuple[dict[str, Any]
     required = {"run_id", "example_id", "method", "strength", "state", "category", "layer", "hook", "token_selection", "source_split"}
     if any(not required.issubset(row) for row in index):
         raise ExplorerDataError("Capture index is missing required fields")
+    record_keys = [(row["run_id"], row["example_id"], row["state"]) for row in index]
+    if len(record_keys) != len(set(record_keys)):
+        raise ExplorerDataError("Capture index contains duplicate run/example/state records")
     compatibility = ("layer", "hook", "token_selection")
     for key in compatibility:
         if len({json.dumps(row[key], sort_keys=True) for row in index}) != 1:
@@ -130,7 +139,12 @@ def load_capture_bundles(paths: Sequence[Path], *, capture_root: Path) -> list[d
     model = reference_config["model"]
     identity = (reference_config["source_split"], reference_config["baseline_run_id"])
     width = reference_activations.shape[1]
-    projector = PCA(n_components=2).fit(np.asarray(reference_activations[baseline_rows]))
+    baseline_matrix = np.asarray(reference_activations[baseline_rows])
+    if float(np.var(baseline_matrix, axis=0).sum()) == 0:
+        raise ExplorerDataError("The reference baseline captures need non-zero variation for PCA")
+    projector = PCA(n_components=2).fit(baseline_matrix)
+    if not np.isfinite(projector.explained_variance_ratio_).all():
+        raise ExplorerDataError("The reference baseline captures did not produce a finite PCA projection")
     reference_coordinates = projector.transform(reference_activations)
     baseline_coordinates = {
         reference_index[position]["example_id"]: reference_coordinates[position]
@@ -148,6 +162,8 @@ def load_capture_bundles(paths: Sequence[Path], *, capture_root: Path) -> list[d
         if current_site != site or activations.shape[1] != width:
             raise ExplorerDataError("Capture bundles have incompatible activation sites or hidden widths")
         coordinates = projector.transform(activations)
+        if not np.isfinite(coordinates).all():
+            raise ExplorerDataError("Capture bundle did not produce finite PCA coordinates")
         records = []
         for position, row in enumerate(index):
             record = {**row, "x": float(coordinates[position, 0]), "y": float(coordinates[position, 1])}
