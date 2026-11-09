@@ -5,16 +5,8 @@ __pycache__/
 !/steering_vectors/**/
 !/steering_vectors/**/config.json
 !/steering_vectors/README.md
-/results/**
-!/results/**/
-!/results/**/.gitkeep
-!/results/tuning/**/config.json
-!/results/tuning/**/summary.json
-!/results/README.md
-!/results/bbq/**
-!/results/mmlu_pro/**
-!/results/holistic_bias/**
-!/results/alpaca_eval/**
+# SAE check bundles stay outside Git; see steering/sae/verification.md.
+/results/sae_checks/
 # Killed AlpacaEval runs can leave a temporary folder with the judge API key.
 /results/alpaca_eval/*/*/tmp*/
 .venv/

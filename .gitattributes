@@ -1,9 +1,10 @@
 # Preserve saved artifact hashes when checking out on Windows or Linux.
 /steering_vectors/**/config.json text eol=lf
+# Store run files unchanged; config.json and summary.json are normalized to LF below.
+/results/*/*/*/* -text
+/results/tuning/*/* -text
 /results/tuning/**/config.json text eol=lf
 /results/tuning/**/summary.json text eol=lf
-# Store benchmark run files unchanged; config.json is normalized to LF below.
-/results/*/*/*/* -text
 /results/*/*/*/config.json text eol=lf
 # Benchmark metrics.csv files use the csv module's CRLF line endings; store them unchanged.
 /results/*/*/*/metrics.csv -text whitespace=cr-at-eol

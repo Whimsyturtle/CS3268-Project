@@ -42,5 +42,4 @@ results/tuning/<run_id>/summary.json
 - `summary.json` stores aggregates, rankings, and selected strengths.
 
 Interrupted judging resumes from the saved judgments. Completed summaries are
-not overwritten. Commit `config.json` and `summary.json` for selected tuning
-runs, and keep `generations.jsonl` and `judgments.jsonl` outside Git.
+not overwritten. Commit the whole run directory for selected tuning runs.

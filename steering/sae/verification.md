@@ -189,8 +189,8 @@ The environment log is
 `results/sae_checks/sae-tuning-mig-20261107-163819-environment.txt`.
 These hashes identify the downloaded files; no separately supplied remote
 checksum manifest or raw judge API envelopes were available. Verification
-preserved the files and made no new generation or judge calls. The configuration
-and summary accompany this record; raw files remain Git-ignored under the
+preserved the files and made no new generation or judge calls. The whole run
+directory is committed under the
 [results convention](../../results/README.md#strength-tuning).
 
 ### Baseline reproduction check
