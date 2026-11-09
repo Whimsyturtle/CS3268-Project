@@ -31,7 +31,7 @@ categories, so it can later be expanded to 10 per category.
 Candidate strengths are method-specific. Strength zero uses one shared
 unsteered baseline.
 
-The SoClaaS `x-test-3` judge evaluates each generated response
+Qwen 3.8 Flash Next (x-test-3 on SoClaaS) evaluates each generated response
 independently, in a stable order, without receiving its method, strength,
 category, baseline status, example ID, or review ID. It returns one JSON object
 containing a reason and two integer scores:

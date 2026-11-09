@@ -31,7 +31,8 @@ metrics. For multiple-choice benchmarks (BBQ, MMLU-Pro), the model answers with 
 letter, which is parsed from its text output; each scorer's docstring explains how
 invalid outputs are counted. HolisticBias uses the released ParlAI style classifier
 in an [isolated environment](holistic_bias/README.md) and reports Full, Partial, and
-Summed-Cluster Gen Bias. AlpacaEval 2.0 with a custom judge
+Summed-Cluster Gen Bias. AlpacaEval 2.0 uses DeepSeek V4.1 Flash 1017
+(x-test-2 on SoClaaS) as its judge. It
 reads its API key from the environment and saves the judge annotations and
 leaderboard with the run.
 Rate-limited requests wait and retry, while completed annotation chunks remain

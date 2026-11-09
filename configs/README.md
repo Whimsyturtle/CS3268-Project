@@ -13,11 +13,13 @@ Store reviewed experiment configurations here. Each must record:
 [`tuning.json`](tuning.json) configures the development data, generator, judge,
 intervention, and candidate strengths. Strength zero is one shared unsteered
 baseline. Generator and intervention revisions must be immutable. Only the
-selected method's intervention is required when running the common tuner.
+selected method's intervention is required when running the common tuner. The
+tuning judge is Qwen 3.8 Flash Next (x-test-3 on SoClaaS).
 
 [main.json](main.json) holds the test-run settings. Prompt formatting is in each benchmark's code
 and is identified by the source commit saved with every run. Method strengths stay
-`null` until tuned on development data.
+`null` until tuned on development data. AlpacaEval uses DeepSeek V4.1 Flash 1017
+(x-test-2 on SoClaaS) as its judge.
 
 `intervention_dir` identifies the constructed intervention files loaded for
 steering; a tuning run selects a strength for those files and stores its results

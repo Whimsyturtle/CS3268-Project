@@ -73,8 +73,8 @@ The common tuner uses the full development split and tunes one method per run.
 The `--method` choices are `caa`, `icv`, `sae`, and `reft_r1`. The selected
 method must have an implementation, intervention, and candidate strengths in
 [`configs/tuning.json`](configs/tuning.json). The tuner generates every
-candidate sequentially, judges each response, and selects a strength with one
-command:
+candidate sequentially, uses Qwen 3.8 Flash Next (x-test-3 on SoClaaS) to
+judge each response, and selects a strength with one command:
 
 ```bash
 uv run --locked python tuning.py --config configs/tuning.json \

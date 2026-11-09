@@ -73,6 +73,8 @@ To what extent can activation steering reduce social bias in \texttt{gemma-3-1b-
 
 We compare Contrastive Activation Addition (CAA), In-Context Vector (ICV), sparse autoencoder (SAE) feature steering, and Rank-1 Representation Finetuning (ReFT-r1). The methods use a shared experimental framework with an unsteered baseline, English bias-mitigation examples from MBTP (Kaneko et al., 2026), and separate development data for selecting steering strength. We retain each method's construction procedure while matching evaluation prompts and decoding settings. BBQ and HolisticBias measure stereotype reliance in question answering and demographic variation in open-ended generation, respectively (Parrish et al., 2022; Smith et al., 2022). MMLU-Pro evaluates general reasoning, while an adapted AlpacaEval 2.0 setup assesses open-ended instruction following (Wang et al., 2024; Dubois et al., 2024). Together, these evaluations provide a controlled comparison of the trade-off between bias mitigation and capability preservation within the scope of one instruction-tuned model and English-language experiments.
 
+Our implementation and experiment configurations are available in the project repository.\footnote{\url{https://github.com/Whimsyturtle/CS3268-Project}}
+
 \section{Related Work}
 
 \section{Methodology}
@@ -107,7 +109,7 @@ where hats denote unit vectors, so the steered output keeps its original norm.
 \subsection{Strength selection}
 \label{sec:strength}
 
-Strength is the main setting tuned for each method, and it is selected on development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next,\footnote{Served by the NUS School of Computing's SoClaaS API as \texttt{x-test-3}, listed as ``Test Qwen 3.8 Flash Next'' when checked on 9 November 2026.} scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. \pending{Add each method's candidate strengths and selected values once all methods are tuned. So far: ReFT-r1 0.2 from $\{0, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2\}$ (+0.26, 95\% CI 0.05 to 0.49); SAE 0.25.}
+Strength is the main setting tuned for each method, and it is selected on development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next (Qwen Team, 2026), scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. \pending{Add each method's candidate strengths and selected values once all methods are tuned. So far: ReFT-r1 0.2 from $\{0, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2\}$ (+0.26, 95\% CI 0.05 to 0.49); SAE 0.25.}
 
 \subsection{Evaluation}
 
@@ -141,7 +143,7 @@ where $n_{\text{biased}}$ counts answers that select the stereotyped option and 
 
 For HolisticBias, we keep one released sentence for each combination of axis, descriptor and template, preferring the noun ``person'', then ``woman'' or ``man'', then another noun, and finally a phrase with no noun, so that differences between descriptors are mixed as little as possible with noun gender. This gives 15,973 prompts across 623 descriptors, 13 axes and 26 templates. Following Smith et al.\ (2022), each response, with descriptor mentions replaced by one fixed descriptor, is scored by the released ParlAI style classifier over 217 conversational styles. Full Gen Bias sums, over all styles, the variance of the descriptor-averaged style probabilities, averaged over templates. Summed-Cluster Gen Bias first sums the style probabilities within a group of related styles and then takes the same variance.
 
-For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Turbo reference response on all 805 instructions, using AlpacaEval's weighted pairwise prompt, and we report the win rate. The judge is DeepSeek V4.1 Flash,\footnote{Served by SoClaaS as \texttt{x-test-2}, listed as ``Test DeepSeek V4.1 Flash 1017'' when checked on 9 November 2026.} without reasoning. The win rate is not length-controlled, so we also report average response length.
+For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Turbo reference response on all 805 instructions, using AlpacaEval's weighted pairwise prompt, and we report the win rate. The judge is DeepSeek V4.1 Flash 1017 (DeepSeek-AI, 2026), used without reasoning. The win rate is not length-controlled, so we also report average response length.
 
 \section{Experiments \& Results}
 
@@ -168,6 +170,8 @@ Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stere
 
 Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
+DeepSeek-AI (2026). DeepSeek-V4.1-Flash-1017 update. {\it DeepSeek API documentation}. \url{https://api-docs.deepseek.com/updates/}.
+
 Dong, Q., Li, L., Dai, D., Zheng, C., Ma, J., Li, R., ... \& Sui, Z. (2024). A survey on in-context learning. {\it In Proceedings of the 2024 conference on empirical methods in natural language processing}, 1107--1128.
 
 Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
@@ -176,7 +180,7 @@ Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large 
 
 Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
 
-Hu, T., Kyrychenko, Y., Rathje, S., Collier, N., Van Der Linden, S., \& Roozenbeek, J. (2025). Generative language models exhibit social identity biases. {\it Nature Computational Science}, 5(1), 65--75.
+Hu, T., Kyrychenko, Y., Rathje, S., Collier, N., Van Der Linden, S., \& Roozenbeek, J.\ (2025). Generative language models exhibit social identity biases. {\it Nature Computational Science}, 5(1), 65--75.
 
 Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
 
@@ -184,9 +188,13 @@ Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in
 
 Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
 
+Qwen Team (2026). On the design of Qwen3.8-Next architecture: Evaluation, efficiency, and training stability. {\it arXiv preprint arXiv:2608.30320}.
+
 Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
 
 Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
+
+Taimeskhanov, M., Vaiter, S., \& Garreau, D.\ (2026). Towards understanding steering strength. {\it arXiv preprint arXiv:2602.02712}.
 
 Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
 
