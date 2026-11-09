@@ -21,11 +21,12 @@ For metrics, use `all` for the overall subgroup, `n` for the contributing exampl
 count, and an empty value for undefined results. See [record types](../evaluation/api.pyi).
 
 Benchmark run outputs are ignored by Git, so uncommitted runs never appear in a later
-run's recorded Git status. For full benchmark runs (no `limit`), commit only
-`config.json` and `metrics.csv`, naming each file so predictions stay outside Git:
+run's recorded Git status. For full benchmark runs (no `limit`), commit the whole
+run folder, so teammates can run [paired comparisons](../GLOSSARY.md#bootstrap-confidence-interval)
+from its raw outputs:
 
 ```bash
-git add -f results/<benchmark>/<method>/<run_id>/config.json results/<benchmark>/<method>/<run_id>/metrics.csv
+git add -f results/<benchmark>/<method>/<run_id>
 ```
 
 ## Strength tuning
