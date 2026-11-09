@@ -557,27 +557,27 @@ Table~\ref{tab:qualitative} compares the baseline and SAE responses to HolisticB
 \section{Tuning grids}
 \label{app:tuning}
 
-Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean scores from its tuning run. \pending{Add CAA's tuning grid once its summary is checked (issue 13).}
+Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean scores from its tuning run.
 
 \begin{table}[h]
-  \caption{Tuning grids for ICV, SAE and ReFT-r1: mean bias avoidance (B), response quality (Q) and balanced score (S) on the 65 development examples, out of 5. Bold and italics mark the best and second-best distinct scores within each method and metric, including ties. The selected strength maximises S, not B alone; $\alpha$ values are not comparable across methods.}
+  \caption{Tuning grids for CAA, ICV, SAE and ReFT-r1: mean bias avoidance (B), response quality (Q) and balanced score (S) on the 65 development examples, out of 5. Bold and italics mark the best and second-best distinct scores within each method and metric, including ties. The selected strength maximises S, not B alone; $\alpha$ values are not comparable across methods.}
   \label{tab:full-tuning}
   \centering\small
-  \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{rrrrrrrrrrrr}
+  \setlength{\tabcolsep}{2pt}
+  \begin{tabular}{rrrrrrrrrrrrrrrr}
     \toprule
-    \multicolumn{4}{c}{ICV} & \multicolumn{4}{c}{SAE} & \multicolumn{4}{c}{ReFT-r1} \\
-    \cmidrule(lr){1-4}\cmidrule(lr){5-8}\cmidrule(lr){9-12}
-    $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ \\
+    \multicolumn{4}{c}{CAA} & \multicolumn{4}{c}{ICV} & \multicolumn{4}{c}{SAE} & \multicolumn{4}{c}{ReFT-r1} \\
+    \cmidrule(lr){1-4}\cmidrule(lr){5-8}\cmidrule(lr){9-12}\cmidrule(lr){13-16}
+    $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ \\
     \midrule
-    0 & 4.03 & 4.25 & 3.89 & 0 & 4.02 & 4.23 & 3.88 & 0 & 3.98 & 4.20 & \textit{3.83} \\
-    0.02 & 4.31 & \textit{4.32} & \textit{4.11} & 0.01 & 4.09 & 4.26 & 3.94 & 0.2 & 4.25 & \textbf{4.37} & \textbf{4.09} \\
-    0.04 & 4.54 & \textbf{4.34} & \textbf{4.23} & 0.025 & 4.14 & \textbf{4.32} & \textit{3.98} & 0.4 & 4.40 & \textit{4.29} & \textbf{4.09} \\
-    0.06 & 4.60 & 3.92 & 3.85 & 0.05 & 4.05 & 4.28 & 3.92 & 0.6 & 4.49 & 3.78 & 3.65 \\
-    0.08 & 4.86 & 2.69 & 2.66 & 0.1 & 4.12 & 4.28 & 3.94 & 0.8 & 4.77 & 3.17 & 3.14 \\
-    0.1 & \textit{4.94} & 1.74 & 1.74 & 0.25 & \textbf{4.22} & \textit{4.31} & \textbf{4.05} & 1 & 4.88 & 2.55 & 2.55 \\
-    0.15 & \textbf{5.00} & 1.00 & 1.00 & 0.5 & 4.12 & 4.25 & 3.97 & 1.5 & \textbf{4.98} & 2.17 & 2.17 \\
-    0.2 & 4.75 & 1.00 & 1.00 & 1 & \textit{4.18} & 4.06 & 3.77 & 2 & \textit{4.94} & 1.34 & 1.34 \\
+    0 & 3.98 & 4.20 & 3.83 & 0 & 4.03 & 4.25 & 3.89 & 0 & 4.02 & 4.23 & 3.88 & 0 & 3.98 & 4.20 & \textit{3.83} \\
+    0.5 & \textit{4.12} & \textbf{4.34} & \textbf{4.02} & 0.02 & 4.31 & \textit{4.32} & \textit{4.11} & 0.01 & 4.09 & 4.26 & 3.94 & 0.2 & 4.25 & \textbf{4.37} & \textbf{4.09} \\
+    1 & 4.11 & \textit{4.29} & \textit{4.00} & 0.04 & 4.54 & \textbf{4.34} & \textbf{4.23} & 0.025 & 4.14 & \textbf{4.32} & \textit{3.98} & 0.4 & 4.40 & \textit{4.29} & \textbf{4.09} \\
+    2 & \textbf{4.29} & 4.20 & 3.91 & 0.06 & 4.60 & 3.92 & 3.85 & 0.05 & 4.05 & 4.28 & 3.92 & 0.6 & 4.49 & 3.78 & 3.65 \\
+    & & & & 0.08 & 4.86 & 2.69 & 2.66 & 0.1 & 4.12 & 4.28 & 3.94 & 0.8 & 4.77 & 3.17 & 3.14 \\
+    & & & & 0.1 & \textit{4.94} & 1.74 & 1.74 & 0.25 & \textbf{4.22} & \textit{4.31} & \textbf{4.05} & 1 & 4.88 & 2.55 & 2.55 \\
+    & & & & 0.15 & \textbf{5.00} & 1.00 & 1.00 & 0.5 & 4.12 & 4.25 & 3.97 & 1.5 & \textbf{4.98} & 2.17 & 2.17 \\
+    & & & & 0.2 & 4.75 & 1.00 & 1.00 & 1 & \textit{4.18} & 4.06 & 3.77 & 2 & \textit{4.94} & 1.34 & 1.34 \\
     \bottomrule
   \end{tabular}
 \end{table}
