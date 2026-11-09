@@ -247,7 +247,7 @@ The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:cluster
 
 Tuning shows why strength cannot be selected on bias avoidance alone. For ICV, going from $\alpha=0$ to $\alpha=0.1$ raises mean bias avoidance from 4.03 to 4.94 but lowers mean response quality from 4.25 to 1.74, and at $\alpha=0.15$ these scores are 5.00 and 1.00. ReFT-r1 similarly reaches bias avoidance 4.94 but response quality 1.34 at $\alpha=2$. The balanced score penalises these failures. SAE's gain at its selected strength is smaller than ICV's and ReFT-r1's, and its confidence interval includes zero (Table~\ref{tab:tuning}). An extra held-out run of SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% but loses 15.40 pp of AlpacaEval win rate (Appendix~\ref{app:sae}).
 
-A gain on the development examples does not guarantee better held-out results: ICV's balanced score rises by 0.34 in tuning, yet its AlpacaEval win rate falls by 13.69 pp. The 65 development prompts are all about bias, whereas the capability benchmarks cover broader tasks.
+A gain on the development examples does not guarantee better held-out results: ICV's balanced score rises by 0.34 in tuning, yet its AlpacaEval win rate falls by 13.69 pp. The 65 development prompts are all about bias, whereas the capability benchmarks cover broader tasks. Because the selected strength is the best of several candidates on the same 65 prompts, its measured gain may also overstate the true gain, an effect known as the optimizer's curse (Smith and Winkler, 2006). The confidence intervals do not correct for this selection, and they only reflect variation across prompts, not variation from repeated judge calls or model runs.
 
 \section{Conclusion \& Future Work}
 
@@ -465,6 +465,8 @@ Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut
 Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
 
 Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
+
+Smith, J.\ E., \& Winkler, R.\ L.\ (2006). The optimizer's curse: Skepticism and postdecision surprise in decision analysis. {\it Management Science}, 52(3), 311--322.
 
 Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
 
