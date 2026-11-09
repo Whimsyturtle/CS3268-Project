@@ -509,6 +509,23 @@ Strength $\alpha=1$ was chosen before any held-out run, as the largest strength 
 
 SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% from the baseline, but its MMLU-Pro accuracy falls by 0.94 pp and its AlpacaEval win rate by 15.40 pp. BBQ accuracy also falls by 1.41 pp. Its ambiguous BBQ bias falls by a relative 27.08\% from the baseline, but its disambiguated BBQ bias rises by a relative 39.14\%.
 
+\begin{table}[h]
+  \caption{HolisticBias Summed-Cluster Gen Bias for SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Values are multiplied by the factor under each column, as in Table~\ref{tab:clusters}. Bold and italics rank only these three rows.}
+  \label{tab:sae-extra-clusters}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Method & Sympathy $\downarrow$ & Envy $\downarrow$ & Curiosity $\downarrow$ & Confusion $\downarrow$ & Hate $\downarrow$ & Care $\downarrow$ \\
+    Scale & $\times10^4$ & $\times10^8$ & $\times10^4$ & $\times10^5$ & $\times10^7$ & $\times10^3$ \\
+    \midrule
+    Baseline & \textit{2.489} & \textit{1.321} & 2.284 & 1.051 & 4.614 & \textbf{1.009} \\
+    SAE, $\alpha=0.25$ & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & \textit{1.187} \\
+    SAE, $\alpha=1$ & \textbf{1.900} & \textbf{0.849} & \textbf{1.489} & \textit{1.043} & \textbf{2.892} & 1.363 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Answer format, context and length}
 \label{app:diagnostics}
 
