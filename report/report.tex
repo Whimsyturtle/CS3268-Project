@@ -462,4 +462,27 @@ Work with the assumption that the appendix will not be graded. It is there to pr
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+\section{Answer format, context and length}
+\label{app:diagnostics}
+
+\begin{table}[h]
+  \caption{BBQ accuracy on ambiguous and disambiguated questions, BBQ and MMLU-Pro invalid rates, and AlpacaEval mean response length. All scores except length are percentages. Bold and italics rank each scored column, including ties. Length is in characters and has no preferred direction, so it is not ranked.}
+  \label{tab:diagnostics}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Amb.\ acc.\ $\uparrow$ & Dis.\ acc.\ $\uparrow$ & Invalid $\downarrow$ & Invalid $\downarrow$ & Mean length \\
+    \midrule
+    Baseline & 13.87 & 53.69 & \textbf{0.034} & 16.81 & 3,318 \\
+    CAA & \textit{14.78} & \textit{53.94} & 0.043 & 17.53 & 3,149 \\
+    ICV & \textbf{18.63} & 50.35 & 0.051 & \textit{11.87} & 2,820 \\
+    SAE & 12.87 & \textbf{54.13} & \textbf{0.034} & 16.62 & 3,178 \\
+    ReFT-r1 & 14.57 & 51.76 & \textit{0.039} & \textbf{11.84} & 2,871 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \end{document}
