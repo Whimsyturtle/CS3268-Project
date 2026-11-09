@@ -85,6 +85,9 @@ def loaded_gemma(tmp_path, monkeypatch):
     monkeypatch.setattr(runner.AutoModelForCausalLM, "from_pretrained", load_model)
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     monkeypatch.setattr(torch.backends.mps, "is_available", lambda: False)
+    # In a Slurm job the real runtime check would see the faked missing GPU and stop;
+    # tests/test_cluster_runtime.py covers that check.
+    monkeypatch.setattr(runner, "check_cluster_runtime", lambda: None)
     model, tokenizer = runner.load_model({"name": name, "revision": revision, "dtype": "float32"})
     assert calls == [("tokenizer", name, revision), ("model", name, revision)]
     assert not hasattr(model.config, "_commit_hash")
