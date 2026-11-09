@@ -22,7 +22,7 @@ count, and an empty value for undefined results. See [record types](../evaluatio
 
 Benchmark run outputs are ignored by Git, so uncommitted runs never appear in a later
 run's recorded Git status. For full benchmark runs (no `limit`), commit the whole
-run folder, so teammates can run [paired comparisons](../GLOSSARY.md#bootstrap-confidence-interval)
+run directory, so teammates can run [paired comparisons](../GLOSSARY.md#bootstrap-confidence-interval)
 from its raw outputs:
 
 ```bash
