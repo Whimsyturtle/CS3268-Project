@@ -47,6 +47,11 @@ it again.
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
 
+## Construction example
+
+A shared example used to build or train an intervention: a prompt with a biased and an
+unbiased response. They are in [shared_examples/construction.jsonl](shared_examples/README.md).
+
 ## CUDA
 
 NVIDIA's platform for running computations on its GPUs. PyTorch's `cu126` build
@@ -136,7 +141,7 @@ A benchmark for measuring general capability through multiple-choice reasoning q
 
 An ordinary prompt unrelated to bias, paired with the unsteered model's own reply.
 ReFT-r1 trains on these alongside the construction examples, so its vector learns to
-leave ordinary text unchanged. AxBench calls them negative examples.
+leave ordinary text unchanged. Unlike construction examples, they have no biased response.
 
 ## Parameter
 

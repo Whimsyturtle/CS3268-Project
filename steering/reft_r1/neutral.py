@@ -1,6 +1,6 @@
 """Build ReFT-r1's neutral examples: ordinary prompts paired with Gemma's own unsteered replies.
 
-AxBench trains ReFT-r1 on these alongside the positive examples (`train_on_negative: true` in
+AxBench trains ReFT-r1 on these alongside the construction examples (`train_on_negative: true` in
 axbench/sweep/wuzhengx/2b/l10/lsreft.yaml). Gemma's replies are what it already says, so the
 vector can only fit them by leaving ordinary text unchanged. The prompt sources and the 70/15/15
 mix follow AxBench Appendix I and footnote 6.
