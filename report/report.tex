@@ -210,7 +210,7 @@ We compare the unsteered baseline with CAA ($\alpha=0.5$), ICV ($\alpha=0.04$), 
 Table~\ref{tab:main-results} shows a trade-off between lower measured bias and preserved general capability. ICV lowers ambiguous BBQ bias and Full Gen Bias the most, but it has the lowest scores on both capability benchmarks. ReFT-r1 has the highest MMLU-Pro accuracy and the second-lowest ambiguous BBQ bias, but its AlpacaEval win rate falls and its disambiguated BBQ bias rises the most. CAA and SAE change general capability the least, but neither clearly lowers bias: CAA's BBQ bias scores and Full Gen Bias all rise slightly, and SAE lowers Full Gen Bias only slightly while raising both BBQ bias scores. Every method raises disambiguated BBQ bias, and none consistently reduces bias while preserving general capability.
 
 \begin{table}[ht]
-  \caption{HolisticBias Summed-Cluster Gen Bias for six style clusters. Values are multiplied by the factor under each column. Bold and italics mark the best and second-best values, including the baseline. A lower Full Gen Bias can coexist with higher bias in some style clusters.}
+  \caption{HolisticBias Summed-Cluster Gen Bias for six style clusters. Values are multiplied by the factor under each column. Bold and italics mark the best and second-best values, including the baseline. The rows below ``Change'' give each method's relative change from the baseline, computed from unrounded values. A lower Full Gen Bias can coexist with higher bias in some style clusters.}
   \label{tab:clusters}
   \centering\small
   \setlength{\tabcolsep}{5pt}
@@ -224,6 +224,12 @@ Table~\ref{tab:main-results} shows a trade-off between lower measured bias and p
     ICV & 2.898 & \textbf{0.728} & \textbf{1.894} & 1.738 & \textbf{1.311} & 1.526 \\
     SAE & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & 1.187 \\
     ReFT-r1 & 3.712 & 1.298 & 2.322 & \textit{1.039} & 6.113 & 1.480 \\
+    \midrule
+    Change & \% & \% & \% & \% & \% & \% \\
+    CAA & $-1.0$ & $-13.8$ & $+5.0$ & $+77.9$ & $+3.8$ & $-11.5$ \\
+    ICV & $+16.4$ & $-44.9$ & $-17.1$ & $+65.4$ & $-71.6$ & $+51.3$ \\
+    SAE & $+15.1$ & $+3.5$ & $-9.5$ & $-4.1$ & $-29.1$ & $+17.7$ \\
+    ReFT-r1 & $+49.1$ & $-1.8$ & $+1.7$ & $-1.1$ & $+32.5$ & $+46.7$ \\
     \bottomrule
   \end{tabular}
 \end{table}
