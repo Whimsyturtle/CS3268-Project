@@ -176,6 +176,17 @@ Short for Sparse Autoencoder, a model that reconstructs activations using a smal
 One component of an SAE's sparse representation, with an activation value and a
 decoder direction.
 
+## SAE width
+
+The number of available features in an SAE. Width differs from sparsity: only a
+small subset of those features activates for a given input.
+
+## Sparsity
+
+Having few nonzero activations. For an SAE, $L_0$ counts the active features for an
+input; a target $L_0$ describes the training objective rather than an exact count
+for every token.
+
 ## Residual stream
 
 The internal representation passed between transformer layers and updated by
