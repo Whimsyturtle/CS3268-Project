@@ -151,6 +151,12 @@ leave ordinary text unchanged. Unlike construction examples, they have no biased
 
 A numerical value in a model. A **trainable parameter** is one that the training process can adjust.
 
+## P-value
+
+The chance of seeing a difference at least as large as the observed one if the method
+had no real effect. Small values, such as below 0.05, suggest the difference is not just
+sampling noise.
+
 ## ReFT-r1
 
 Short for Rank-1 Representation Finetuning, a method that learns a single hidden-state direction from supervised examples.
