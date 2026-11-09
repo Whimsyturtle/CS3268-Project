@@ -93,7 +93,12 @@ Interventions are built from the English records of MBTP, a multilingual social 
 
 Below, $h$ is a hidden state at one token position and $\alpha$ is the steering strength, selected as described in Section~\ref{sec:strength}. Each method scales its direction differently, so values of $\alpha$ are not comparable across methods.
 
-\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) averages the difference between activations on unbiased and biased examples to get a steering vector, which is added to the model's activations during generation. \pending{CAA owner: add the layer, token position and scaling once the implementation is pushed.}
+\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) uses the raw mean activation difference over the 260 construction pairs:
+\begin{equation}
+v = \frac{1}{260}\sum_{i=1}^{260}\big(h_i^{\text{unbiased}}-h_i^{\text{biased}}\big),
+\qquad h' = h + \alpha v.
+\end{equation}
+Each response is encoded with its prompt and the model's chat template. We extract the output of decoder block 13 (zero-based) at the last assistant response content token, excluding padding, special tokens and closing chat markers. Layer 13 is a fixed middle-layer choice, not a layer selected on held-out benchmarks. We do not normalise the vector or update the base model. During generation, we add $\alpha v$ at the last nonpadding prompt position and at subsequent generated positions, leaving earlier prompt positions unchanged. Positive strength follows the unbiased-minus-biased direction; strength zero applies no intervention.
 
 \paragraph{ICV.} In-Context Vector (Liu et al., 2024) captures the shift between paired demonstrations. For each construction pair, we encode the biased and the unbiased response on their own, without the prompt or chat template, and subtract their final-token activations at the embeddings and at every decoder layer. Following the authors' released code, we fit one centred PCA over these differences jointly across layers and take the first principal component plus the mean difference, which gives one vector $v_\ell$ per decoder layer. This joint PCA and the added mean differ from the per-layer first principal component in our proposal. \pending{ICV is in a draft PR. Confirm it is final and that the team has approved this change from the proposal.} At inference, the MLP output $h$ of each layer is changed at every token to
 \begin{equation}
@@ -109,6 +114,10 @@ where hats denote unit vectors, so the steered output keeps its original norm.
 \label{sec:strength}
 
 Strength is the main setting tuned for each method, and it is selected on development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next,\footnote{Served by the NUS School of Computing's SoClaaS API as \texttt{x-test-3}, listed as ``Test Qwen 3.8 Flash Next'' when checked on 9 November 2026.} scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. \pending{Add each method's candidate strengths and selected values once all methods are tuned. So far: ReFT-r1 0.2 from $\{0, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2\}$ (+0.26, 95\% CI 0.05 to 0.49); SAE 0.25.}
+
+% CAA tuning evidence: results/caa_artifacts/caa-evidence-20261109-015418.tar.gz,
+% results/tuning/caa-dev-20261109-015418/summary.json within that archive.
+For CAA, the grid $\{0, 0.5, 1, 2\}$ selects $\alpha=0.5$. Its mean balanced development score is 4.015, compared with 3.831 at strength zero; the paired difference is $+0.185$ (bootstrap 95\% CI $[0.000, 0.369]$). The interval includes zero, so this selection does not establish a clear improvement over the unsteered model.
 
 \subsection{Evaluation}
 
