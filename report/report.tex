@@ -76,6 +76,12 @@ Additional pages can be used only for references/appendix.
 
 \section{Related Work}
 
+Activation steering changes a model's internal representations while keeping its base parameters fixed. CAA constructs directions from contrasting examples (Rimsky et al., 2024), while ICV extracts reusable task information from demonstrations (Liu et al., 2024). SAE-based steering intervenes through learned feature directions (Cunningham et al., 2023). AxBench compares representation-based approaches with prompting and fine-tuning, introduces ReFT-r1, and evaluates behavioural control alongside fluency and instruction following (Wu et al., 2025). These approaches motivate comparing different steering signals under common evaluation settings.
+
+Recent work applies steering specifically to social bias. Dubey (2025) combines linear probes with contrastive steering on GPT-2-large, using a small synthetic dataset and qualitative generation examples. Probe accuracy alone, however, does not establish reduced bias in generated responses. Siddique et al.\ (2026) evaluate separate steering vectors for eight bias axes across multiple benchmarks, providing a direct precedent for category-specific interventions.
+
+Our study compares CAA, ICV, SAE and ReFT-r1 under a shared Gemma-3-1b setup, with common construction and development splits. We evaluate both social bias and general capability across multiple-choice and open-ended tasks, examining whether development-selected interventions transfer to held-out benchmarks without compromising response quality.
+
 \section{Methodology}
 \label{sec:method}
 
@@ -156,6 +162,14 @@ For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Tu
 \section{Experiments \& Results}
 
 \section{Conclusion \& Future Work}
+
+We compared CAA, ICV, SAE and ReFT-r1 on Gemma-3-1b across four benchmarks measuring social bias and general capability. No evaluated configuration consistently improved both. ICV achieved the lowest ambiguous-context BBQ bias and HolisticBias Full Gen Bias, but also showed the largest decline in AlpacaEval win rate. ReFT-r1 achieved the highest MMLU-Pro accuracy, while its disambiguated BBQ bias and Full Gen Bias increased. CAA retained an AlpacaEval win rate close to the baseline and similar MMLU-Pro accuracy, but did not reduce the aggregate bias measures. SAE slightly lowered Full Gen Bias while increasing both BBQ bias scores. The HolisticBias style-cluster results further show that lower aggregate bias can coexist with increases in individual clusters. These observed differences are limited to the evaluated settings and do not establish statistical significance or equivalence.
+
+Future work could investigate category-specific vectors instead of pooling all bias categories into one direction, following Siddique et al.\ (2026). This would require more construction and development examples per category, an explicit mapping to benchmark categories, and evaluation on both the intended category and other categories to detect unintended effects. Held-out evaluation data should remain separate from construction and strength selection.
+
+Another direction is to combine steering methods and test whether their effects are complementary. Research on adjusting the strengths of multiple steering directions during generation motivates this investigation (Scalena et al., 2024), but does not establish that combining our methods will improve performance. Combinations should respect each method's activation location and scaling, tune strengths jointly on development data, and be compared with each component alone.
+
+Finally, evaluation could extend to larger models, beginning with Gemma-3-4b, to test whether scale improves the trade-off between bias mitigation and coherence. Interventions should be reconstructed and tuned separately for each model, then compared at similar levels of bias reduction. Improved coherence should remain a hypothesis: Hanna and Ameisen (2026, Appendix I) found that larger Qwen-3 models were more successfully steered towards target words without a consistent improvement in coherence.
 
 
 
@@ -356,11 +370,15 @@ Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stere
 
 Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
+Dubey, S.\ (2025). Activation steering for bias mitigation: An interpretable approach to safer LLMs. {\it arXiv preprint \href{https://arxiv.org/abs/2508.09019v1}{arXiv:2508.09019v1}}.
+
 Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
 
 Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large language models: Concepts, methods, and challenges. {\it Journal of Behavioral Data Science}, 6(1), 68--135.
 
 Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
+
+Hanna, M., \& Ameisen, E.\ (2026). Latent planning emerges with scale. {\it arXiv preprint \href{https://arxiv.org/abs/2604.12493v1}{arXiv:2604.12493v1}}.
 
 Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
 
@@ -369,6 +387,10 @@ Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in
 Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
 
 Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
+
+Scalena, D., Sarti, G., \& Nissim, M.\ (2024). \href{https://aclanthology.org/2024.blackboxnlp-1.34/}{Multi-property steering of large language models with dynamic activation composition}. {\it Proceedings of the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP}, 577--603.
+
+Siddique, Z., Khalid, I., Turner, L.\ D., \& Espinosa-Anke, L.\ (2026). \href{https://aclanthology.org/2026.findings-eacl.41/}{Shifting perspectives: Steering vectors for robust bias mitigation in LLMs}. {\it Findings of the Association for Computational Linguistics: EACL 2026}, 809--820.
 
 Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
 
