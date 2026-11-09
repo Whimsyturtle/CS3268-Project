@@ -63,6 +63,12 @@
 
 Large Language Models (LLMs) have rapidly evolved over the past few years, demonstrating remarkable performance across numerous text generation tasks such as translation, summarization and creative writing. However, as these models were trained on text written by humans, they inherently perpetuate and exhibit similar societal biases present in the training data (Hu et al., 2025). Mitigating these biases therefore becomes important to ensure that LLMs do not produce harmful outputs that marginalize people across demographic lines, especially when they are deployed in real-world scenarios. Traditional bias mitigation strategies often involve dataset filtering, Supervised Fine-Tuning (SFT), or Reinforcement Learning from Human Feedback (RLHF), but these would permanently alter the model’s weights and possibly impair its original knowledge base to enforce safety. On the other hand, steering methods present a promising alternative, where the LLM’s internal activations are modified so that the model can frame its replies more neutrally. As activation steering is done during inference time, it is also computationally cheaper as compared to the traditional methods discussed. In this work, we seek to compare the performance of four well-known activation steering techniques based on how well they mitigate biases in their responses.
 
+
+Hence, our problem statement is:
+\begin{quote}
+Can steering methods reliably mitigate stereotypes and biases in LLMs without degrading the quality of their text generations? 
+\end{quote}
+
 \section{Related Work}
 
 \section{Methodology}
@@ -90,9 +96,13 @@ These AI tools were also used during the preparation of this manuscript, and eve
 
 Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
+Dong, Q., Li, L., Dai, D., Zheng, C., Ma, J., Li, R., ... \& Sui, Z. (2024). A survey on in-context learning. {\it In Proceedings of the 2024 conference on empirical methods in natural language processing}, 1107--1128.
+
 Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
 
 Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
+
+Hu, T., Kyrychenko, Y., Rathje, S., Collier, N., Van Der Linden, S., \& Roozenbeek, J. (2025). Generative language models exhibit social identity biases. {\it Nature Computational Science}, 5(1), 65--75.
 
 Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
 
