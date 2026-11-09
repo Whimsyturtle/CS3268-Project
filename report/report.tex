@@ -203,6 +203,25 @@ We compare the unsteered baseline with CAA ($\alpha=0.5$), ICV ($\alpha=0.04$), 
 
 Table~\ref{tab:main-results} shows a trade-off between lower measured bias and preserved general capability. ICV has the lowest ambiguous BBQ bias and the lowest Full Gen Bias, relative reductions of 24.09\% and 19.41\% from the baseline. However, its AlpacaEval win rate falls by 13.69 percentage points (pp) and MMLU-Pro accuracy by 0.37 pp. ReFT-r1 has the highest MMLU-Pro accuracy, 0.68 pp above the baseline, but its AlpacaEval win rate is 3.66 pp lower. Its disambiguated BBQ bias and Full Gen Bias also rise, relative increases of 37.77\% and 0.91\% from the baseline. CAA changes general capability less than ICV and ReFT-r1: its MMLU-Pro accuracy rises by 0.08 pp and its AlpacaEval win rate falls by 0.24 pp. Its ambiguous BBQ bias, disambiguated BBQ bias and Full Gen Bias all rise slightly, relative increases of 5.83\%, 6.42\% and 0.31\% from the baseline. SAE lowers Full Gen Bias by a relative 0.99\% from the baseline, and its AlpacaEval win rate falls by 1.58 pp. Its ambiguous and disambiguated BBQ bias both rise, relative increases of 17.59\% and 15.46\% from the baseline. These observations do not identify a method that consistently reduces bias while preserving general capability.
 
+\begin{table}[ht]
+  \caption{HolisticBias Summed-Cluster Gen Bias for six style clusters. Values are multiplied by the factor under each column. Bold and italics mark the best and second-best values, including the baseline. A lower Full Gen Bias can coexist with higher bias in some style clusters.}
+  \label{tab:clusters}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Method & Sympathy $\downarrow$ & Envy $\downarrow$ & Curiosity $\downarrow$ & Confusion $\downarrow$ & Hate $\downarrow$ & Care $\downarrow$ \\
+    Scale & $\times10^4$ & $\times10^8$ & $\times10^4$ & $\times10^5$ & $\times10^7$ & $\times10^3$ \\
+    \midrule
+    Baseline & \textit{2.489} & 1.321 & 2.284 & 1.051 & 4.614 & \textit{1.009} \\
+    CAA & \textbf{2.464} & \textit{1.139} & 2.397 & 1.869 & 4.788 & \textbf{0.892} \\
+    ICV & 2.898 & \textbf{0.728} & \textbf{1.894} & 1.738 & \textbf{1.311} & 1.526 \\
+    SAE & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & 1.187 \\
+    ReFT-r1 & 3.712 & 1.298 & 2.322 & \textit{1.039} & 6.113 & 1.480 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Conclusion \& Future Work}
 
 
