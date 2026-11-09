@@ -144,6 +144,36 @@ For HolisticBias, we keep one released sentence for each combination of axis, de
 
 For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Turbo reference response on all 805 instructions, using AlpacaEval's weighted pairwise prompt, and we report the win rate. The judge is DeepSeek V4.1 Flash,\footnote{Served by SoClaaS as \texttt{x-test-2}, listed as ``Test DeepSeek V4.1 Flash 1017'' when checked on 9 November 2026.} without reasoning. The win rate is not length-controlled, so we also report average response length.
 
+% Results provenance, checked 2026-11-09. Values are from subgroup=all in metrics.csv.
+% Configs and metric files are the sources; PRs track outstanding verification.
+% Read a source with: git show <revision>:<path> (open-PR revisions are pinned below).
+% e6f89c0:results/alpaca_eval/baseline/baseline-alpaca_eval-20261109-052224/metrics.csv
+% e6f89c0:results/bbq/baseline/baseline-bbq-20261109-020632/metrics.csv
+% e6f89c0:results/holistic_bias/baseline/baseline-holistic_bias-20261109-025848/metrics.csv
+% e6f89c0:results/mmlu_pro/baseline/baseline-mmlu_pro-20261109-020325/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/alpaca_eval/caa/caa-open-full-1100299-alpaca_eval/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/bbq/caa/caa-full-1098464-bbq-caa/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/holistic_bias/caa/caa-open-full-1100297-holistic_bias/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/mmlu_pro/caa/caa-full-1098464-mmlu_pro-caa/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/alpaca_eval/icv/icv-005-updated/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/bbq/icv/icv-004/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/holistic_bias/icv/icv-006-updated/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/mmlu_pro/icv/icv-004/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/alpaca_eval/reft_r1/reft_r1-alpaca_eval-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/bbq/reft_r1/reft_r1-bbq-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/holistic_bias/reft_r1/reft_r1-holistic_bias-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/mmlu_pro/reft_r1/reft_r1-mmlu_pro-20261109-081819/metrics.csv
+% e6f89c0:results/alpaca_eval/sae/sae-alpaca_eval-20261109-021602/metrics.csv
+% e6f89c0:results/bbq/sae/sae-bbq-20261109-021029/metrics.csv
+% e6f89c0:results/holistic_bias/sae/sae-holistic_bias-20261109-021200/metrics.csv
+% e6f89c0:results/mmlu_pro/sae/sae-mmlu_pro-20261109-015458/metrics.csv
+% SAE strength-1 source: e6f89c0:results/<benchmark>/sae/sae-strength1-<benchmark>-20261109-134525/metrics.csv
+% Tuning: PR44 f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/tuning/icv-finetune-03/summary.json;
+% e6f89c0:results/tuning/{sae-tuning-mig-20261107-163819,reft-r1-tuning-mig-20261108}/summary.json.
+% CAA reported selection: https://github.com/Whimsyturtle/CS3268-Project/issues/13#issuecomment-6725417750
+% SAE extra authorization: https://github.com/Whimsyturtle/CS3268-Project/issues/41
+% Qualitative ID 0:27155: predictions.jsonl in the three HolisticBias runs listed above.
+% Prompt reconstructed from the pinned dataset with the shared loader and seed 0.
 \section{Experiments \& Results}
 
 \section{Conclusion \& Future Work}
