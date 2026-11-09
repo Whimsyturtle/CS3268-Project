@@ -20,7 +20,15 @@ HolisticBias runs also contain `classifier_inputs.jsonl`,
 For metrics, use `all` for the overall subgroup, `n` for the contributing example
 count, and an empty value for undefined results. See [record types](../evaluation/api.pyi).
 
-Raw generated outputs are ignored by Git. `.gitkeep` files preserve empty folders.
+Benchmark run outputs are ignored by Git, so uncommitted runs never appear in a later
+run's recorded Git status. For full benchmark runs (no `limit`), commit only
+`config.json` and `metrics.csv`, naming each file so predictions stay outside Git:
+
+```bash
+git add -f results/<benchmark>/<method>/<run_id>/config.json results/<benchmark>/<method>/<run_id>/metrics.csv
+```
+
+`.gitkeep` files preserve empty folders.
 
 ## Strength tuning
 
