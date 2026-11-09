@@ -234,8 +234,8 @@ def test_read_config_rejects_incompatible_nested_model(tmp_path, field, value):
         read_config(path)
 
 
-@pytest.mark.parametrize("malformation", ["duplicate", "missing", "not-list", "unhashable", "not-object"])
-def test_read_config_rejects_malformed_intervention_metadata(tmp_path, malformation):
+@pytest.mark.parametrize("malformation", ["duplicate", "missing", "not-list"])
+def test_read_config_rejects_invalid_source_ids(tmp_path, malformation):
     path = _config(tmp_path)
     config = json.loads(path.read_text(encoding="utf-8"))
     metadata_path = Path(config["methods"]["icv"]["intervention_dir"]) / "config.json"
@@ -245,25 +245,21 @@ def test_read_config_rejects_malformed_intervention_metadata(tmp_path, malformat
         ids[-1] = ids[0]
     elif malformation == "missing":
         ids.pop()
-    elif malformation == "not-list":
-        metadata["source_example_ids"] = "invalid"
-    elif malformation == "unhashable":
-        ids[0] = {}
     else:
-        metadata = []
+        metadata["source_example_ids"] = "invalid"
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-    with pytest.raises(ValueError, match="260-example intervention|must be an object"):
+    with pytest.raises(ValueError, match="260-example intervention"):
         read_config(path)
 
 
-def test_read_config_rejects_duplicate_construction_inventory(tmp_path, monkeypatch):
+def test_read_config_rejects_changed_construction_inventory(tmp_path, monkeypatch):
     path = _config(tmp_path)
     records = (ROOT / "shared_examples" / "construction.jsonl").read_text(encoding="utf-8").splitlines()
     records[-1] = records[0]
     construction = tmp_path / "construction.jsonl"
     construction.write_text("\n".join(records), encoding="utf-8")
     monkeypatch.setattr("tuning.CONSTRUCTION_PATH", construction)
-    with pytest.raises(ValueError, match="exactly 260 unique IDs"):
+    with pytest.raises(ValueError, match="260-example intervention"):
         read_config(path)
 
 

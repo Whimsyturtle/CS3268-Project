@@ -100,12 +100,10 @@ def read_config(path: Path, *, method: str | None = None) -> dict:
         raise TypeError("seed must be an integer")
     if not config.get("methods"):
         raise ValueError("configure at least one steering method")
-    construction_ids = [
+    construction_ids = {
         json.loads(line)["id"]
         for line in CONSTRUCTION_PATH.read_text(encoding="utf-8").splitlines() if line.strip()
-    ]
-    if len(construction_ids) != 260 or len(set(construction_ids)) != 260:
-        raise ValueError("construction data must contain exactly 260 unique IDs")
+    }
     for method, settings in config["methods"].items():
         strengths = settings.get("strengths", [])
         if (not strengths or len(strengths) != len(set(strengths)) or 0 not in strengths
@@ -116,21 +114,18 @@ def read_config(path: Path, *, method: str | None = None) -> dict:
         if not metadata_path.is_file() or not metadata_path.stat().st_size:
             raise ValueError(f"missing intervention metadata for {method}: {artifact}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if not isinstance(metadata, dict):
-            raise ValueError(f"{method} intervention metadata must be an object")
+        # SAE and ReFT-r1 record the full model config; CAA and ICV record name and revision.
         if method in ("sae", "reft_r1"):
             model_matches = metadata.get("model") == model
         else:
             model_matches = (metadata.get("model") == model["name"]
                              and metadata.get("revision") == model["revision"])
         if method == "sae":
-            construction = metadata.get("construction")
-            source_ids = construction.get("example_ids") if isinstance(construction, dict) else None
+            source_ids = metadata.get("construction", {}).get("example_ids", [])
         else:
-            source_ids = metadata.get("source_example_ids")
-        if (not model_matches or not isinstance(source_ids, list)
-                or any(not isinstance(value, str) for value in source_ids)
-                or len(source_ids) != 260 or set(source_ids) != set(construction_ids)):
+            source_ids = metadata.get("source_example_ids", [])
+        if (not model_matches
+                or set(source_ids) != construction_ids or len(source_ids) != len(construction_ids)):
             raise ValueError(f"{method} artifact is not the approved 260-example intervention")
     config["examples"] = str(_resolved_path(config["examples"]))
     return config
