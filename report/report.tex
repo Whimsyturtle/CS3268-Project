@@ -138,7 +138,7 @@ BBQ scores each context condition separately, following the authors' analysis sc
 \begin{equation}
 s_{\text{dis}} = 2\,\frac{n_{\text{biased}}}{n_{\text{non-unknown}}} - 1,
 \end{equation}
-where $n_{\text{biased}}$ counts answers that select the stereotyped option and $n_{\text{non-unknown}}$ counts answers other than ``unknown''. In ambiguous contexts, where ``unknown'' is the correct answer, the same quantity is multiplied by $(1 - \text{accuracy})$. A score of 0 means no lean, and positive scores lean towards the stereotype. We report accuracy for each condition as well, because a model can lower its bias score by answering ``unknown'' everywhere, which would hurt accuracy on disambiguated questions.
+where $n_{\text{biased}}$ counts answers that select the stereotyped option and $n_{\text{non-unknown}}$ counts answers other than ``unknown''. In ambiguous contexts, where ``unknown'' is the correct answer, the same quantity is multiplied by $(1 - \text{accuracy})$ to give $s_{\text{amb}}$. A score of 0 means no lean, and positive scores lean towards the stereotype. A lean in either direction is a bias, so a score closer to zero is better. We report accuracy for each condition as well, because a model can lower its bias score by answering ``unknown'' everywhere, which would hurt accuracy on disambiguated questions.
 
 For HolisticBias, we keep one released sentence for each combination of axis, descriptor and template, preferring the noun ``person'', then ``woman'' or ``man'', then another noun, and finally a phrase with no noun, so that differences between descriptors are mixed as little as possible with noun gender. This gives 15,973 prompts across 623 descriptors, 13 axes and 26 templates. Following Smith et al.\ (2022), each response, with descriptor mentions replaced by one fixed descriptor, is scored by the released ParlAI style classifier over 217 conversational styles. Full Gen Bias sums, over all styles, the variance of the descriptor-averaged style probabilities, averaged over templates. Summed-Cluster Gen Bias first sums the style probabilities within a group of related styles and then takes the same variance.
 
@@ -178,6 +178,28 @@ For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Tu
 \label{sec:results}
 
 We compare the unsteered baseline with CAA ($\alpha=0.5$), ICV ($\alpha=0.04$), SAE ($\alpha=0.25$) and ReFT-r1 ($\alpha=0.2$). Each is evaluated on all 58,476 BBQ questions, 15,973 HolisticBias prompts, 12,032 MMLU-Pro questions and 805 AlpacaEval instructions. All runs use the same model, data, decoding settings, scorer settings and evaluation code. Rankings below describe the observed scores.
+
+\subsection{Bias reduction and general capability}
+
+\begin{table}[ht]
+  \caption{Main comparison at each method's selected strength $\alpha$. Bold marks the best value and italics the second best, including the baseline; rankings use unrounded values. Full Gen Bias is multiplied by $10^3$; accuracy and win rate are percentages. No method leads on every metric.}
+  \label{tab:main-results}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & HolisticBias & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Acc.\ $\uparrow$ & $|s_{\text{amb}}|\downarrow$ & $|s_{\text{dis}}|\downarrow$ & Full $\downarrow$ & Acc.\ $\uparrow$ & Win $\uparrow$ \\
+    \midrule
+    Baseline & 33.79 & 0.0241 & \textbf{0.0159} & 13.090 & 13.07 & \textbf{31.07} \\
+    CAA & \textit{34.37} & 0.0255 & \textit{0.0170} & 13.131 & \textit{13.15} & \textit{30.83} \\
+    ICV & \textbf{34.50} & \textbf{0.0183} & 0.0213 & \textbf{10.549} & 12.70 & 17.37 \\
+    SAE & 33.50 & 0.0284 & 0.0184 & \textit{12.961} & 13.11 & 29.49 \\
+    ReFT-r1 & 33.17 & \textit{0.0207} & 0.0220 & 13.209 & \textbf{13.75} & 27.41 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \section{Conclusion \& Future Work}
 
