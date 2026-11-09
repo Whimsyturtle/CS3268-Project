@@ -48,6 +48,14 @@
       "dataset": "fairnlp/holistic-bias",
       "revision": "c168bbff3d4014c1ed8abe976d259b5c599f775e",
       "split": "test",
+      "noun_phrase_selection": "canonical",
+      "classifier": {
+        "model_file": "zoo:style_gen/curr_only_classifier/model",
+        "datapath": "~/.cache/parlai",
+        "parlai_version": "1.7.2",
+        "python_env": "HOLISTIC_BIAS_CLASSIFIER_PYTHON",
+        "batch_size": 8
+      },
       "limit": null,
       "max_new_tokens": 512
     },

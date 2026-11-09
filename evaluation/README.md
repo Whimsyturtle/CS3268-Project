@@ -29,10 +29,13 @@ recomputed without rerunning generation.
 Use the [proposal](../CS3268_Project_Proposal_Group_6.md) as the source for required
 metrics. For multiple-choice benchmarks (BBQ, MMLU-Pro), the model answers with a
 letter, which is parsed from its text output; each scorer's docstring explains how
-invalid outputs are counted. HolisticBias still needs its external classifier,
-so its runs save predictions without metrics. AlpacaEval 2.0 with a custom judge
+invalid outputs are counted. HolisticBias uses the released ParlAI style classifier
+in an [isolated environment](holistic_bias/README.md) and reports Full, Partial, and
+Summed-Cluster Gen Bias. AlpacaEval 2.0 with a custom judge
 reads its API key from the environment and saves the judge annotations and
 leaderboard with the run.
+Rate-limited requests wait and retry, while completed annotation chunks remain
+in `alpaca_annotations_cache.json` for the retry.
 Its prompt and weighted parser follow the
 [upstream configuration](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs/weighted_alpaca_eval_gpt4_turbo),
 and it compares against the pinned GPT-4 baseline responses. It reports weighted

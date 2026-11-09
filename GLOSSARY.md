@@ -14,10 +14,6 @@ Changing a model's internal activations during inference to influence its behavi
 
 A benchmark for open-ended instruction following that uses an LLM as a judge of response quality.
 
-## AUROC
-
-Area under the ROC curve. Measures how well a score separates two classes: 0.5 is chance and 1 is perfect.
-
 ## BBQ
 
 A benchmark for measuring stereotype reliance in multiple-choice question answering.
@@ -27,6 +23,10 @@ A benchmark for measuring stereotype reliance in multiple-choice question answer
 Short for area under the receiver operating characteristic curve. It measures how
 well scores rank positive examples above negative ones, with ties counting half;
 0.5 indicates chance-level ranking.
+
+## BOS
+
+Short for beginning of sequence, the special token placed before every input.
 
 ## CAA
 
@@ -46,6 +46,11 @@ it again.
 ## Compute cluster
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
+
+## Construction example
+
+A shared example used to build or train an intervention: a prompt with a biased and an
+unbiased response. They are in [shared_examples/construction.jsonl](shared_examples/README.md).
 
 ## CUDA
 
@@ -81,6 +86,20 @@ Prompts reserved for evaluating model behavior, separate from the data used to c
 
 A benchmark for measuring demographic bias in open-ended text generation.
 
+## Full Gen Bias
+
+A HolisticBias metric that measures how much the complete distribution of predicted
+conversational styles varies across demographic descriptors.
+
+## Partial Gen Bias
+
+The contribution of the individual styles in one style cluster to Full Gen Bias.
+
+## Summed-Cluster Gen Bias
+
+A HolisticBias metric that first combines probabilities for related conversational
+styles, then measures how that combined probability varies across descriptors.
+
 ## ICV
 
 Short for In-Context Vector, a method that extracts a reusable activation vector from demonstration pairs.
@@ -101,6 +120,10 @@ A GitHub record for a task's outcome, dependencies, progress, and completion che
 
 Short for Large Language Model, a model trained on large amounts of text to process and generate language.
 
+## Max activation
+
+The largest score ReFT-r1's vector gives any token in the construction examples, saved as `max_act`. ReFT-r1 strength is a multiple of it.
+
 ## MBTP
 
 The multilingual social bias benchmark ([Kaneko et al., 2026](https://aclanthology.org/2026.acl-long.2204/)) that the [shared examples](shared_examples/README.md) come from.
@@ -117,6 +140,12 @@ partitions with assigned memory and compute resources.
 ## MMLU-Pro
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
+
+## Neutral example
+
+An ordinary prompt unrelated to bias, paired with the unsteered model's own reply.
+ReFT-r1 trains on these alongside the construction examples, so its vector learns to
+leave ordinary text unchanged. Unlike construction examples, they have no biased response.
 
 ## Parameter
 

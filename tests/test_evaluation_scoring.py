@@ -151,3 +151,45 @@ def test_alpaca_eval_requires_api_key(monkeypatch):
     with pytest.raises(ValueError, match="TEST_SOCLAAS_KEY"):
         alpaca_eval.validate(config)
 
+
+def test_alpaca_eval_retries_429_and_uses_persistent_annotation_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_SOCLAAS_KEY", "secret")
+    attempts = []
+    sleeps = []
+
+    class RateLimitError(Exception):
+        def __init__(self):
+            self.response = types.SimpleNamespace(status_code=429, headers={"retry-after": "7"})
+
+    def evaluate(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) == 1:
+            raise RateLimitError()
+        leaderboard = pd.DataFrame(
+            {"win_rate": [50.0], "standard_error": [1.0], "n_total": [1], "avg_length": [10]},
+            index=["icv"],
+        )
+        return leaderboard, []
+
+    monkeypatch.setitem(sys.modules, "alpaca_eval", types.SimpleNamespace(evaluate=evaluate))
+    monkeypatch.setattr("time.sleep", sleeps.append)
+    examples = [{"example_id": "a", "data": {"instruction": "A", "output": "Reference A"}}]
+    predictions = [{"example_id": "a", "output": "Candidate A"}]
+    config = {
+        "generator": "icv",
+        "output_dir": tmp_path,
+        "judge": {
+            "base_url": "https://example.test/v1",
+            "model": "judge-model",
+            "reasoning_effort": "none",
+            "api_key_env": "TEST_SOCLAAS_KEY",
+        },
+    }
+
+    result = values(alpaca_eval.score(examples, predictions, config))
+
+    assert len(attempts) == 2
+    assert sleeps == [7.0]
+    assert attempts[0]["caching_path"] == tmp_path / "alpaca_annotations_cache.json"
+    assert result["win_rate"] == 50.0
+

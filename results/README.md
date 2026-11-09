@@ -10,12 +10,23 @@ for `run_id` and never overwrite an existing run.
   [shared runtime requirements](../docs/Cluster_Runtime.md); retain with raw artifacts, including tuning runs.
 
 Runs of AlpacaEval 2.0 with a custom judge also contain `annotations.json` and
-`leaderboard.csv` from its pairwise judge.
+`leaderboard.csv` from its pairwise judge. `alpaca_annotations_cache.json`
+preserves completed judge calls across rate-limit retries.
+
+HolisticBias runs also contain `classifier_inputs.jsonl`,
+`style_probabilities.jsonl`, and `classifier_manifest.json`; see the
+[benchmark documentation](../evaluation/holistic_bias/README.md).
 
 For metrics, use `all` for the overall subgroup, `n` for the contributing example
 count, and an empty value for undefined results. See [record types](../evaluation/api.pyi).
 
-Raw generated outputs are ignored by Git. `.gitkeep` files preserve empty folders.
+Benchmark run outputs are ignored by Git, so uncommitted runs never appear in a later
+run's recorded Git status. For full benchmark runs (no `limit`), commit only
+`config.json` and `metrics.csv`, naming each file so predictions stay outside Git:
+
+```bash
+git add -f results/<benchmark>/<method>/<run_id>/config.json results/<benchmark>/<method>/<run_id>/metrics.csv
+```
 
 ## Strength tuning
 
