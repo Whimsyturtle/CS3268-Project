@@ -183,15 +183,14 @@ The downloaded files have these SHA-256 hashes:
 | `summary.json` | `9fac33f2313090d279bc30a5b1701ac0fa887870d4f02cc334dcb829b6781de4` |
 | Environment log | `47f8e6238c3fb7bd7b78910bd7e1b05f31a5f3c49293dedc7f57182f2eb31f92` |
 
-The run remains at `results/tuning/sae-tuning-mig-20261107-163819/` locally and
-under `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/`.
+The run directory is committed at `results/tuning/sae-tuning-mig-20261107-163819/`
+under the [results convention](../../results/README.md#strength-tuning); the original
+remains under `bennett@xlogin.comp.nus.edu.sg:/home/b/bennett/CS3268-Project/`.
 The environment log is
 `results/sae_checks/sae-tuning-mig-20261107-163819-environment.txt`.
 These hashes identify the downloaded files; no separately supplied remote
 checksum manifest or raw judge API envelopes were available. Verification
-preserved the files and made no new generation or judge calls. The whole run
-directory is committed under the
-[results convention](../../results/README.md#strength-tuning).
+preserved the files and made no new generation or judge calls.
 
 ### Baseline reproduction check
 
@@ -241,8 +240,8 @@ The original bundle is
 `fd37fdaacc2739485734da1880b825a7e380773bf3b867b4a64af90982244ba7`.
 An identical copy was downloaded locally, checked, and extracted into the
 repository paths below. Raw artifacts remain Git-ignored under the
-[saved-intervention](../../steering_vectors/README.md) and
-[results](../../results/README.md) conventions; retain the bundle for transfer.
+[saved-intervention](../../steering_vectors/README.md) convention and
+[`.gitignore`](../../.gitignore); retain the bundle for transfer.
 
 | Path | SHA-256 |
 | --- | --- |

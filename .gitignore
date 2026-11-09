@@ -5,10 +5,11 @@ __pycache__/
 !/steering_vectors/**/
 !/steering_vectors/**/config.json
 !/steering_vectors/README.md
-# SAE check bundles stay outside Git; see steering/sae/verification.md.
+# SAE check outputs and logs stay outside Git; see steering/sae/verification.md.
 /results/sae_checks/
-# Killed AlpacaEval runs can leave a temporary folder with the judge API key.
+# Killed runs can leave temporary files; AlpacaEval's contain the judge API key.
 /results/alpaca_eval/*/*/tmp*/
+/results/tuning/*/.*.tmp
 .venv/
 .pytest_cache/
 .claude/worktrees/
