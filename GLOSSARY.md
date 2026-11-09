@@ -124,6 +124,10 @@ Short for Large Language Model, a model trained on large amounts of text to proc
 
 The largest score ReFT-r1's vector gives any token in the construction examples, saved as `max_act`. ReFT-r1 strength is a multiple of it.
 
+## MBTP
+
+The multilingual social bias benchmark ([Kaneko et al., 2026](https://aclanthology.org/2026.acl-long.2204/)) that the [shared examples](shared_examples/README.md) come from.
+
 ## Milestone
 
 A GitHub grouping of issues for a delivery stage.
