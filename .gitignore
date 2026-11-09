@@ -11,6 +11,10 @@ __pycache__/
 !/results/tuning/**/config.json
 !/results/tuning/**/summary.json
 !/results/README.md
+!/results/bbq/**
+!/results/mmlu_pro/**
+!/results/holistic_bias/**
+!/results/alpaca_eval/**
 .venv/
 .pytest_cache/
 .claude/worktrees/
