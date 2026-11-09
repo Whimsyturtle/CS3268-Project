@@ -236,7 +236,7 @@ Table~\ref{tab:main-results} shows a trade-off between lower measured bias and p
 
 The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:clusters}). ICV, which has the lowest Full Gen Bias, has the lowest bias in the envy, curiosity and hate clusters but raises bias in the sympathy, confusion and care clusters. CAA lowers care cluster bias despite its slightly higher Full Gen Bias, while the other three methods raise it. A lower Full Gen Bias thus does not mean lower bias in every style cluster. Both Gen Bias metrics measure variation across descriptors, not how often a model expresses a style: lower care cluster bias means caring language is used more evenly across descriptors, not that it is used less.
 
-\paragraph{Answer format, context and length.} ICV's higher overall BBQ accuracy combines a 4.76 pp rise on ambiguous questions with a 3.33 pp fall on disambiguated questions. Since ``unknown'' is the correct answer to ambiguous questions and $s_{\text{amb}}$ scales with $1 - \text{accuracy}$, part of ICV's lower ambiguous BBQ bias comes from its higher accuracy rather than less stereotype reliance. ReFT-r1 lowers the rate of invalid MMLU-Pro outputs by 4.98 pp. Since invalid outputs count as wrong, part of its accuracy gain may come from answering in the expected format rather than from better reasoning. BBQ invalid rates are below 0.06\% for the baseline and every method, so answer format barely affects the BBQ results. AlpacaEval responses are also shorter under every method, by a relative 5.09\% for CAA, 15.01\% for ICV, 4.22\% for SAE and 13.47\% for ReFT-r1. Because LLM judges tend to prefer longer responses (Dubois et al., 2024) and our win rate is not length-controlled, part of each method's win-rate drop may come from shorter responses rather than worse content. Appendix~\ref{app:diagnostics} lists these values for every method.
+\paragraph{Answer format, context and length.} ICV's higher overall BBQ accuracy combines a 4.76 pp rise on ambiguous questions with a 3.33 pp fall on disambiguated questions. Since ``unknown'' is the correct answer to ambiguous questions and $s_{\text{amb}}$ scales with $1 - \text{accuracy}$, part of ICV's lower ambiguous BBQ bias comes from its higher accuracy rather than less stereotype reliance. ReFT-r1 lowers the rate of invalid MMLU-Pro outputs by 4.98 pp. Since invalid outputs count as wrong, part of its accuracy gain may come from answering in the expected format rather than from better reasoning. BBQ invalid rates are below 0.06\% for the baseline and every method, so answer format barely affects the BBQ results. AlpacaEval responses are also shorter under every method, by a relative 5.09\% for CAA, 15.01\% for ICV, 4.22\% for SAE and 13.47\% for ReFT-r1. Because LLM judges tend to prefer longer responses (Dubois et al., 2024) and our win rate is not length-controlled, part of each method's win-rate drop may come from shorter responses rather than worse content. Appendix~\ref{app:diagnostics} lists these values and their changes from the baseline.
 
 \subsection{Strength selection and its limits}
 
@@ -598,7 +598,7 @@ Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean sco
 \label{app:diagnostics}
 
 \begin{table}[h]
-  \caption{BBQ accuracy on ambiguous and disambiguated questions, BBQ and MMLU-Pro invalid rates, and AlpacaEval mean response length. All scores except length are percentages. Bold and italics rank each scored column, including ties. Length is in characters and has no preferred direction, so it is not ranked.}
+  \caption{BBQ accuracy on ambiguous and disambiguated questions, BBQ and MMLU-Pro invalid rates, and AlpacaEval mean response length. All scores except length are percentages. Bold and italics rank each scored column, including ties. Length is in characters and has no preferred direction, so it is not ranked. The rows below ``Change'' give each method's change from the baseline, computed from unrounded values.}
   \label{tab:diagnostics}
   \centering\small
   \setlength{\tabcolsep}{5pt}
@@ -613,6 +613,12 @@ Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean sco
     ICV & \textbf{18.63} & 50.35 & 0.051 & \textit{11.87} & 2,820 \\
     SAE & 12.87 & \textbf{54.13} & \textbf{0.034} & 16.62 & 3,178 \\
     ReFT-r1 & 14.57 & 51.76 & \textit{0.039} & \textbf{11.84} & 2,871 \\
+    \midrule
+    Change & pp & pp & pp & pp & \% \\
+    CAA & $+0.90$ & $+0.26$ & $+0.009$ & $+0.71$ & $-5.1$ \\
+    ICV & $+4.76$ & $-3.33$ & $+0.017$ & $-4.95$ & $-15.0$ \\
+    SAE & $-1.01$ & $+0.44$ & $0.000$ & $-0.19$ & $-4.2$ \\
+    ReFT-r1 & $+0.70$ & $-1.93$ & $+0.005$ & $-4.98$ & $-13.5$ \\
     \bottomrule
   \end{tabular}
 \end{table}
