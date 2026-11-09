@@ -19,6 +19,7 @@
 
 \title{Empirical Benchmark of Steering Methods for LLM Bias Mitigation}
 
+%
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
 
@@ -26,6 +27,7 @@
 % lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
 % authors names on the first line, and the last on the second line, try using
 % \AND instead of \And before the third author name.
+
 
 \author{%
   \makebox[0.4\textwidth]{Chin Ling Xing, Lance*}\\
@@ -53,25 +55,24 @@
 
 
 \begin{abstract}
-Large language models can exhibit social biases, motivating interventions that reduce stereotypical responses while preserving general capability. We study activation steering, which modifies internal representations during inference while keeping the base model's weights fixed. Our evaluation compares Contrastive Activation Addition, In-Context Vector, sparse autoencoder feature steering, and Rank-1 Representation Finetuning on \texttt{gemma-3-1b-it}. The methods use English bias-mitigation examples from a common source, separate construction and development splits, and method-specific procedures for deriving interventions. Steering strength is selected on development prompts using a criterion that jointly considers bias avoidance and response quality. We then compare each method with an unsteered baseline under matched prompts and decoding settings. BBQ and HolisticBias assess stereotype reliance in question answering and demographic variation in generated responses, while MMLU-Pro and an adapted AlpacaEval 2.0 evaluation assess reasoning and instruction-following performance. This design tests whether bias-related improvements transfer beyond the construction examples and whether they come at the expense of useful model behaviour.
+ We will use Neurips style for the report. Ensure the main report is 6 pages long.
 \end{abstract}
 
 
 
 \section{Introduction}
 
-Large language models (LLMs) can reproduce social biases in their responses, including favourable treatment of some groups and negative portrayals of others. Such behaviour has been observed in both controlled experiments and naturalistic human--LLM conversations (Hu et al., 2025). This raises concerns about how deployed systems represent and respond to different communities. Bias mitigation is therefore an important part of responsible LLM development. Reducing stereotypical responses is only part of the objective, however: an intervention should also preserve the model's ability to provide relevant, coherent, and useful answers.
+Large Language Models (LLMs) have rapidly evolved over the past few years, demonstrating remarkable performance across numerous text generation tasks such as translation, summarization and creative writing. However, as these models were trained on text written by humans, they inherently perpetuate and exhibit similar societal biases present in the training data (Hu et al., 2025). Mitigating these biases therefore becomes important to ensure that LLMs do not produce harmful outputs that marginalize people across demographic lines, especially when they are deployed in real-world scenarios. Traditional bias mitigation strategies often involve dataset filtering, Supervised Fine-Tuning (SFT), or Reinforcement Learning from Human Feedback (RLHF), but these would permanently alter the model’s weights and possibly impair its original knowledge base to enforce safety. On the other hand, steering methods present a promising alternative, where the LLM’s internal activations are modified so that the model can frame its replies more neutrally. As activation steering is done during inference time, it is also computationally cheaper as compared to the traditional methods discussed. In this work, we seek to compare the performance of four well-known activation steering techniques based on how well they mitigate biases in their responses.
 
-Activation steering influences model behaviour by modifying internal activations during inference. Steering directions can be derived from contrasting examples or demonstrations and applied to subsequent inputs without updating the base model's weights (Rimsky et al., 2024; Liu et al., 2024). Other approaches select directions from pretrained sparse autoencoders or learn an intervention through representation finetuning (Cunningham et al., 2023; Wu et al., 2025). These approaches differ in how they construct and apply their interventions. Keeping the base-model weights fixed does not, however, guarantee that its capabilities remain unchanged: steering directly alters the computations used to generate responses.
 
-This motivates evaluating bias mitigation alongside general capability. A lower bias score alone does not establish that a model has become more useful or reliable. An intervention could discourage stereotypical answers while producing generic responses, unnecessary refusals, or incorrect answers. Similarly, a direction that distinguishes supplied biased and unbiased examples may capture differences in wording or response style without reliably improving newly generated answers. Evaluation must therefore test behaviour on held-out prompts and measure both the targeted effect and possible degradation on other tasks.
+\subsection{Style}
 
-We investigate the following question:
-\begin{quote}
-To what extent can activation steering reduce social bias in \texttt{gemma-3-1b-it} while preserving reasoning and instruction-following performance?
-\end{quote}
 
-We compare Contrastive Activation Addition (CAA), In-Context Vector (ICV), sparse autoencoder (SAE) feature steering, and Rank-1 Representation Finetuning (ReFT-r1). The methods use a shared experimental framework with an unsteered baseline, English bias-mitigation examples from MBTP (Kaneko et al., 2026), and separate development data for selecting steering strength. We retain each method's construction procedure while matching evaluation prompts and decoding settings. BBQ and HolisticBias measure stereotype reliance in question answering and demographic variation in open-ended generation, respectively (Parrish et al., 2022; Smith et al., 2022). MMLU-Pro evaluates general reasoning, while an adapted AlpacaEval 2.0 setup assesses open-ended instruction following (Wang et al., 2024; Dubois et al., 2024). Together, these evaluations provide a controlled comparison of the trade-off between bias mitigation and capability preservation within the scope of one instruction-tuned model and English-language experiments.
+Additional pages can be used only for references/appendix.
+
+
+
+\subsection{Other subsections follow the same style}
 
 \section{Related Work}
 
@@ -147,68 +148,8 @@ For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Tu
 
 \section{Conclusion \& Future Work}
 
-\begin{ack}
-% This section can go with the references and not be in the main 6-pages.
-
-The authors utilized ChatGPT (GPT-5.6 Sol) and Claude (Opus 5.5) to implement the steering methods and evaluation scripts described in this paper. All code generated by these tools was systematically reviewed and validated by the authors to ensure correctness and consistency.
-
-These AI tools were also used during the preparation of this manuscript, and every AI-generated section was subsequently revised and fact-checked by the authors.
-\end{ack}
-
-\section*{References}
-% References follow the acknowledgments. Any choice of citation style is acceptable as long as you are
-% consistent. It is permissible to reduce the font size to \verb+small+ (9 point)
-% when listing the references. References can use a bib file and include the citation using the \verb+\cite{key}+ to cite the source in-line.
-% Note that the Reference section does not count towards the page limit.
-
-{
-\small
-
-Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stereotyping Norwegian salmon: An inventory of pitfalls in fairness benchmark datasets. {\it Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)}, 1004--1015.
-
-Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
-
-Dong, Q., Li, L., Dai, D., Zheng, C., Ma, J., Li, R., ... \& Sui, Z. (2024). A survey on in-context learning. {\it In Proceedings of the 2024 conference on empirical methods in natural language processing}, 1107--1128.
-
-Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
-
-Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large language models: Concepts, methods, and challenges. {\it Journal of Behavioral Data Science}, 6(1), 68--135.
-
-Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
-
-Hu, T., Kyrychenko, Y., Rathje, S., Collier, N., Van Der Linden, S., \& Roozenbeek, J. (2025). Generative language models exhibit social identity biases. {\it Nature Computational Science}, 5(1), 65--75.
-
-Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
-
-Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in-context learning more effective and controllable through latent space steering. {\it Proceedings of the 41st International Conference on Machine Learning}, 235, 32287--32307.
-
-Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
-
-Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
-
-Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
-
-Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
-
-Wu, Z., Arora, A., Geiger, A., Wang, Z., Huang, J., Jurafsky, D., Manning, C.\ D., \& Potts, C.\ (2025). AxBench: Steering LLMs? Even simple baselines outperform sparse autoencoders. {\it Proceedings of the 42nd International Conference on Machine Learning}.
-}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\appendix
-
-\section{Technical appendices and supplementary material}
-You can include any number of technical appendices and supplementary material pages after the main report.
-
-Work with the assumption that the appendix will not be graded. It is there to provide additional evidence. The main report (6-page-long) should be independent of the appendix.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-% NOTE: Additional pages can be used only for references/appendix.
-
-\iffalse
 \section{General formatting instructions}
 \label{gen_inst}
 
@@ -399,6 +340,46 @@ consistent. It is permissible to reduce the font size to \verb+small+ (9 point)
 when listing the references. References can use a bib file and include the citation using the \verb+\cite{key}+ to cite the source in-line.
 
 Note that the Reference section does not count towards the page limit.
+{
+\small
 
-\fi
+Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stereotyping Norwegian salmon: An inventory of pitfalls in fairness benchmark datasets. {\it Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)}, 1004--1015.
+
+Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
+
+Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
+
+Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large language models: Concepts, methods, and challenges. {\it Journal of Behavioral Data Science}, 6(1), 68--135.
+
+Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
+
+Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
+
+Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in-context learning more effective and controllable through latent space steering. {\it Proceedings of the 41st International Conference on Machine Learning}, 235, 32287--32307.
+
+Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
+
+Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
+
+Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
+
+Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
+
+Wu, Z., Arora, A., Geiger, A., Wang, Z., Huang, J., Jurafsky, D., Manning, C.\ D., \& Potts, C.\ (2025). AxBench: Steering LLMs? Even simple baselines outperform sparse autoencoders. {\it Proceedings of the 42nd International Conference on Machine Learning}.
+
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+\section{Technical appendices and supplementary material}
+You can include any number of technical appendices and supplementary material pages after the main report.
+
+Work with the assumption that the appendix will not be graded. It is there to provide additional evidence. The main report (6-page-long) should be independent of the appendix.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 \end{document}
