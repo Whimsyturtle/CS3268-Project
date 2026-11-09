@@ -229,7 +229,7 @@ The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:cluster
 \subsection{Strength selection and its limits}
 
 \begin{table}[ht]
-  \caption{Development scores at each method's selected strength $\alpha$, averaged over the 65 development examples and out of 5. $\Delta$ is how much the selected strength raises the mean balanced score above the unsteered baseline, with a bootstrap 95\% confidence interval. Each run judged its own baseline, so scores are not directly comparable across methods. CAA's scores are omitted because its tuning summary has not been checked. \pending{Fill in CAA's row once its tuning summary is checked (issue 13).}}
+  \caption{Development scores at each method's selected strength $\alpha$, averaged over the 65 development examples and out of 5. $\Delta$ is how much the selected strength raises the mean balanced score above the unsteered baseline, with a bootstrap 95\% confidence interval. Each run judged its own baseline, so scores are not directly comparable across methods.}
   \label{tab:tuning}
   \centering\small
   \setlength{\tabcolsep}{4pt}
@@ -237,7 +237,7 @@ The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:cluster
     \toprule
     Method & $\alpha$ & Bias avoidance $\uparrow$ & Quality $\uparrow$ & Balanced $\uparrow$ & $\Delta$ balanced $\uparrow$ [95\% CI] \\
     \midrule
-    CAA & 0.5 & --- & --- & --- & --- \\
+    CAA & 0.5 & 4.12 & 4.34 & 4.02 & +0.18 [0.00, 0.37] \\
     ICV & 0.04 & 4.54 & 4.34 & 4.23 & +0.34 [0.06, 0.63] \\
     SAE & 0.25 & 4.22 & 4.31 & 4.05 & +0.17 [$-0.03$, 0.40] \\
     ReFT-r1 & 0.2 & 4.25 & 4.37 & 4.09 & +0.26 [0.05, 0.49] \\
