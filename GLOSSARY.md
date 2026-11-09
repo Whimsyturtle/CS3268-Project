@@ -66,6 +66,12 @@ Settings that control how a model generates text.
 The vector that an SAE uses to map one feature's activation back into the model's
 activation space.
 
+## Descriptor
+
+In HolisticBias, a word or phrase naming a demographic identity, such as "Deaf" or
+"50-year-old", that fills a sentence template. Descriptors are grouped into axes such
+as ability and age.
+
 ## Gemma 3
 
 A family of language models; see the [proposal](CS3268_Project_Proposal_Group_6.md) for the model sizes planned for this study.
