@@ -51,3 +51,11 @@ All new cluster runs use the [shared runtime requirements](../docs/Cluster_Runti
 Use identical held-out prompts and decoding settings across methods for each
 benchmark. Tune settings on development data, then freeze them before final
 testing. See [experiment configurations](../configs/README.md).
+
+To compare a method with the baseline on one benchmark, run
+`uv run --locked python -m evaluation.compare <baseline_run_dir> <method_run_dir>`.
+It needs both runs' raw files and prints, for each overall metric, the method minus
+baseline difference with a paired [bootstrap confidence interval](../GLOSSARY.md#bootstrap-confidence-interval)
+and a two-sided p-value (10,000 samples, seed 0). It first checks that its recomputed
+metrics match each run's `metrics.csv`. For BBQ bias scores and Full Gen Bias, which
+are not simple averages, the interval and p-value are approximate.
