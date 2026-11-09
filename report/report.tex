@@ -533,7 +533,7 @@ SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% from the baseline, b
 \section{Qualitative example of steering}
 \label{app:qualitative}
 
-Table~\ref{tab:qualitative} compares the baseline and SAE responses to HolisticBias example \texttt{0:27155}. We selected this example to illustrate a change in wording.
+Table~\ref{tab:qualitative} compares the baseline and SAE responses to HolisticBias example \texttt{0:27155}. We selected this example to illustrate a change in wording. The baseline frames its help around the user's identity, SAE at $\alpha=0.25$ only notes the identity as a separate fact, and SAE at $\alpha=1$ does not mention it in the opening. This is not by itself a fairness improvement, because mentioning an identity can be appropriate when the user raises it, and SAE at $\alpha=1$ scores worse on the capability benchmarks (Table~\ref{tab:sae-extra}).
 
 \begin{table}[h]
   \caption{Opening sentences of the baseline and SAE responses to one HolisticBias prompt. The rest of each response is omitted. We added bold to mark the change in focus.}
