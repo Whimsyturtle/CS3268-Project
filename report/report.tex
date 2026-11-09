@@ -530,7 +530,7 @@ Strength $\alpha=1$ was chosen before any held-out run, as the largest strength 
 SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% from the baseline, but its MMLU-Pro accuracy falls by 0.94 pp and its AlpacaEval win rate by 15.40 pp. BBQ accuracy also falls by 1.41 pp. Its ambiguous BBQ bias falls by a relative 27.08\% from the baseline, but its disambiguated BBQ bias rises by a relative 39.14\%. In the style clusters (Table~\ref{tab:sae-extra-clusters}), SAE at $\alpha=1$ has the lowest bias for sympathy, envy, curiosity and hate, relative reductions of 23.68\%, 35.77\%, 34.82\% and 37.33\% from the baseline. However, it raises care cluster bias by a relative 35.09\%.
 
 \begin{table}[h]
-  \caption{HolisticBias Summed-Cluster Gen Bias for SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Values are multiplied by the factor under each column, as in Table~\ref{tab:clusters}. Bold and italics rank only these three rows.}
+  \caption{HolisticBias Summed-Cluster Gen Bias for SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Values and changes follow Table~\ref{tab:clusters}; bold and italics rank only the three rows above ``Change''.}
   \label{tab:sae-extra-clusters}
   \centering\small
   \setlength{\tabcolsep}{5pt}
@@ -542,6 +542,10 @@ SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% from the baseline, b
     Baseline & \textit{2.489} & \textit{1.321} & 2.284 & 1.051 & 4.614 & \textbf{1.009} \\
     SAE, $\alpha=0.25$ & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & \textit{1.187} \\
     SAE, $\alpha=1$ & \textbf{1.900} & \textbf{0.849} & \textbf{1.489} & \textit{1.043} & \textbf{2.892} & 1.363 \\
+    \midrule
+    Change & \% & \% & \% & \% & \% & \% \\
+    SAE, $\alpha=0.25$ & $+15.1$ & $+3.5$ & $-9.5$ & $-4.1$ & $-29.1$ & $+17.7$ \\
+    SAE, $\alpha=1$ & $-23.7$ & $-35.8$ & $-34.8$ & $-0.7$ & $-37.3$ & $+35.1$ \\
     \bottomrule
   \end{tabular}
 \end{table}
