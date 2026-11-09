@@ -57,5 +57,5 @@ To compare a method with the baseline on one benchmark, run
 It needs both runs' raw files and prints, for each overall metric, the method minus
 baseline difference with a paired [bootstrap confidence interval](../GLOSSARY.md#bootstrap-confidence-interval)
 and a two-sided p-value (10,000 samples, seed 0). It first checks that its recomputed
-metrics match each run's `metrics.csv`. For BBQ bias scores and Full Gen Bias, which
-are not simple averages, the interval and p-value are approximate.
+metrics match each run's `metrics.csv`. BBQ bias scores are ratios and Full Gen Bias is a
+variance, not averages over examples, so their intervals and p-values are rougher.

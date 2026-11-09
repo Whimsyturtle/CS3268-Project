@@ -108,3 +108,35 @@ def test_compare_detects_a_clear_paired_shift_and_rejects_mismatched_examples():
     assert row["p"] == pytest.approx(1 / 501)
     with pytest.raises(ValueError, match="same examples"):
         compare.compare(baseline, (keys[::-1], method[1], method[2]), samples=10)
+
+
+def test_compare_gives_a_large_p_value_for_pure_noise():
+    keys = [str(i) for i in range(300)]
+    rng = np.random.default_rng(3)
+    base = rng.random(300)
+    noisy = base + rng.normal(0, 0.1, 300)
+    noisy -= noisy.mean() - base.mean()  # Same mean, so the true difference is zero.
+    baseline = (keys, lambda w: {"score": w @ base / w.sum(1)}, {"score": base.mean()})
+    method = (keys, lambda w: {"score": w @ noisy / w.sum(1)}, {"score": noisy.mean()})
+
+    (row,) = compare.compare(baseline, method, samples=500)
+
+    assert row["ci95"][0] < 0 < row["ci95"][1]
+    assert row["p"] > 0.5
+
+
+def write_alpaca_run(run_dir, preferences, win_rate):
+    run_dir.mkdir()
+    (run_dir / "config.json").write_text(json.dumps({"benchmark": "alpaca_eval", "benchmark_config": {}}))
+    annotations = [{"instruction": f"q{i}", "preference": p} for i, p in enumerate(preferences)]
+    (run_dir / "annotations.json").write_text(json.dumps(annotations))
+    (run_dir / "metrics.csv").write_text(f"subgroup,metric,value,n\nall,win_rate,{win_rate},{len(preferences)}\n")
+    return run_dir
+
+
+def test_load_run_checks_recomputed_metrics_against_metrics_csv(tmp_path):
+    benchmark, keys, _, saved = compare.load_run(write_alpaca_run(tmp_path / "good", [1.0, 2.0], 50.0))
+    assert (benchmark, keys, saved) == ("alpaca_eval", ["q0", "q1"], {"win_rate": 50.0})
+
+    with pytest.raises(ValueError, match="recomputed win_rate"):
+        compare.load_run(write_alpaca_run(tmp_path / "tampered", [1.0, 2.0], 51.0))

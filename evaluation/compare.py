@@ -1,11 +1,7 @@
 """Paired bootstrap comparison of a method's held-out run against the baseline run.
 
-Run from the repo root, after both runs are complete:
-    uv run --locked python -m evaluation.compare BASELINE_RUN_DIR METHOD_RUN_DIR
-
-Each bootstrap sample draws the benchmark's examples with replacement and scores both runs on the
-same draw. The metric formulas below are weighted versions of each scorer's, where an example's
-weight is how often it was drawn; every run's unweighted values are checked against its metrics.csv.
+See evaluation/README.md for usage. The metric formulas below are weighted versions of each
+scorer's, where an example's weight is how often it was drawn in a bootstrap sample.
 """
 
 import argparse
@@ -149,6 +145,8 @@ def load_run(run_dir):
     with open(run_dir / "metrics.csv", encoding="utf-8") as file:
         saved = {r["metric"]: float(r["value"]) for r in csv.DictReader(file) if r["subgroup"] == "all" and r["value"]}
     for name, value in metrics(np.ones((1, len(keys)))).items():
+        if name not in saved:
+            raise ValueError(f"{run_dir}: metrics.csv has no overall value for {name}, so it cannot be compared.")
         if not math.isclose(value[0], saved[name], rel_tol=1e-6, abs_tol=1e-9):
             raise ValueError(f"{run_dir}: recomputed {name} is {value[0]}, but metrics.csv has {saved[name]}.")
     return benchmark, keys, metrics, saved
