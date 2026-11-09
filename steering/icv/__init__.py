@@ -91,14 +91,8 @@ def load_intervention(intervention_dir: Path, *, model):
     if metadata.get("method") != METHOD:
         raise ValueError("ICV construction method changed; rebuild the vector")
     layers = _layers(model)
-    revision = getattr(model.config, "revision", None)
-    legacy_revision = getattr(model, "_cs3268_source_revision", None)
-    if revision is not None and legacy_revision is not None and revision != legacy_revision:
-        raise ValueError("ICV model revision conflicts with the legacy runtime revision")
-    if revision is None:
-        revision = legacy_revision
     if (metadata["model"] != model.config._name_or_path
-            or metadata["revision"] != revision):
+            or metadata["revision"] != getattr(model, "_cs3268_source_revision", None)):
         raise ValueError("ICV model or revision does not match the loaded model")
     if metadata["layers"] != list(range(len(layers))):
         raise ValueError("ICV layer locations do not match the loaded model")

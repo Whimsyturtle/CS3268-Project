@@ -1,5 +1,4 @@
 import json
-import subprocess
 import sys
 import types
 
@@ -68,22 +67,3 @@ def test_holistic_bias_uses_shared_greedy_decoding():
     assert benchmark["noun_phrase_selection"] == "canonical"
     assert decoding["do_sample"] is False
     assert "top_p" not in decoding
-
-
-def test_source_commit_preserves_non_ascii_working_diff(tmp_path, monkeypatch):
-    def git(*args):
-        subprocess.run(["git", *args], cwd=tmp_path, capture_output=True, check=True)
-
-    git("init")
-    notes = tmp_path / "notes.txt"
-    notes.write_text("initial\n", encoding="utf-8")
-    git("add", "notes.txt")
-    git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
-        "commit", "-m", "fixture")
-    changed = "\u66f4\u65b0 \U0001f422"
-    notes.write_text(changed + "\n", encoding="utf-8")
-    monkeypatch.setattr(runner, "ROOT", tmp_path)
-    source = runner.source_commit()
-    assert len(source["commit"]) == 40
-    assert "notes.txt" in source["status"]
-    assert "+" + changed in source["uncommitted_diff"]

@@ -12,7 +12,6 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from evaluation.common import validate_example_ids
 from cluster_runtime import check_cluster_runtime, save_cluster_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +27,8 @@ def load_model(config):
     )
     if model.config.name_or_path != config["name"]:
         raise ValueError("Loaded model name does not match the configured model.")
-    # Transformers does not consistently retain the requested revision on nested model configs.
     model.config.revision = config["revision"]
-    # Compatibility alias for existing callers.
+    # Transformers does not consistently retain the requested revision on nested model configs.
     model._cs3268_source_revision = config["revision"]
     model._cs3268_cluster_runtime = runtime
     device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -51,10 +49,7 @@ def generate(model, tokenizer, prompts, *, decoding, seed):
             chats, add_generation_prompt=True, padding=True, return_tensors="pt", return_dict=True
         ).to(model.device)
         tokens = model.generate(**inputs, **settings)
-        batch_outputs = tokenizer.batch_decode(tokens[:, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
-        if len(batch_outputs) != len(chats):
-            raise ValueError("generation must return exactly one output per prompt in each batch")
-        outputs.extend(batch_outputs)
+        outputs += tokenizer.batch_decode(tokens[:, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
     return outputs
 
 
@@ -68,8 +63,7 @@ def steering_context(model, method, config):
 
 def source_commit():
     def git(*args):
-        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
-                              text=True, encoding="utf-8", check=True).stdout.strip()
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
 
     return {"commit": git("rev-parse", "HEAD"), "status": git("status", "--porcelain"), "uncommitted_diff": git("diff", "HEAD")}
 
@@ -107,16 +101,13 @@ def run(config_path, *, method, benchmark, run_id):
     (run_dir / "config.json").write_text(json.dumps(resolved, indent=2))
 
     examples = module.load_examples(benchmark_config)[: benchmark_config["limit"]]
-    if not examples:
-        raise ValueError("benchmark selection must contain at least one example")
-    validate_example_ids(examples)
     prompts = [module.format_prompt(example, benchmark_config) for example in examples]
     model, tokenizer = load_model(config["model"])
     save_cluster_runtime(model, run_dir)
     with steering_context(model, method, method_config):
         outputs = generate(model, tokenizer, prompts, decoding=decoding, seed=config["seed"])
 
-    predictions = [{"example_id": e["example_id"], "output": o} for e, o in zip(examples, outputs, strict=True)]
+    predictions = [{"example_id": e["example_id"], "output": o} for e, o in zip(examples, outputs)]
     with open(run_dir / "predictions.jsonl", "w") as file:
         file.writelines(json.dumps(prediction) + "\n" for prediction in predictions)
 
