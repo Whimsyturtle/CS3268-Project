@@ -28,8 +28,6 @@ run's recorded Git status. For full benchmark runs (no `limit`), commit only
 git add -f results/<benchmark>/<method>/<run_id>/config.json results/<benchmark>/<method>/<run_id>/metrics.csv
 ```
 
-`.gitkeep` files preserve empty folders.
-
 ## Strength tuning
 
 The common tuner writes one directory per run:
