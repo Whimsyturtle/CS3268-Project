@@ -16,7 +16,9 @@ PCA, or base-model training.
 [`configs/caa.json`](../../configs/caa.json) holds the construction-only layer
 setting, following the separate method-config pattern used by
 [SAE](../sae/README.md#feature-selection-and-application). CAA does not load an
-SAE checkpoint. Its zero-based block index 13 is an initial middle-layer choice
+SAE checkpoint. SAE derives its layer from the pinned checkpoint path and output
+hook; CAA specifies the extraction layer directly. Its zero-based block index 13
+is an initial middle-layer choice
 for the 26-layer model, fixed before strength tuning; it is not an optimal-layer
 claim or a choice based on held-out benchmarks.
 
@@ -28,7 +30,9 @@ supports the shared greedy runner with caching. Strength zero registers no hooks
 normal and exceptional exits remove the method's hooks.
 
 The artifact contains `vector.pt` (a one-dimensional float32 tensor) and
-`config.json`. Metadata records the pinned model/tokenizer, chat-template hash,
+`config.json`. The pinned model uses flat `model` (name), `revision`, and `dtype`
+fields so it works with the existing tuner, like ICV. Metadata also records the
+tokenizer, chat-template hash,
 layer and extraction/application conventions, construction IDs and data hash,
 seed, source state, and vector hash. Loading checks model compatibility and vector
 integrity; it never constructs an intervention. Follow the
@@ -68,8 +72,18 @@ remains pending.
 
 Follow the [shared tuning workflow](../README.md#strength-hyperparameter-tuning),
 including its SoClaaS judge setup. CAA's candidate strengths and intervention path
-are in [`configs/tuning.json`](../../configs/tuning.json). Build and check the
-artifact first, then tune on all 65 development prompts:
+are in [`configs/tuning.json`](../../configs/tuning.json).
+
+The configured grid is an initial Gemma development grid. The authors'
+[experiment scripts](https://github.com/nrimsky/CAA/blob/main/script.sh#L12-L21)
+use `[-1, -0.5, 0, 0.5, 1]` for fixed-layer multiple-choice sweeps and
+`[-2, -1.5, -1, 0, 1, 1.5, 2]` for open-ended sweeps. Their
+[normalization](https://github.com/nrimsky/CAA/blob/main/normalize_vectors.py#L9-L26)
+rescales vector norms across behaviors at each model/layer. With our different
+model, construction examples, and raw vectors, these coefficients do not directly
+calibrate Gemma's strength. Select using development results.
+
+Build and check the artifact first, then tune on all 65 development prompts:
 
 ```bash
 TUNE_ID="caa-dev-$(date +%Y%m%d-%H%M%S)"
