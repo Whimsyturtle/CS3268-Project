@@ -489,6 +489,24 @@ Work with the assumption that the appendix will not be graded. It is there to pr
 
 Strength $\alpha=1$ was chosen before any held-out run, as the largest strength in the SAE tuning grid, to check the effect of stronger steering. The configuration differs from the main SAE run only in strength, with the same intervention, prompts, decoding and scorers.
 
+\begin{table}[h]
+  \caption{SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Units and directions follow Table~\ref{tab:main-results}; bold and italics rank only these three rows. Stronger steering reduces Full Gen Bias but lowers both general-capability scores.}
+  \label{tab:sae-extra}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & HolisticBias & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Acc.\ $\uparrow$ & $|s_{\text{amb}}|\downarrow$ & $|s_{\text{dis}}|\downarrow$ & Full $\downarrow$ & Acc.\ $\uparrow$ & Win $\uparrow$ \\
+    \midrule
+    Baseline & \textbf{33.79} & \textit{0.0241} & \textbf{0.0159} & 13.090 & \textit{13.07} & \textbf{31.07} \\
+    SAE, $\alpha=0.25$ & \textit{33.50} & 0.0284 & \textit{0.0184} & \textit{12.961} & \textbf{13.11} & \textit{29.49} \\
+    SAE, $\alpha=1$ & 32.37 & \textbf{0.0176} & 0.0222 & \textbf{11.965} & 12.13 & 15.66 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Answer format, context and length}
 \label{app:diagnostics}
 
