@@ -226,6 +226,25 @@ The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:cluster
 
 \paragraph{Answer format, context and length.} ICV's higher overall BBQ accuracy combines a 4.76 pp rise on ambiguous questions with a 3.33 pp fall on disambiguated questions. Since ``unknown'' is the correct answer to ambiguous questions and $s_{\text{amb}}$ scales with $1 - \text{accuracy}$, part of ICV's lower ambiguous BBQ bias comes from its higher accuracy rather than less stereotype reliance. ReFT-r1 lowers the rate of invalid MMLU-Pro outputs by 4.98 pp. Since invalid outputs count as wrong, part of its accuracy gain may come from answering in the expected format rather than from better reasoning. BBQ invalid rates are below 0.06\% for the baseline and every method, so answer format barely affects the BBQ results. AlpacaEval responses are also shorter under every method, by a relative 5.09\% for CAA, 15.01\% for ICV, 4.22\% for SAE and 13.47\% for ReFT-r1. Because LLM judges tend to prefer longer responses (Dubois et al., 2024) and our win rate is not length-controlled, part of each method's win-rate drop may come from shorter responses rather than worse content. Appendix~\ref{app:diagnostics} lists these values for every method.
 
+\subsection{Strength selection and its limits}
+
+\begin{table}[ht]
+  \caption{Development scores at each method's selected strength $\alpha$, averaged over the 65 development examples and out of 5. $\Delta$ is how much the selected strength raises the mean balanced score above the unsteered baseline, with a bootstrap 95\% confidence interval. Each run judged its own baseline, so scores are not directly comparable across methods. CAA's scores are omitted because its tuning summary has not been checked.}
+  \label{tab:tuning}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrl}
+    \toprule
+    Method & $\alpha$ & Bias avoidance $\uparrow$ & Quality $\uparrow$ & Balanced $\uparrow$ & $\Delta$ balanced $\uparrow$ [95\% CI] \\
+    \midrule
+    CAA & 0.5 & --- & --- & --- & --- \\
+    ICV & 0.04 & 4.54 & 4.34 & 4.23 & +0.34 [0.06, 0.63] \\
+    SAE & 0.25 & 4.22 & 4.31 & 4.05 & +0.17 [$-0.03$, 0.40] \\
+    ReFT-r1 & 0.2 & 4.25 & 4.37 & 4.09 & +0.26 [0.05, 0.49] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Conclusion \& Future Work}
 
 
