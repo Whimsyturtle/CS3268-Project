@@ -247,6 +247,8 @@ The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:cluster
 
 Tuning shows why strength cannot be selected on bias avoidance alone. For ICV, going from $\alpha=0$ to $\alpha=0.1$ raises mean bias avoidance from 4.03 to 4.94 but lowers mean response quality from 4.25 to 1.74, and at $\alpha=0.15$ these scores are 5.00 and 1.00. ReFT-r1 similarly reaches bias avoidance 4.94 but response quality 1.34 at $\alpha=2$. The balanced score penalises these failures. SAE's gain at its selected strength is smaller than ICV's and ReFT-r1's, and its confidence interval includes zero (Table~\ref{tab:tuning}). An extra held-out run of SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% but loses 15.40 pp of AlpacaEval win rate (Appendix~\ref{app:sae}).
 
+A gain on the development examples does not guarantee better held-out results: ICV's balanced score rises by 0.34 in tuning, yet its AlpacaEval win rate falls by 13.69 pp. The 65 development prompts are all about bias, whereas the capability benchmarks cover broader tasks.
+
 \section{Conclusion \& Future Work}
 
 
