@@ -24,6 +24,10 @@ Short for area under the receiver operating characteristic curve. It measures ho
 well scores rank positive examples above negative ones, with ties counting half;
 0.5 indicates chance-level ranking.
 
+## BOS
+
+Short for beginning of sequence, the special token placed before every input.
+
 ## CAA
 
 Short for Contrastive Activation Addition, a method that constructs a steering vector from the mean difference between activations for contrasting examples.
@@ -42,6 +46,11 @@ it again.
 ## Compute cluster
 
 A group of connected computers used to run computing work. See the [cluster guide](docs/SoC_Cluster_Guide.md) for access and setup.
+
+## Construction example
+
+A shared example used to build or train an intervention: a prompt with a biased and an
+unbiased response. They are in [shared_examples/construction.jsonl](shared_examples/README.md).
 
 ## CUDA
 
@@ -111,6 +120,14 @@ A GitHub record for a task's outcome, dependencies, progress, and completion che
 
 Short for Large Language Model, a model trained on large amounts of text to process and generate language.
 
+## Max activation
+
+The largest score ReFT-r1's vector gives any token in the construction examples, saved as `max_act`. ReFT-r1 strength is a multiple of it.
+
+## MBTP
+
+The multilingual social bias benchmark ([Kaneko et al., 2026](https://aclanthology.org/2026.acl-long.2204/)) that the [shared examples](shared_examples/README.md) come from.
+
 ## Milestone
 
 A GitHub grouping of issues for a delivery stage.
@@ -123,6 +140,12 @@ partitions with assigned memory and compute resources.
 ## MMLU-Pro
 
 A benchmark for measuring general capability through multiple-choice reasoning questions.
+
+## Neutral example
+
+An ordinary prompt unrelated to bias, paired with the unsteered model's own reply.
+ReFT-r1 trains on these alongside the construction examples, so its vector learns to
+leave ordinary text unchanged. Unlike construction examples, they have no biased response.
 
 ## Parameter
 

@@ -56,6 +56,9 @@ def _config(tmp_path, method="icv"):
     if method == "sae":
         metadata = json.loads((ROOT / "steering_vectors" / "sae" / "config.json").read_text(encoding="utf-8"))
         model = dict(metadata["model"])
+    if method == "reft_r1":
+        metadata = json.loads((ROOT / "steering_vectors" / "reft_r1" / "config.json").read_text(encoding="utf-8"))
+        model = dict(metadata["model"])
     (artifact / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     config = {
         "examples": str(ROOT / "shared_examples" / "development.jsonl"),
@@ -128,6 +131,24 @@ def test_read_config_rejects_wrong_source_inventory(tmp_path):
 def test_read_config_accepts_saved_sae_metadata(tmp_path):
     config = read_config(_config(tmp_path, method="sae"))
     assert config["methods"]["sae"]["intervention_dir"] == str(tmp_path / "intervention")
+
+
+def test_read_config_accepts_saved_reft_r1_metadata(tmp_path):
+    config = read_config(_config(tmp_path, method="reft_r1"))
+    assert config["methods"]["reft_r1"]["intervention_dir"] == str(tmp_path / "intervention")
+
+
+@pytest.mark.parametrize("field,value", [
+    ("name", "other/model"), ("revision", "b" * 40), ("dtype", "float32"),
+])
+def test_read_config_rejects_incompatible_reft_r1_model(tmp_path, field, value):
+    path = _config(tmp_path, method="reft_r1")
+    metadata_path = tmp_path / "intervention" / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["model"][field] = value
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="reft_r1 artifact"):
+        read_config(path)
 
 
 @pytest.mark.parametrize("field,value", [
