@@ -5,8 +5,8 @@
   "run_id": "icv-004",
   "source": {
     "commit": "279a45f29a2a762a150a399cd6bc2708d0e958fa",
-    "status": "M configs/main.json\n M configs/tuning.json\n?? results/tuning/icv-finetune-01/\n?? results/tuning/icv-finetune-02/\n?? results/tuning/icv-finetune-03/\n?? results/tuning/icv-finetune/",
-    "uncommitted_diff": "diff --git a/configs/main.json b/configs/main.json\nindex b30a384..96a2ad7 100644\n--- a/configs/main.json\n+++ b/configs/main.json\n@@ -17,7 +17,7 @@\n     },\n     \"icv\": {\n       \"intervention_dir\": \"steering_vectors/icv\",\n-      \"strength\": null\n+      \"strength\": 0.04\n     },\n     \"sae\": {\n       \"intervention_dir\": \"steering_vectors/sae/cu126-20261105-202310\",\ndiff --git a/configs/tuning.json b/configs/tuning.json\nindex bedcc6d..11b6983 100644\n--- a/configs/tuning.json\n+++ b/configs/tuning.json\n@@ -22,7 +22,7 @@\n   \"methods\": {\n     \"icv\": {\n       \"intervention_dir\": \"steering_vectors/icv\",\n-      \"strengths\": [0, 0.02, 0.04, 0.06, 0.08, 0.1]\n+      \"strengths\": [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]\n     },\n     \"sae\": {\n       \"intervention_dir\": \"steering_vectors/sae/cu126-20261105-202310\","
+    "status": "",
+    "uncommitted_diff": ""
   },
   "model": {
     "name": "google/gemma-3-1b-it",
