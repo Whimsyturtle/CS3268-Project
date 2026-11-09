@@ -605,6 +605,6 @@ Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean sco
   \end{tabular}
 \end{table}
 
-BBQ accuracy and bias exclude invalid outputs, while MMLU-Pro counts them as wrong. A model that gives more valid letters can therefore improve MMLU-Pro accuracy without an equivalent improvement in reasoning. Each AlpacaEval win rate compares a method's responses with the same GPT-4 Turbo reference responses, judged by DeepSeek V4.1 Flash. It is not a direct comparison with the unsteered baseline, and it is not comparable with the benchmark's leaderboard, which uses a different judge and reports length-controlled win rates.
+BBQ accuracy and bias exclude invalid outputs, while MMLU-Pro counts them as wrong. A model that gives more valid letters can therefore improve MMLU-Pro accuracy without an equivalent improvement in reasoning. Each AlpacaEval win rate compares a method's responses with the same reference responses, written by GPT-4 Turbo, rather than with the unsteered baseline's responses. Our win rates are also not comparable with the benchmark's leaderboard, which uses GPT-4 Turbo instead of DeepSeek V4.1 Flash as the judge and reports length-controlled win rates.
 
 \end{document}
