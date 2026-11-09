@@ -20,6 +20,10 @@
     "max_tokens": 512
   },
   "methods": {
+    "caa": {
+      "intervention_dir": "steering_vectors/caa",
+      "strengths": [0, 0.5, 1, 2]
+    },
     "icv": {
       "intervention_dir": "steering_vectors/icv",
       "strengths": [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14]
