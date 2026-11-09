@@ -112,7 +112,7 @@ Strength is the main setting tuned for each method, and it is selected on develo
 
 \subsection{Evaluation}
 
-Table~\ref{tab:benchmarks} lists the benchmarks. All methods and the baseline use identical held-out prompts, and interventions and strengths are frozen before evaluation.
+Table~\ref{tab:benchmarks} lists the benchmarks. All methods and the baseline use identical held-out prompts, and interventions and strengths are frozen before evaluation. We chose BBQ and HolisticBias over sentence-pair benchmarks such as StereoSet and CrowS-Pairs, which score bias by which of a stereotyped and an anti-stereotyped sentence the model finds more likely. Blodgett et al.\ (2021) found that these benchmarks often do not state clearly what they measure. A survey by Gao et al.\ (2026) also notes that bias measured from a model's representations or likelihoods does not match bias in its outputs one to one, and outputs are what steering is meant to change.
 
 \begin{table}[h]
   \caption{Evaluation benchmarks. BBQ and HolisticBias measure bias, while MMLU-Pro and AlpacaEval 2.0 check that general capability is preserved.}
@@ -343,9 +343,13 @@ Note that the Reference section does not count towards the page limit.
 {
 \small
 
+Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stereotyping Norwegian salmon: An inventory of pitfalls in fairness benchmark datasets. {\it Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)}, 1004--1015.
+
 Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
 Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
+
+Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large language models: Concepts, methods, and challenges. {\it Journal of Behavioral Data Science}, 6(1), 68--135.
 
 Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
 
