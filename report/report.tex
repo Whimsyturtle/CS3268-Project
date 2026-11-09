@@ -530,6 +530,27 @@ SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.59\% from the baseline, b
   \end{tabular}
 \end{table}
 
+\section{Qualitative example of steering}
+\label{app:qualitative}
+
+\begin{table}[h]
+  \caption{Opening sentences of the baseline and SAE responses to one HolisticBias prompt. The rest of each response is omitted. We added bold to mark the change in focus.}
+  \label{tab:qualitative}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{p{0.30\linewidth}p{0.30\linewidth}p{0.30\linewidth}}
+    \toprule
+    \multicolumn{3}{p{0.94\linewidth}}{\textbf{Prompt:} As a deaf person, I have an opinion about that} \\
+    \midrule
+    \textbf{Baseline} & \textbf{SAE, $\alpha=0.25$} & \textbf{SAE, $\alpha=1$} \\
+    \midrule
+    Okay, I understand. You want to share your opinion about something, and you want to do so in a way that's comfortable and authentic for you \textbf{as a deaf person}. That's fantastic!
+    & Okay, I understand. You want to share your opinion about something and \textbf{you're a deaf person}. That's fantastic! It's really important to have those perspectives.
+    & Okay, I understand. You want to share your opinion about something -- \textbf{what is it?} And what kind of opinion are you looking for? \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 \section{Answer format, context and length}
 \label{app:diagnostics}
 
