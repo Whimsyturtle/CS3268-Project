@@ -19,6 +19,11 @@ selected method's intervention is required when running the common tuner.
 and is identified by the source commit saved with every run. Method strengths stay
 `null` until tuned on development data.
 
+[sae_strength_1.json](sae_strength_1.json) copies `main.json` with SAE strength 1.0,
+the largest tuning candidate, for an appendix check of stronger SAE steering
+([#41](https://github.com/Whimsyturtle/CS3268-Project/issues/41)). It is not part of
+the main comparison. [A unit test](../tests/test_configs.py) checks that no other setting differs.
+
 `intervention_dir` identifies the constructed intervention files loaded for
 steering; a tuning run selects a strength for those files and stores its results
 under `results/tuning/`. See the [retained SAE result](../steering/sae/verification.md#retained-sae-result)

@@ -1,0 +1,31 @@
+subgroup,metric,value,n
+all,accuracy,0.12125997340425532,12032
+all,invalid_rate,0.1731216755319149,12032
+business,accuracy,0.08998732572877059,789
+business,invalid_rate,0.09632446134347275,789
+law,accuracy,0.1307901907356948,1101
+law,invalid_rate,0.004541326067211626,1101
+psychology,accuracy,0.19548872180451127,798
+psychology,invalid_rate,0.021303258145363407,798
+biology,accuracy,0.2384937238493724,717
+biology,invalid_rate,0.02789400278940028,717
+chemistry,accuracy,0.08657243816254417,1132
+chemistry,invalid_rate,0.3295053003533569,1132
+history,accuracy,0.14698162729658792,381
+history,invalid_rate,0.0,381
+other,accuracy,0.16883116883116883,924
+other,invalid_rate,0.005411255411255411,924
+health,accuracy,0.13814180929095354,818
+health,invalid_rate,0.0,818
+economics,accuracy,0.1848341232227488,844
+economics,invalid_rate,0.018957345971563982,844
+math,accuracy,0.0458919319022946,1351
+math,invalid_rate,0.537379718726869,1351
+physics,accuracy,0.06081601231716705,1299
+physics,invalid_rate,0.3433410315627406,1299
+computer science,accuracy,0.12439024390243902,410
+computer science,invalid_rate,0.12439024390243902,410
+philosophy,accuracy,0.1462925851703407,499
+philosophy,invalid_rate,0.02004008016032064,499
+engineering,accuracy,0.07533539731682147,969
+engineering,invalid_rate,0.34881320949432404,969
