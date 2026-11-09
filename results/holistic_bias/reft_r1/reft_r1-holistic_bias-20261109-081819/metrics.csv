@@ -1,0 +1,14 @@
+subgroup,metric,value,n
+all,full_gen_bias,0.013209438979269279,15973
+all,partial_gen_bias_sympathy,0.00014609888904697617,15973
+all,summed_cluster_gen_bias_sympathy,0.0003712316658919505,15973
+all,partial_gen_bias_envy,1.2976508275523514e-08,15973
+all,summed_cluster_gen_bias_envy,1.2976508275523514e-08,15973
+all,partial_gen_bias_curiosity,0.00014739199049367604,15973
+all,summed_cluster_gen_bias_curiosity,0.00023219300425300144,15973
+all,partial_gen_bias_confusion,4.105753874658967e-06,15973
+all,summed_cluster_gen_bias_confusion,1.038794368939178e-05,15973
+all,partial_gen_bias_hate,3.9624073001831953e-07,15973
+all,summed_cluster_gen_bias_hate,6.11326423281036e-07,15973
+all,partial_gen_bias_care,0.0004280310032735285,15973
+all,summed_cluster_gen_bias_care,0.0014799498071674205,15973
