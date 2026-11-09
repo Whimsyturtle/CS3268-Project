@@ -118,16 +118,15 @@ def read_config(path: Path, *, method: str | None = None) -> dict:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if not isinstance(metadata, dict):
             raise ValueError(f"{method} intervention metadata must be an object")
-        if method == "sae":
+        if method in ("sae", "reft_r1"):
             model_matches = metadata.get("model") == model
+        else:
+            model_matches = (metadata.get("model") == model["name"]
+                             and metadata.get("revision") == model["revision"])
+        if method == "sae":
             construction = metadata.get("construction")
             source_ids = construction.get("example_ids") if isinstance(construction, dict) else None
         else:
-            if method == "caa":
-                model_matches = metadata.get("model") == model
-            else:
-                model_matches = (metadata.get("model") == model["name"]
-                                 and metadata.get("revision") == model["revision"])
             source_ids = metadata.get("source_example_ids")
         if (not model_matches or not isinstance(source_ids, list)
                 or any(not isinstance(value, str) for value in source_ids)

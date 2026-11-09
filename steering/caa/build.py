@@ -102,7 +102,8 @@ def build(config_path, caa_config_path, output_dir):
     vector_path = output_dir / "vector.pt"
     torch.save(vector, vector_path)
     metadata = {
-        "method": METHOD, "model": config["model"],
+        "method": METHOD, "model": config["model"]["name"],
+        "revision": config["model"]["revision"], "dtype": config["model"]["dtype"],
         "tokenizer": {"name": config["model"]["name"], "revision": config["model"]["revision"],
                       "chat_template_sha256": hashlib.sha256(
                           json.dumps(tokenizer.chat_template, sort_keys=True).encode("utf-8")).hexdigest()},

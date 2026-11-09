@@ -56,6 +56,9 @@ def _config(tmp_path, method="icv"):
     if method == "sae":
         metadata = json.loads((ROOT / "steering_vectors" / "sae" / "config.json").read_text(encoding="utf-8"))
         model = dict(metadata["model"])
+    if method == "reft_r1":
+        metadata = json.loads((ROOT / "steering_vectors" / "reft_r1" / "config.json").read_text(encoding="utf-8"))
+        model = dict(metadata["model"])
     (artifact / "config.json").write_text(json.dumps(metadata), encoding="utf-8")
     config = {
         "examples": str(ROOT / "shared_examples" / "development.jsonl"),
@@ -130,6 +133,24 @@ def test_read_config_accepts_saved_sae_metadata(tmp_path):
     assert config["methods"]["sae"]["intervention_dir"] == str(tmp_path / "intervention")
 
 
+def test_read_config_accepts_saved_reft_r1_metadata(tmp_path):
+    config = read_config(_config(tmp_path, method="reft_r1"))
+    assert config["methods"]["reft_r1"]["intervention_dir"] == str(tmp_path / "intervention")
+
+
+@pytest.mark.parametrize("field,value", [
+    ("name", "other/model"), ("revision", "b" * 40), ("dtype", "float32"),
+])
+def test_read_config_rejects_incompatible_reft_r1_model(tmp_path, field, value):
+    path = _config(tmp_path, method="reft_r1")
+    metadata_path = tmp_path / "intervention" / "config.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["model"][field] = value
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match="reft_r1 artifact"):
+        read_config(path)
+
+
 @pytest.mark.parametrize("field,value", [
     ("name", "other/model"), ("revision", "b" * 40), ("dtype", "float32"),
 ])
@@ -171,8 +192,8 @@ def test_read_config_allows_method_native_payload_files(tmp_path):
     assert read_config(path)["methods"]["icv"]["intervention_dir"] == str(artifact)
 
 
-@pytest.mark.parametrize("method", ["caa", "sae"])
-def test_read_config_accepts_nested_model_metadata_without_changing_artifacts(tmp_path, method):
+@pytest.mark.parametrize("method", ["caa", "sae", "reft_r1"])
+def test_read_config_accepts_method_metadata_without_changing_artifacts(tmp_path, method):
     path = _config(tmp_path)
     config = json.loads(path.read_text(encoding="utf-8"))
     settings = config["methods"].pop("icv")
@@ -180,8 +201,11 @@ def test_read_config_accepts_nested_model_metadata_without_changing_artifacts(tm
     artifact = Path(settings["intervention_dir"])
     metadata_path = artifact / "config.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    metadata["model"] = dict(config["model"])
-    del metadata["revision"]
+    if method in ("sae", "reft_r1"):
+        metadata["model"] = dict(config["model"])
+        del metadata["revision"]
+    else:
+        metadata["dtype"] = config["model"]["dtype"]
     if method == "sae":
         metadata["construction"] = {"example_ids": metadata.pop("source_example_ids")}
     original = json.dumps(metadata)
@@ -200,9 +224,9 @@ def test_read_config_accepts_nested_model_metadata_without_changing_artifacts(tm
 def test_read_config_rejects_incompatible_nested_model(tmp_path, field, value):
     path = _config(tmp_path)
     config = json.loads(path.read_text(encoding="utf-8"))
-    config["methods"]["caa"] = config["methods"].pop("icv")
+    config["methods"]["reft_r1"] = config["methods"].pop("icv")
     path.write_text(json.dumps(config), encoding="utf-8")
-    metadata_path = Path(config["methods"]["caa"]["intervention_dir"]) / "config.json"
+    metadata_path = Path(config["methods"]["reft_r1"]["intervention_dir"]) / "config.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     metadata["model"] = {**config["model"], field: value}
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")

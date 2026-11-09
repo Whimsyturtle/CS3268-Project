@@ -36,13 +36,12 @@ def load_intervention(intervention_dir, *, model):
     }
     if any(metadata.get(key) != value for key, value in conventions.items()):
         raise ValueError("CAA construction or application convention does not match this implementation")
-    expected = metadata["model"]
-    if (model.config.name_or_path != expected["name"]
-            or getattr(model.config, "revision", None) != expected["revision"]
-            or str(model.dtype).removeprefix("torch.") != expected["dtype"]):
+    if (model.config.name_or_path != metadata.get("model")
+            or getattr(model.config, "revision", None) != metadata.get("revision")
+            or str(model.dtype).removeprefix("torch.") != metadata.get("dtype")):
         raise ValueError("CAA model name, revision, or precision does not match the loaded model")
     tokenizer = metadata["tokenizer"]
-    if (tokenizer["name"] != expected["name"] or tokenizer["revision"] != expected["revision"]):
+    if (tokenizer["name"] != metadata["model"] or tokenizer["revision"] != metadata["revision"]):
         raise ValueError("CAA tokenizer must use the same pinned model revision")
     layer = metadata["layer"]
     block = model_layer(model, layer)

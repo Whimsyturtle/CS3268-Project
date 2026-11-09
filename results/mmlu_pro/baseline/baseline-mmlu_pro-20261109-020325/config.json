@@ -1,0 +1,32 @@
+{
+  "config_path": "configs/main.json",
+  "method": "baseline",
+  "benchmark": "mmlu_pro",
+  "run_id": "baseline-mmlu_pro-20261109-020325",
+  "source": {
+    "commit": "f1bca4defe405bcbdba18869696ab68d8a52b476",
+    "status": "",
+    "uncommitted_diff": ""
+  },
+  "model": {
+    "name": "google/gemma-3-1b-it",
+    "revision": "dcc83ea841ab6100d6b47a070329e1ba4cf78752",
+    "dtype": "bfloat16"
+  },
+  "method_config": {},
+  "intervention_config": null,
+  "benchmark_config": {
+    "dataset": "TIGER-Lab/MMLU-Pro",
+    "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+    "split": "test",
+    "limit": null,
+    "max_new_tokens": 8,
+    "seed": 0
+  },
+  "decoding": {
+    "batch_size": 16,
+    "do_sample": false,
+    "use_cache": true,
+    "max_new_tokens": 8
+  }
+}

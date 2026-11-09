@@ -69,11 +69,16 @@ def test_exact_prefill_and_cached_deltas_with_left_padding_and_batch_reset(caa_a
         before.remove()
 
 
-@pytest.mark.parametrize("field,value", [("revision", "b" * 40), ("name", "other/model"), ("dtype", "bfloat16")])
+@pytest.mark.parametrize("field,value", [
+    ("revision", "b" * 40), ("model", "other/model"), ("dtype", "bfloat16"), ("dtype", None),
+])
 def test_loader_rejects_model_mismatch(caa_artifact, caa_model, field, value):
     path = caa_artifact / "config.json"
     metadata = json.loads(path.read_text())
-    metadata["model"][field] = value
+    if value is None:
+        del metadata[field]
+    else:
+        metadata[field] = value
     path.write_text(json.dumps(metadata))
     with pytest.raises(ValueError, match="model name, revision, or precision"):
         load_intervention(caa_artifact, model=caa_model)
@@ -139,7 +144,7 @@ def test_native_bfloat16_application(caa_artifact, caa_model, caa_tokenizer, caa
     torch.save(vector, vector_path)
     path = caa_artifact / "config.json"
     metadata = json.loads(path.read_text())
-    metadata["model"]["dtype"] = "bfloat16"
+    metadata["dtype"] = "bfloat16"
     metadata["vector_sha256"] = hashlib.sha256(vector_path.read_bytes()).hexdigest()
     path.write_text(json.dumps(metadata))
     intervention = load_intervention(caa_artifact, model=caa_model)

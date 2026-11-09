@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -88,7 +89,14 @@ def test_build_records_exact_provenance_and_refuses_overwrite(tmp_path, monkeypa
     monkeypatch.setattr(builder, "source_commit", lambda: {"commit": "fixture"})
     output = builder.build(config_path, settings_path, tmp_path / "artifact")
     metadata = json.loads((output / "config.json").read_text())
-    assert metadata["model"] == config["model"]
+    assert metadata["model"] == config["model"]["name"]
+    assert metadata["revision"] == config["model"]["revision"]
+    assert metadata["dtype"] == config["model"]["dtype"]
+    assert metadata["tokenizer"] == {
+        "name": config["model"]["name"], "revision": config["model"]["revision"],
+        "chat_template_sha256": hashlib.sha256(
+            json.dumps(caa_tokenizer.chat_template, sort_keys=True).encode("utf-8")).hexdigest(),
+    }
     assert metadata["source_example_ids"] == [row["id"] for row in caa_pairs]
     assert metadata["extraction"] == "last_assistant_content_token"
     assert metadata["sign"] == "unbiased_minus_biased" and metadata["normalization"] == "none"

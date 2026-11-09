@@ -34,6 +34,8 @@ in an [isolated environment](holistic_bias/README.md) and reports Full, Partial,
 Summed-Cluster Gen Bias. AlpacaEval 2.0 with a custom judge
 reads its API key from the environment and saves the judge annotations and
 leaderboard with the run.
+Rate-limited requests wait and retry, while completed annotation chunks remain
+in `alpaca_annotations_cache.json` for the retry.
 Its prompt and weighted parser follow the
 [upstream configuration](https://github.com/tatsu-lab/alpaca_eval/tree/main/src/alpaca_eval/evaluators_configs/weighted_alpaca_eval_gpt4_turbo),
 and it compares against the pinned GPT-4 baseline responses. It reports weighted
