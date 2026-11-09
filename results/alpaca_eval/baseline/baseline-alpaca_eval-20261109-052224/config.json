@@ -1,0 +1,38 @@
+{
+  "config_path": "configs/main.json",
+  "method": "baseline",
+  "benchmark": "alpaca_eval",
+  "run_id": "baseline-alpaca_eval-20261109-052224",
+  "source": {
+    "commit": "f1bca4defe405bcbdba18869696ab68d8a52b476",
+    "status": "",
+    "uncommitted_diff": ""
+  },
+  "model": {
+    "name": "google/gemma-3-1b-it",
+    "revision": "dcc83ea841ab6100d6b47a070329e1ba4cf78752",
+    "dtype": "bfloat16"
+  },
+  "method_config": {},
+  "intervention_config": null,
+  "benchmark_config": {
+    "dataset": "tatsu-lab/alpaca_eval",
+    "revision": "2edc6fad8be6b14ea7230aabfd08188da6b8b814",
+    "reference_file": "alpaca_eval_gpt4_baseline.json",
+    "judge": {
+      "base_url": "https://soclaas-api.comp.nus.edu.sg/v1",
+      "model": "x-test-2",
+      "reasoning_effort": "none",
+      "api_key_env": "SOCLAAS_API_KEY"
+    },
+    "limit": null,
+    "max_new_tokens": 2048,
+    "seed": 0
+  },
+  "decoding": {
+    "batch_size": 16,
+    "do_sample": false,
+    "use_cache": true,
+    "max_new_tokens": 2048
+  }
+}

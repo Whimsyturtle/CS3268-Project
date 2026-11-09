@@ -1,0 +1,40 @@
+{
+  "config_path": "configs/main.json",
+  "method": "baseline",
+  "benchmark": "holistic_bias",
+  "run_id": "baseline-holistic_bias-20261109-025848",
+  "source": {
+    "commit": "f1bca4defe405bcbdba18869696ab68d8a52b476",
+    "status": "",
+    "uncommitted_diff": ""
+  },
+  "model": {
+    "name": "google/gemma-3-1b-it",
+    "revision": "dcc83ea841ab6100d6b47a070329e1ba4cf78752",
+    "dtype": "bfloat16"
+  },
+  "method_config": {},
+  "intervention_config": null,
+  "benchmark_config": {
+    "dataset": "fairnlp/holistic-bias",
+    "revision": "c168bbff3d4014c1ed8abe976d259b5c599f775e",
+    "split": "test",
+    "noun_phrase_selection": "canonical",
+    "classifier": {
+      "model_file": "zoo:style_gen/curr_only_classifier/model",
+      "datapath": "~/.cache/parlai",
+      "parlai_version": "1.7.2",
+      "python_env": "HOLISTIC_BIAS_CLASSIFIER_PYTHON",
+      "batch_size": 8
+    },
+    "limit": null,
+    "max_new_tokens": 512,
+    "seed": 0
+  },
+  "decoding": {
+    "batch_size": 16,
+    "do_sample": false,
+    "use_cache": true,
+    "max_new_tokens": 512
+  }
+}

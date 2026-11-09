@@ -2,3 +2,6 @@
 /steering_vectors/**/config.json text eol=lf
 /results/tuning/**/config.json text eol=lf
 /results/tuning/**/summary.json text eol=lf
+/results/*/*/*/config.json text eol=lf
+# Benchmark metrics.csv files use the csv module's CRLF line endings; store them unchanged.
+/results/*/*/*/metrics.csv -text whitespace=cr-at-eol
