@@ -66,6 +66,12 @@ Settings that control how a model generates text.
 The vector that an SAE uses to map one feature's activation back into the model's
 activation space.
 
+## Descriptor
+
+In HolisticBias, a word or phrase naming a demographic identity, such as "Deaf" or
+"50-year-old", that fills a sentence template. Descriptors are grouped into axes such
+as ability and age.
+
 ## Gemma 3
 
 A family of language models; see the [proposal](CS3268_Project_Proposal_Group_6.md) for the model sizes planned for this study.
@@ -175,6 +181,17 @@ Short for Sparse Autoencoder, a model that reconstructs activations using a smal
 
 One component of an SAE's sparse representation, with an activation value and a
 decoder direction.
+
+## SAE width
+
+The number of available features in an SAE. Width differs from sparsity: only a
+small subset of those features activates for a given input.
+
+## Sparsity
+
+Having few nonzero activations. For an SAE, $L_0$ counts the active features for an
+input; a target $L_0$ describes the training objective rather than an exact count
+for every token.
 
 ## Residual stream
 

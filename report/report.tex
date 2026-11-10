@@ -93,7 +93,7 @@ Interventions are built from the English records of MBTP, a multilingual social 
 
 Below, $h$ is a hidden state at one token position and $\alpha$ is the steering strength, selected as described in Section~\ref{sec:strength}. Each method scales its direction differently, so values of $\alpha$ are not comparable across methods.
 
-\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) averages the difference between activations on unbiased and biased examples to get a steering vector, which is added to the model's activations during generation. \pending{CAA owner: add the layer, token position and scaling once the implementation is pushed.}
+\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) averages the difference between activations on unbiased and biased examples to get a steering vector, which is added to the model's activations during generation. For each of the 260 construction pairs, we run the prompt and each response through the chat template and take the output of decoder layer 13 at the response's last token. The steering vector $v$ is the mean unbiased-minus-biased difference, without normalisation, and at inference $\alpha v$ is added to the same layer's output at the last prompt token and every generated token.
 
 \paragraph{ICV.} In-Context Vector (Liu et al., 2024) captures the shift between paired demonstrations. For each construction pair, we encode the biased and the unbiased response on their own, without the prompt or chat template, and subtract their final-token activations at the embeddings and at every decoder layer. Following the authors' released code, we fit one centred PCA over these differences jointly across layers and take the first principal component plus the mean difference, which gives one vector $v_\ell$ per decoder layer. This joint PCA and the added mean differ from the per-layer first principal component in our proposal. \pending{ICV is in a draft PR. Confirm it is final and that the team has approved this change from the proposal.} At inference, the MLP output $h$ of each layer is changed at every token to
 \begin{equation}
@@ -101,14 +101,14 @@ h' = \lVert h \rVert \,\operatorname{normalize}\!\Big(\hat{h} + \alpha\big(1 + \
 \end{equation}
 where hats denote unit vectors, so the steered output keeps its original norm.
 
-\paragraph{SAE.} A sparse autoencoder (Cunningham et al., 2023) decomposes activations into interpretable features. We use a pretrained Gemma Scope 2 SAE\footnote{\url{https://huggingface.co/google/gemma-scope-2-1b-it}, \texttt{resid\_post/layer\_13\_width\_16k\_l0\_medium}.} with 16k features on the residual stream of layer 13, and select one feature with the activation ranking from AxBench (Wu et al., 2025). We run each construction response through the unsteered model, take each feature's largest activation over the response tokens, and score features by the area under the ROC curve (AUROC) with unbiased responses as the positive class. The top feature's decoder direction $d$ is then used to steer: we add $\alpha s d$ to the layer's output at every token, where $s$ is the feature's largest pooled activation on the construction responses. \pending{SAE is on an unmerged branch. Confirm it is final.}
+\paragraph{SAE.} A sparse autoencoder (Cunningham et al., 2023) reconstructs activations using a small number of active features, which can be easier to interpret. We use a pretrained Gemma Scope 2 SAE\footnote{\url{https://huggingface.co/google/gemma-scope-2-1b-it}, \texttt{resid\_post/layer\_13\_width\_16k\_l0\_medium}.} with 16k features on the residual stream of layer 13, and select one feature with the activation ranking from AxBench (Wu et al., 2025). Since we steer one feature's decoder direction, we chose the smallest released width (16k), hoping that a broader feature could capture more bias-related behaviour. This motivation draws on feature splitting observed in larger SAEs (Templeton et al., 2024), where broader features can split into more specific ones. Layer 13 (zero-based) is near the middle of the model, a location used in prior work to study abstract features (Templeton et al., 2024). We fixed both settings without comparing alternatives, so broader bias coverage at 16k remains untested and neither setting is established as optimal for bias steering. We run each construction response through the unsteered model, take each feature's largest activation over the response tokens, and score features by the area under the ROC curve (AUROC) with unbiased responses as the positive class. The top feature's decoder direction $d$ is then used to steer: we add $\alpha s d$ to the layer's output at every token, where $s$ is the feature's largest pooled activation on the construction responses. \pending{SAE is on an unmerged branch. Confirm it is final.}
 
 \paragraph{ReFT-r1.} ReFT-r1 (Wu et al., 2025) trains a single unit vector $w$ at one layer while the model stays frozen. We use layer 10. Each token receives the score $a_t = \operatorname{ReLU}(h_t^\top w)$, and during training $\bar{a}\,w$ is added at every token except the beginning-of-sequence token and padding, where $\bar{a}$ is the mean of the sequence's top 8 scores. The loss is the language-modelling loss on the response tokens plus an L1 penalty on the remaining scores, whose weight rises linearly from 0 to 0.005. We train for 3 epochs (261 steps) with AdamW, batch size 6, learning rate 0.01 with linear decay, and gradient clipping at 1.0, and we renormalise $w$ at each step so that only its direction changes. At inference we add $\alpha m w$ at every token, where $m$ is the largest token score on the construction examples. From each construction pair we train only on the unbiased response, because applying a language-modelling loss to biased text would reward the bias. As in AxBench, training also includes 260 neutral examples: ordinary instructions from Dolly-15K, Python coding instructions and GSM8K in AxBench's 70/15/15 mix,\footnote{Hugging Face datasets \nolinkurl{databricks/databricks-dolly-15k}, \nolinkurl{iamtarun/python_code_instructions_18k_alpaca} and \nolinkurl{openai/gsm8k}.} with any prompt that appears in AlpacaEval removed, each paired with the unsteered model's own greedy reply of up to 128 tokens. The model already gives these replies, so the vector can fit them only by leaving ordinary text unchanged. A reply within 8 tokens of the length limit is treated as cut off and left without an end-of-turn token, so training does not teach the model to stop early.
 
 \subsection{Strength selection}
 \label{sec:strength}
 
-Strength is the main setting tuned for each method, and it is selected on development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next,\footnote{Served by the NUS School of Computing's SoClaaS API as \texttt{x-test-3}, listed as ``Test Qwen 3.8 Flash Next'' when checked on 9 November 2026.} scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. \pending{Add each method's candidate strengths and selected values once all methods are tuned. So far: ReFT-r1 0.2 from $\{0, 0.2, 0.4, 0.6, 0.8, 1, 1.5, 2\}$ (+0.26, 95\% CI 0.05 to 0.49); SAE 0.25.}
+Strength is the main setting for each method, and it is selected via tuning using development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next,\footnote{Served by the NUS School of Computing's SoClaaS API as \texttt{x-test-3}, listed as ``Test Qwen 3.8 Flash Next'' when checked on 9 November 2026.} scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. Table~\ref{tab:tuning} gives each method's selected strength, and Appendix~\ref{app:tuning} lists all candidate strengths.
 
 \subsection{Evaluation}
 
@@ -138,13 +138,128 @@ BBQ scores each context condition separately, following the authors' analysis sc
 \begin{equation}
 s_{\text{dis}} = 2\,\frac{n_{\text{biased}}}{n_{\text{non-unknown}}} - 1,
 \end{equation}
-where $n_{\text{biased}}$ counts answers that select the stereotyped option and $n_{\text{non-unknown}}$ counts answers other than ``unknown''. In ambiguous contexts, where ``unknown'' is the correct answer, the same quantity is multiplied by $(1 - \text{accuracy})$. A score of 0 means no lean, and positive scores lean towards the stereotype. We report accuracy for each condition as well, because a model can lower its bias score by answering ``unknown'' everywhere, which would hurt accuracy on disambiguated questions.
+where $n_{\text{biased}}$ counts answers that select the stereotyped option and $n_{\text{non-unknown}}$ counts answers other than ``unknown''. In ambiguous contexts, where ``unknown'' is the correct answer, the same quantity is multiplied by $(1 - \text{accuracy})$ to give $s_{\text{amb}}$. A score of 0 means no lean, and positive scores lean towards the stereotype. A lean in either direction is a bias, so a score closer to zero is better. We report accuracy for each condition as well, because a model can lower its bias score by answering ``unknown'' everywhere, which would hurt accuracy on disambiguated questions.
 
-For HolisticBias, we keep one released sentence for each combination of axis, descriptor and template, preferring the noun ``person'', then ``woman'' or ``man'', then another noun, and finally a phrase with no noun, so that differences between descriptors are mixed as little as possible with noun gender. This gives 15,973 prompts across 623 descriptors, 13 axes and 26 templates. Following Smith et al.\ (2022), each response, with descriptor mentions replaced by one fixed descriptor, is scored by the released ParlAI style classifier over 217 conversational styles. Full Gen Bias sums, over all styles, the variance of the descriptor-averaged style probabilities, averaged over templates. Summed-Cluster Gen Bias first sums the style probabilities within a group of related styles and then takes the same variance.
+HolisticBias prompts fill sentence templates with a descriptor, a word or phrase naming a demographic identity such as ``Deaf'' or ``50-year-old''. Descriptors are grouped into 13 axes, such as ability and age. We keep one released sentence for each combination of axis, descriptor and template, preferring the noun ``person'', then ``woman'' or ``man'', then another noun, and finally a phrase with no noun, so that differences between descriptors are mixed as little as possible with noun gender. This gives 15,973 prompts across 623 descriptors and 26 templates. Following Smith et al.\ (2022), each response, with descriptor mentions replaced by one fixed descriptor, is scored by the released ParlAI style classifier over 217 conversational styles. Full Gen Bias sums, over all styles, the variance of the descriptor-averaged style probabilities, averaged over templates. Summed-Cluster Gen Bias first sums the style probabilities within a group of related styles and then takes the same variance.
 
 For AlpacaEval 2.0, a judge compares each response with the benchmark's GPT-4 Turbo reference response on all 805 instructions, using AlpacaEval's weighted pairwise prompt, and we report the win rate. The judge is DeepSeek V4.1 Flash,\footnote{Served by SoClaaS as \texttt{x-test-2}, listed as ``Test DeepSeek V4.1 Flash 1017'' when checked on 9 November 2026.} without reasoning. The win rate is not length-controlled, so we also report average response length.
 
+% Results provenance, checked 2026-11-09. Values are from subgroup=all in metrics.csv.
+% Configs and metric files are the sources; PRs track outstanding verification.
+% Read a source with: git show <revision>:<path> (open-PR revisions are pinned below).
+% e6f89c0:results/alpaca_eval/baseline/baseline-alpaca_eval-20261109-052224/metrics.csv
+% e6f89c0:results/bbq/baseline/baseline-bbq-20261109-020632/metrics.csv
+% e6f89c0:results/holistic_bias/baseline/baseline-holistic_bias-20261109-025848/metrics.csv
+% e6f89c0:results/mmlu_pro/baseline/baseline-mmlu_pro-20261109-020325/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/alpaca_eval/caa/caa-open-full-1100299-alpaca_eval/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/bbq/caa/caa-full-1098464-bbq-caa/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/holistic_bias/caa/caa-open-full-1100297-holistic_bias/metrics.csv
+% 6297f7fe04d81ab9a009246957930622682684de:results/mmlu_pro/caa/caa-full-1098464-mmlu_pro-caa/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/alpaca_eval/icv/icv-005-updated/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/bbq/icv/icv-004/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/holistic_bias/icv/icv-006-updated/metrics.csv
+% f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/mmlu_pro/icv/icv-004/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/alpaca_eval/reft_r1/reft_r1-alpaca_eval-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/bbq/reft_r1/reft_r1-bbq-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/holistic_bias/reft_r1/reft_r1-holistic_bias-20261109-081819/metrics.csv
+% 7525a6a3e992a7edbfddac9c56d8339fb222afde:results/mmlu_pro/reft_r1/reft_r1-mmlu_pro-20261109-081819/metrics.csv
+% e6f89c0:results/alpaca_eval/sae/sae-alpaca_eval-20261109-021602/metrics.csv
+% e6f89c0:results/bbq/sae/sae-bbq-20261109-021029/metrics.csv
+% e6f89c0:results/holistic_bias/sae/sae-holistic_bias-20261109-021200/metrics.csv
+% e6f89c0:results/mmlu_pro/sae/sae-mmlu_pro-20261109-015458/metrics.csv
+% SAE strength-1 source: e6f89c0:results/<benchmark>/sae/sae-strength1-<benchmark>-20261109-134525/metrics.csv
+% Tuning: PR44 f9d713dfe3d0d2d1c12470e9aa48a4849e6cadfe:results/tuning/icv-finetune-03/summary.json;
+% e6f89c0:results/tuning/{sae-tuning-mig-20261107-163819,reft-r1-tuning-mig-20261108}/summary.json.
+% CAA tuning: 23a6f7a:results/tuning/caa-dev-20261109-015418/summary.json
+% SAE extra authorization: https://github.com/Whimsyturtle/CS3268-Project/issues/41
+% Qualitative ID 0:27155: predictions.jsonl in the three HolisticBias runs listed above.
+% Prompt reconstructed from the pinned dataset with the shared loader and seed 0.
 \section{Experiments \& Results}
+\label{sec:results}
+
+We compare the unsteered baseline with CAA ($\alpha=0.5$), ICV ($\alpha=0.04$), SAE ($\alpha=0.25$) and ReFT-r1 ($\alpha=0.2$). Each is evaluated on all 58,476 BBQ questions, 15,973 HolisticBias prompts, 12,032 MMLU-Pro questions and 805 AlpacaEval instructions. All runs use the same model, data, decoding settings, scorer settings and evaluation code. Rankings below describe the observed scores.
+
+\subsection{Bias reduction and general capability}
+
+\begin{table}[ht]
+  \caption{Main comparison at each method's selected strength $\alpha$. Full Gen Bias is multiplied by $10^3$; accuracy and win rate are percentages. Bold marks the best value and italics the second best, including the baseline. The rows below ``Change'' give each method's change from the baseline, in percentage points (pp) or as a relative change (\%). Rankings and changes use unrounded values. No method leads on every metric.}
+  \label{tab:main-results}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & HolisticBias & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Acc.\ $\uparrow$ & $|s_{\text{amb}}|\downarrow$ & $|s_{\text{dis}}|\downarrow$ & Full $\downarrow$ & Acc.\ $\uparrow$ & Win $\uparrow$ \\
+    \midrule
+    Baseline & 33.79 & 0.0241 & \textbf{0.0159} & 13.090 & 13.07 & \textbf{31.07} \\
+    CAA & \textit{34.37} & 0.0255 & \textit{0.0170} & 13.131 & \textit{13.15} & \textit{30.83} \\
+    ICV & \textbf{34.50} & \textbf{0.0183} & 0.0213 & \textbf{10.549} & 12.70 & 17.37 \\
+    SAE & 33.50 & 0.0284 & 0.0184 & \textit{12.961} & 13.11 & 29.49 \\
+    ReFT-r1 & 33.17 & \textit{0.0207} & 0.0220 & 13.209 & \textbf{13.75} & 27.41 \\
+    \midrule
+    Change & pp & \% & \% & \% & pp & pp \\
+    CAA & $+0.58$ & $+5.8$ & $+6.4$ & $+0.3$ & $+0.08$ & $-0.24$ \\
+    ICV & $+0.71$ & $-24.1$ & $+33.8$ & $-19.4$ & $-0.37$ & $-13.69$ \\
+    SAE & $-0.28$ & $+17.6$ & $+15.5$ & $-1.0$ & $+0.04$ & $-1.58$ \\
+    ReFT-r1 & $-0.61$ & $-14.2$ & $+37.8$ & $+0.9$ & $+0.68$ & $-3.66$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Table~\ref{tab:main-results} shows a trade-off between lower measured bias and preserved general capability. ICV lowers Full Gen Bias the most and has the lowest ambiguous BBQ bias, 0.006 below the baseline's, but scores lowest on both capability benchmarks. ReFT-r1 has the highest MMLU-Pro accuracy and the second-lowest ambiguous BBQ bias, but its AlpacaEval win rate falls and its disambiguated BBQ bias rises the most. CAA and SAE change general capability the least, but neither clearly lowers bias: CAA's BBQ bias scores and Full Gen Bias all rise slightly, and SAE lowers Full Gen Bias only slightly while raising both BBQ bias scores. Every method's disambiguated BBQ bias is slightly higher than the baseline's, by 0.001 to 0.006, and no method consistently reduces bias while preserving general capability.
+
+\begin{table}[ht]
+  \caption{HolisticBias Summed-Cluster Gen Bias for six style clusters. Values are multiplied by the factor under each column. Bold and italics mark the best and second-best values, including the baseline. The rows below ``Change'' give each method's relative change from the baseline, computed from unrounded values. A lower Full Gen Bias can coexist with higher bias in some style clusters.}
+  \label{tab:clusters}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Method & Sympathy $\downarrow$ & Envy $\downarrow$ & Curiosity $\downarrow$ & Confusion $\downarrow$ & Hate $\downarrow$ & Care $\downarrow$ \\
+    Scale & $\times10^4$ & $\times10^8$ & $\times10^4$ & $\times10^5$ & $\times10^7$ & $\times10^3$ \\
+    \midrule
+    Baseline & \textit{2.489} & 1.321 & 2.284 & 1.051 & 4.614 & \textit{1.009} \\
+    CAA & \textbf{2.464} & \textit{1.139} & 2.397 & 1.869 & 4.788 & \textbf{0.892} \\
+    ICV & 2.898 & \textbf{0.728} & \textbf{1.894} & 1.738 & \textbf{1.311} & 1.526 \\
+    SAE & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & 1.187 \\
+    ReFT-r1 & 3.712 & 1.298 & 2.322 & \textit{1.039} & 6.113 & 1.480 \\
+    \midrule
+    Change & \% & \% & \% & \% & \% & \% \\
+    CAA & $-1.0$ & $-13.8$ & $+5.0$ & $+77.9$ & $+3.8$ & $-11.5$ \\
+    ICV & $+16.4$ & $-44.9$ & $-17.1$ & $+65.4$ & $-71.6$ & $+51.3$ \\
+    SAE & $+15.1$ & $+3.5$ & $-9.5$ & $-4.1$ & $-29.1$ & $+17.7$ \\
+    ReFT-r1 & $+49.1$ & $-1.8$ & $+1.7$ & $-1.1$ & $+32.5$ & $+46.7$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The style clusters show changes that Full Gen Bias hides (Table~\ref{tab:clusters}). ICV, which has the lowest Full Gen Bias, has the lowest curiosity cluster bias but raises bias in the sympathy, confusion and care clusters. It also has the lowest envy and hate cluster bias, but these scores are below $10^{-6}$ in every run, so its large relative changes in these clusters are tiny in absolute terms. CAA lowers care cluster bias despite its slightly higher Full Gen Bias, while the other three methods raise it. Both Gen Bias metrics measure variation across descriptors, not how often a model expresses a style: lower care cluster bias means caring language is used more evenly across descriptors, not that it is used less.
+
+\paragraph{Answer format, context and length.} Some differences may come partly or entirely from side effects of steering (Appendix~\ref{app:diagnostics}). ICV is more accurate on ambiguous BBQ questions, where ``unknown'' is correct, and less accurate on disambiguated ones. Since $s_{\text{amb}}$ scales with $1 - \text{accuracy}$, part of its lower ambiguous BBQ bias comes from this higher accuracy rather than from less stereotype reliance. ReFT-r1's MMLU-Pro accuracy gain comes entirely from fewer invalid outputs, which count as wrong: among valid answers, its accuracy is 15.59\%, slightly below the baseline's 15.71\%. Every method also gives shorter AlpacaEval responses, ICV and ReFT-r1 most of all, and LLM judges tend to prefer longer responses (Dubois et al., 2024), so part of each win-rate drop may come from length rather than content.
+
+\subsection{Strength selection and its limits}
+
+\begin{table}[ht]
+  \caption{Development scores at each method's selected strength $\alpha$, averaged over the 65 development examples and out of 5. $\Delta$ is how much the selected strength raises the mean balanced score above the unsteered baseline, with a bootstrap 95\% confidence interval. Each run judged its own baseline, so scores are not directly comparable across methods.}
+  \label{tab:tuning}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrl}
+    \toprule
+    Method & $\alpha$ & Bias avoidance $\uparrow$ & Quality $\uparrow$ & Balanced $\uparrow$ & $\Delta$ balanced $\uparrow$ [95\% CI] \\
+    \midrule
+    CAA & 0.5 & 4.12 & 4.34 & 4.02 & +0.18 [0.00, 0.37] \\
+    ICV & 0.04 & 4.54 & 4.34 & 4.23 & +0.34 [0.06, 0.63] \\
+    SAE & 0.25 & 4.22 & 4.31 & 4.05 & +0.17 [$-0.03$, 0.40] \\
+    ReFT-r1 & 0.2 & 4.25 & 4.37 & 4.09 & +0.26 [0.05, 0.49] \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The tuning grids in Appendix~\ref{app:tuning} show why strength cannot be selected on bias avoidance alone. For ICV, going from $\alpha=0$ to $\alpha=0.1$ raises mean bias avoidance from 4.03 to 4.94 but lowers mean response quality from 4.25 to 1.74, and at $\alpha=0.15$ these scores are 5.00 and 1.00. ReFT-r1 similarly reaches bias avoidance 4.94 but response quality 1.34 at $\alpha=2$. The balanced score penalises these failures. At their selected strengths, neither CAA's nor SAE's confidence interval excludes zero (Table~\ref{tab:tuning}). An extra held-out run of SAE at $\alpha=1$ lowers Full Gen Bias by a relative 8.6\% but loses 15.40 pp of AlpacaEval win rate (Appendix~\ref{app:sae}).
+
+We use development scores only to choose each method's strength, and compare methods on the held-out benchmarks. Picking the best of several strengths on the same 65 prompts tends to overstate that strength's gain, an effect known as the optimizer's curse (Smith and Winkler, 2006), so the $\Delta$ values and confidence intervals in Table~\ref{tab:tuning} are likely optimistic. These intervals also reflect only variation across prompts, not variation from repeated judge calls or model runs. A development gain need not carry over to held-out results: ICV's balanced score rises by 0.34 in tuning, yet its AlpacaEval win rate falls by 13.69 pp. The 65 development prompts are all about bias, whereas the capability benchmarks cover broader tasks. The held-out tables report one run per method without significance tests, so small differences should not be read as real improvements or as proof that general capability is preserved.
 
 \section{Conclusion \& Future Work}
 
@@ -363,6 +478,10 @@ Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\
 
 Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
 
+Smith, J.\ E., \& Winkler, R.\ L.\ (2006). The optimizer's curse: Skepticism and postdecision surprise in decision analysis. {\it Management Science}, 52(3), 311--322.
+
+Templeton, A., et al.\ (2024). \href{https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html}{Scaling monosemanticity: Extracting interpretable features from Claude 3 Sonnet}. {\it Transformer Circuits Thread}.
+
 Wang, Y., Ma, X., Zhang, G., Ni, Y., Chandra, A., Guo, S., Ren, W., Arulraj, A., He, X., Jiang, Z., Li, T., Ku, M., Wang, K., Zhuang, A., Fan, R., Yue, X., \& Chen, W.\ (2024). MMLU-Pro: A more robust and challenging multi-task language understanding benchmark. {\it Advances in Neural Information Processing Systems}, 37.
 
 Wu, Z., Arora, A., Geiger, A., Wang, Z., Huang, J., Jurafsky, D., Manning, C.\ D., \& Potts, C.\ (2025). AxBench: Steering LLMs? Even simple baselines outperform sparse autoencoders. {\it Proceedings of the 42nd International Conference on Machine Learning}.
@@ -381,5 +500,139 @@ Work with the assumption that the appendix will not be graded. It is there to pr
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+\clearpage
+\section{Additional SAE strength check}
+\label{app:sae}
+
+Strength $\alpha=1$ was chosen before any held-out run, as the largest strength in the SAE tuning grid, to check the effect of stronger steering. The configuration differs from the main SAE run only in strength, with the same intervention, prompts, decoding and scorers.
+
+\begin{table}[h]
+  \caption{SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Units, directions and changes follow Table~\ref{tab:main-results}; bold and italics rank only the three rows above ``Change''. Stronger steering reduces Full Gen Bias but lowers both general-capability scores.}
+  \label{tab:sae-extra}
+  \centering\small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & HolisticBias & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Acc.\ $\uparrow$ & $|s_{\text{amb}}|\downarrow$ & $|s_{\text{dis}}|\downarrow$ & Full $\downarrow$ & Acc.\ $\uparrow$ & Win $\uparrow$ \\
+    \midrule
+    Baseline & \textbf{33.79} & \textit{0.0241} & \textbf{0.0159} & 13.090 & \textit{13.07} & \textbf{31.07} \\
+    SAE, $\alpha=0.25$ & \textit{33.50} & 0.0284 & \textit{0.0184} & \textit{12.961} & \textbf{13.11} & \textit{29.49} \\
+    SAE, $\alpha=1$ & 32.37 & \textbf{0.0176} & 0.0222 & \textbf{11.965} & 12.13 & 15.66 \\
+    \midrule
+    Change & pp & \% & \% & \% & pp & pp \\
+    SAE, $\alpha=0.25$ & $-0.28$ & $+17.6$ & $+15.5$ & $-1.0$ & $+0.04$ & $-1.58$ \\
+    SAE, $\alpha=1$ & $-1.41$ & $-27.1$ & $+39.1$ & $-8.6$ & $-0.94$ & $-15.40$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+SAE at $\alpha=1$ has lower Full Gen Bias and ambiguous BBQ bias than both the baseline and SAE at $\alpha=0.25$, but higher disambiguated BBQ bias. It also has lower BBQ accuracy, MMLU-Pro accuracy and, most of all, AlpacaEval win rate. In the style clusters (Table~\ref{tab:sae-extra-clusters}), it has the lowest bias in four of the six clusters, but its care cluster bias rises further above the baseline.
+
+\begin{table}[h]
+  \caption{HolisticBias Summed-Cluster Gen Bias for SAE at $\alpha=0.25$ and $\alpha=1$ against the unsteered baseline. Values and changes follow Table~\ref{tab:clusters}; bold and italics rank only the three rows above ``Change''.}
+  \label{tab:sae-extra-clusters}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Method & Sympathy $\downarrow$ & Envy $\downarrow$ & Curiosity $\downarrow$ & Confusion $\downarrow$ & Hate $\downarrow$ & Care $\downarrow$ \\
+    Scale & $\times10^4$ & $\times10^8$ & $\times10^4$ & $\times10^5$ & $\times10^7$ & $\times10^3$ \\
+    \midrule
+    Baseline & \textit{2.489} & \textit{1.321} & 2.284 & 1.051 & 4.614 & \textbf{1.009} \\
+    SAE, $\alpha=0.25$ & 2.864 & 1.367 & \textit{2.067} & \textbf{1.008} & \textit{3.270} & \textit{1.187} \\
+    SAE, $\alpha=1$ & \textbf{1.900} & \textbf{0.849} & \textbf{1.489} & \textit{1.043} & \textbf{2.892} & 1.363 \\
+    \midrule
+    Change & \% & \% & \% & \% & \% & \% \\
+    SAE, $\alpha=0.25$ & $+15.1$ & $+3.5$ & $-9.5$ & $-4.1$ & $-29.1$ & $+17.7$ \\
+    SAE, $\alpha=1$ & $-23.7$ & $-35.8$ & $-34.8$ & $-0.7$ & $-37.3$ & $+35.1$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Qualitative example of steering}
+\label{app:qualitative}
+
+Table~\ref{tab:qualitative} compares the baseline and SAE responses to HolisticBias example \texttt{0:27155}. We selected this example to illustrate a change in wording. The baseline frames its help around the user's identity, SAE at $\alpha=0.25$ only notes the identity as a separate fact, and SAE at $\alpha=1$ does not mention it in the opening. This is not by itself a fairness improvement, because mentioning an identity can be appropriate when the user raises it, and SAE at $\alpha=1$ scores worse on the capability benchmarks (Table~\ref{tab:sae-extra}).
+
+\begin{table}[h]
+  \caption{Opening sentences of the baseline and SAE responses to one HolisticBias prompt. The rest of each response is omitted. We added bold to mark the change in focus.}
+  \label{tab:qualitative}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{p{0.30\linewidth}p{0.30\linewidth}p{0.30\linewidth}}
+    \toprule
+    \multicolumn{3}{p{0.94\linewidth}}{\textbf{Prompt:} As a deaf person, I have an opinion about that} \\
+    \midrule
+    \textbf{Baseline} & \textbf{SAE, $\alpha=0.25$} & \textbf{SAE, $\alpha=1$} \\
+    \midrule
+    Okay, I understand. You want to share your opinion about something, and you want to do so in a way that's comfortable and authentic for you \textbf{as a deaf person}. That's fantastic!
+    & Okay, I understand. You want to share your opinion about something and \textbf{you're a deaf person}. That's fantastic! It's really important to have those perspectives.
+    & Okay, I understand. You want to share your opinion about something -- \textbf{what is it?} And what kind of opinion are you looking for? \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
+\section{Tuning grids}
+\label{app:tuning}
+
+Table~\ref{tab:full-tuning} lists each method's candidate strengths and mean scores from its tuning run.
+
+\begin{table}[h]
+  \caption{Tuning grids for CAA, ICV, SAE and ReFT-r1: mean bias avoidance (B), response quality (Q) and balanced score (S) on the 65 development examples, out of 5. Bold and italics mark the best and second-best distinct scores within each method and metric, including ties. The selected strength maximises S, not B alone; $\alpha$ values are not comparable across methods.}
+  \label{tab:full-tuning}
+  \centering\small
+  \setlength{\tabcolsep}{2pt}
+  \begin{tabular}{rrrrrrrrrrrrrrrr}
+    \toprule
+    \multicolumn{4}{c}{CAA} & \multicolumn{4}{c}{ICV} & \multicolumn{4}{c}{SAE} & \multicolumn{4}{c}{ReFT-r1} \\
+    \cmidrule(lr){1-4}\cmidrule(lr){5-8}\cmidrule(lr){9-12}\cmidrule(lr){13-16}
+    $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ & $\alpha$ & B $\uparrow$ & Q $\uparrow$ & S $\uparrow$ \\
+    \midrule
+    0 & 3.98 & 4.20 & 3.83 & 0 & 4.03 & 4.25 & 3.89 & 0 & 4.02 & 4.23 & 3.88 & 0 & 3.98 & 4.20 & \textit{3.83} \\
+    0.5 & \textit{4.12} & \textbf{4.34} & \textbf{4.02} & 0.02 & 4.31 & \textit{4.32} & \textit{4.11} & 0.01 & 4.09 & 4.26 & 3.94 & 0.2 & 4.25 & \textbf{4.37} & \textbf{4.09} \\
+    1 & 4.11 & \textit{4.29} & \textit{4.00} & 0.04 & 4.54 & \textbf{4.34} & \textbf{4.23} & 0.025 & 4.14 & \textbf{4.32} & \textit{3.98} & 0.4 & 4.40 & \textit{4.29} & \textbf{4.09} \\
+    2 & \textbf{4.29} & 4.20 & 3.91 & 0.06 & 4.60 & 3.92 & 3.85 & 0.05 & 4.05 & 4.28 & 3.92 & 0.6 & 4.49 & 3.78 & 3.65 \\
+    & & & & 0.08 & 4.86 & 2.69 & 2.66 & 0.1 & 4.12 & 4.28 & 3.94 & 0.8 & 4.77 & 3.17 & 3.14 \\
+    & & & & 0.1 & \textit{4.94} & 1.74 & 1.74 & 0.25 & \textbf{4.22} & \textit{4.31} & \textbf{4.05} & 1 & 4.88 & 2.55 & 2.55 \\
+    & & & & 0.15 & \textbf{5.00} & 1.00 & 1.00 & 0.5 & 4.12 & 4.25 & 3.97 & 1.5 & \textbf{4.98} & 2.17 & 2.17 \\
+    & & & & 0.2 & 4.75 & 1.00 & 1.00 & 1 & \textit{4.18} & 4.06 & 3.77 & 2 & \textit{4.94} & 1.34 & 1.34 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Answer format, context and length}
+\label{app:diagnostics}
+
+\begin{table}[h]
+  \caption{BBQ accuracy on ambiguous and disambiguated questions, BBQ and MMLU-Pro invalid rates, and AlpacaEval mean response length. All scores except length are percentages. Bold and italics rank each scored column, including ties. Length is in characters and has no preferred direction, so it is not ranked. The rows below ``Change'' give each method's change from the baseline, computed from unrounded values.}
+  \label{tab:diagnostics}
+  \centering\small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{BBQ} & MMLU-Pro & AlpacaEval \\
+    \cmidrule(lr){2-4}
+    Method & Amb.\ acc.\ $\uparrow$ & Dis.\ acc.\ $\uparrow$ & Invalid $\downarrow$ & Invalid $\downarrow$ & Mean length \\
+    \midrule
+    Baseline & 13.87 & 53.69 & \textbf{0.034} & 16.81 & 3,318 \\
+    CAA & \textit{14.78} & \textit{53.94} & 0.043 & 17.53 & 3,149 \\
+    ICV & \textbf{18.63} & 50.35 & 0.051 & \textit{11.87} & 2,820 \\
+    SAE & 12.87 & \textbf{54.13} & \textbf{0.034} & 16.62 & 3,178 \\
+    ReFT-r1 & 14.57 & 51.76 & \textit{0.039} & \textbf{11.84} & 2,871 \\
+    \midrule
+    Change & pp & pp & pp & pp & \% \\
+    CAA & $+0.90$ & $+0.26$ & $+0.009$ & $+0.71$ & $-5.1$ \\
+    ICV & $+4.76$ & $-3.33$ & $+0.017$ & $-4.95$ & $-15.0$ \\
+    SAE & $-1.01$ & $+0.44$ & $0.000$ & $-0.19$ & $-4.2$ \\
+    ReFT-r1 & $+0.70$ & $-1.93$ & $+0.005$ & $-4.98$ & $-13.5$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+BBQ accuracy and bias exclude invalid outputs, while MMLU-Pro counts them as wrong. A model that gives more valid letters can therefore improve MMLU-Pro accuracy without an equivalent improvement in reasoning. BBQ invalid rates are below 0.06\% for the baseline and every method, so answer format barely affects the BBQ results. Each AlpacaEval win rate compares a method's responses with the same reference responses, written by GPT-4 Turbo, rather than with the unsteered baseline's responses. Our win rates are also not comparable with the benchmark's leaderboard, which uses GPT-4 Turbo instead of DeepSeek V4.1 Flash as the judge and reports length-controlled win rates.
 
 \end{document}
