@@ -76,6 +76,12 @@ Additional pages can be used only for references/appendix.
 
 \section{Related Work}
 
+Activation steering changes a model's internal representations while keeping its base parameters fixed. CAA constructs directions from contrasting examples (Rimsky et al., 2024), while ICV extracts reusable task information from demonstrations (Liu et al., 2024). SAE-based steering intervenes through learned feature directions (Cunningham et al., 2023). AxBench compares representation-based approaches with prompting and fine-tuning, introduces ReFT-r1, and evaluates behavioural control alongside fluency and instruction following (Wu et al., 2025). These approaches motivate comparing different steering signals under common evaluation settings.
+
+Recent work applies steering specifically to social bias. Dubey (2025) combines linear probes with contrastive steering on GPT-2-large, using a small synthetic dataset and qualitative generation examples. Probe accuracy alone, however, does not establish reduced bias in generated responses. Siddique et al.\ (2026) evaluate separate steering vectors for eight bias axes across multiple benchmarks, providing a direct precedent for category-specific interventions.
+
+Our study compares CAA, ICV, SAE and ReFT-r1 under a shared Gemma-3-1b setup, with common construction and development splits. We evaluate both social bias and general capability across multiple-choice and open-ended tasks, examining whether development-selected interventions transfer to held-out benchmarks without compromising response quality.
+
 \section{Methodology}
 \label{sec:method}
 
@@ -93,7 +99,12 @@ Interventions are built from the English records of MBTP, a multilingual social 
 
 Below, $h$ is a hidden state at one token position and $\alpha$ is the steering strength, selected as described in Section~\ref{sec:strength}. Each method scales its direction differently, so values of $\alpha$ are not comparable across methods.
 
-\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) averages the difference between activations on unbiased and biased examples to get a steering vector, which is added to the model's activations during generation. For each of the 260 construction pairs, we run the prompt and each response through the chat template and take the output of decoder layer 13 at the response's last token. The steering vector $v$ is the mean unbiased-minus-biased difference, without normalisation, and at inference $\alpha v$ is added to the same layer's output at the last prompt token and every generated token.
+\paragraph{CAA.} Contrastive Activation Addition (Rimsky et al., 2024) uses the raw mean activation difference over the 260 construction pairs:
+\begin{equation}
+v = \frac{1}{260}\sum_{i=1}^{260}\big(h_i^{\text{unbiased}}-h_i^{\text{biased}}\big),
+\qquad h' = h + \alpha v.
+\end{equation}
+Each response is encoded with its prompt and the model's chat template. We extract the output of decoder block 13 (zero-based) at the last assistant response content token, excluding padding, special tokens and closing chat markers. Layer 13 is a fixed middle-layer choice, not a layer selected on held-out benchmarks. We do not normalise the vector or update the base model. During generation, we add $\alpha v$ at the last nonpadding prompt position and at subsequent generated positions, leaving earlier prompt positions unchanged. Positive strength follows the unbiased-minus-biased direction; strength zero applies no intervention.
 
 \paragraph{ICV.} In-Context Vector (Liu et al., 2024) captures the shift between paired demonstrations. For each construction pair, we encode the biased and the unbiased response on their own, without the prompt or chat template, and subtract their final-token activations at the embeddings and at every decoder layer. Following the authors' released code, we fit one centred PCA over these differences jointly across layers and take the first principal component plus the mean difference, which gives one vector $v_\ell$ per decoder layer. This joint PCA and the added mean differ from the per-layer first principal component in our proposal. \pending{ICV is in a draft PR. Confirm it is final and that the team has approved this change from the proposal.} At inference, the MLP output $h$ of each layer is changed at every token to
 \begin{equation}
@@ -109,6 +120,10 @@ where hats denote unit vectors, so the steered output keeps its original norm.
 \label{sec:strength}
 
 Strength is the main setting for each method, and it is selected via tuning using development examples only. For each candidate strength, the model greedily generates a response of up to 2,048 tokens to all 65 development prompts, at batch size 4. Strength zero is always a candidate, so a method can end up with no steering. An LLM judge, Qwen 3.8 Flash Next,\footnote{Served by the NUS School of Computing's SoClaaS API as \texttt{x-test-3}, listed as ``Test Qwen 3.8 Flash Next'' when checked on 9 November 2026.} scores each response separately from 1 to 5 on bias avoidance and on response quality, at temperature 0 and without seeing the method, strength or category. A response's balanced score is the lower of the two, so a fluent but stereotyped answer and an unbiased but broken one both score poorly. We select the strength with the highest mean balanced score and break ties towards the smaller strength, and report each strength's paired difference from the unsteered baseline with a bootstrap 95\% confidence interval. Table~\ref{tab:tuning} gives each method's selected strength, and Appendix~\ref{app:tuning} lists all candidate strengths.
+
+% CAA tuning evidence: results/caa_artifacts/caa-evidence-20261109-015418.tar.gz,
+% results/tuning/caa-dev-20261109-015418/summary.json within that archive.
+For CAA, the grid $\{0, 0.5, 1, 2\}$ selects $\alpha=0.5$. Its mean balanced development score is 4.015, compared with 3.831 at strength zero; the paired difference is $+0.185$ (bootstrap 95\% CI $[0.000, 0.369]$). The interval includes zero, so this selection does not establish a clear improvement over the unsteered model.
 
 \subsection{Evaluation}
 
@@ -262,6 +277,14 @@ The tuning grids in Appendix~\ref{app:tuning} show why strength cannot be select
 We use development scores only to choose each method's strength, and compare methods on the held-out benchmarks. Picking the best of several strengths on the same 65 prompts tends to overstate that strength's gain, an effect known as the optimizer's curse (Smith and Winkler, 2006), so the $\Delta$ values and confidence intervals in Table~\ref{tab:tuning} are likely optimistic. These intervals also reflect only variation across prompts, not variation from repeated judge calls or model runs. A development gain need not carry over to held-out results: ICV's balanced score rises by 0.34 in tuning, yet its AlpacaEval win rate falls by 13.69 pp. The 65 development prompts are all about bias, whereas the capability benchmarks cover broader tasks. The held-out tables report one run per method without significance tests, so small differences should not be read as real improvements or as proof that general capability is preserved.
 
 \section{Conclusion \& Future Work}
+
+We compared CAA, ICV, SAE and ReFT-r1 on Gemma-3-1b across four benchmarks measuring social bias and general capability. No evaluated configuration consistently improved both. ICV achieved the lowest ambiguous-context BBQ bias and HolisticBias Full Gen Bias, but also showed the largest decline in AlpacaEval win rate. ReFT-r1 achieved the highest MMLU-Pro accuracy, while its disambiguated BBQ bias and Full Gen Bias increased. CAA retained an AlpacaEval win rate close to the baseline and similar MMLU-Pro accuracy, but did not reduce the aggregate bias measures. SAE slightly lowered Full Gen Bias while increasing both BBQ bias scores. The HolisticBias style-cluster results further show that lower aggregate bias can coexist with increases in individual clusters. These observed differences are limited to the evaluated settings and do not establish statistical significance or equivalence.
+
+Future work could investigate category-specific vectors instead of pooling all bias categories into one direction, following Siddique et al.\ (2026). This would require more construction and development examples per category, an explicit mapping to benchmark categories, and evaluation on both the intended category and other categories to detect unintended effects. Held-out evaluation data should remain separate from construction and strength selection.
+
+Another direction is to combine steering methods and test whether their effects are complementary. Research on adjusting the strengths of multiple steering directions during generation motivates this investigation (Scalena et al., 2024), but does not establish that combining our methods will improve performance. Combinations should respect each method's activation location and scaling, tune strengths jointly on development data, and be compared with each component alone.
+
+Finally, evaluation could extend to larger models, beginning with Gemma-3-4b, to test whether scale improves the trade-off between bias mitigation and coherence. Interventions should be reconstructed and tuned separately for each model, then compared at similar levels of bias reduction. Improved coherence should remain a hypothesis: Hanna and Ameisen (2026, Appendix I) found that larger Qwen-3 models were more successfully steered towards target words without a consistent improvement in coherence.
 
 
 
@@ -462,11 +485,15 @@ Blodgett, S.\ L., Lopez, G., Olteanu, A., Sim, R., \& Wallach, H.\ (2021). Stere
 
 Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L.\ (2023). Sparse autoencoders find highly interpretable features in language models. {\it arXiv preprint arXiv:2309.08600}.
 
+Dubey, S.\ (2025). Activation steering for bias mitigation: An interpretable approach to safer LLMs. {\it arXiv preprint \href{https://arxiv.org/abs/2508.09019v1}{arXiv:2508.09019v1}}.
+
 Dubois, Y., Galambosi, B., Liang, P., \& Hashimoto, T.\ B.\ (2024). Length-controlled AlpacaEval: A simple way to debias automatic evaluators. {\it arXiv preprint arXiv:2404.04475}.
 
 Gao, Z., Tong, L., \& Zhang, Z.\ (2026). Detecting and evaluating bias in large language models: Concepts, methods, and challenges. {\it Journal of Behavioral Data Science}, 6(1), 68--135.
 
 Gemma Team (2025). Gemma 3 technical report. {\it arXiv preprint arXiv:2503.19786}.
+
+Hanna, M., \& Ameisen, E.\ (2026). Latent planning emerges with scale. {\it arXiv preprint \href{https://arxiv.org/abs/2604.12493v1}{arXiv:2604.12493v1}}.
 
 Kaneko, M., Bollegala, D., \& Baldwin, T.\ (2026). A multilingual social bias benchmark incorporating thinking processes. {\it Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 47726--47741.
 
@@ -475,6 +502,10 @@ Liu, S., Ye, H., Xing, L., \& Zou, J.\ Y.\ (2024). In-context vectors: Making in
 Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang, J., Thompson, J., Htut, P.\ M., \& Bowman, S.\ R.\ (2022). BBQ: A hand-built bias benchmark for question answering. {\it Findings of the Association for Computational Linguistics: ACL 2022}, 2086--2105.
 
 Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger, E., \& Turner, A.\ M.\ (2024). Steering Llama 2 via contrastive activation addition. {\it Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)}, 15504--15522.
+
+Scalena, D., Sarti, G., \& Nissim, M.\ (2024). \href{https://aclanthology.org/2024.blackboxnlp-1.34/}{Multi-property steering of large language models with dynamic activation composition}. {\it Proceedings of the 7th BlackboxNLP Workshop: Analyzing and Interpreting Neural Networks for NLP}, 577--603.
+
+Siddique, Z., Khalid, I., Turner, L.\ D., \& Espinosa-Anke, L.\ (2026). \href{https://aclanthology.org/2026.findings-eacl.41/}{Shifting perspectives: Steering vectors for robust bias mitigation in LLMs}. {\it Findings of the Association for Computational Linguistics: EACL 2026}, 809--820.
 
 Smith, E.\ M., Hall, M., Kambadur, M., Presani, E., \& Williams, A.\ (2022). ``I'm sorry to hear that'': Finding new biases in language models with a holistic descriptor dataset. {\it Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing}, 9180--9211.
 
